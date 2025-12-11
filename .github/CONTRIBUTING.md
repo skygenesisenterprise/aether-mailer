@@ -1,15 +1,15 @@
 ### 📄 `CONTRIBUTING.md`
 
-# Contributing to Aether Mail
+# Contributing to Aether Mailer
 
-Thank you for your interest in contributing to **Aether Mail**!  
+Thank you for your interest in contributing to **Aether Mailer**!  
 We welcome community contributions and feedback, while the project is also maintained and developed by [Sky Genesis Enterprise](https://skygenesisenterprise.com).
 
 ---
 
 ## 📦 About the Project
 
-**Aether Mail** is an open-source email client licensed under **AGPLv3**, with both:
+**Aether Mailer** is an open-source email client licensed under **MIT Licence**, with both:
 
 - A **free and self-hostable version** for the open-source community
 - A **commercial edition** with additional features and premium support maintained by Sky Genesis Enterprise
@@ -20,7 +20,7 @@ We value collaboration and are happy to accept pull requests, bug reports, and f
 
 ## 🧭 Code of Conduct
 
-We follow a [Code of Conduct](https://github.com/skygenesisenterprise/aether-mail/CODE_OF_CONDUCT.md) to ensure a safe, respectful, and inclusive environment.  
+We follow a [Code of Conduct](https://github.com/skygenesisenterprise/aether-mailer/CODE_OF_CONDUCT.md) to ensure a safe, respectful, and inclusive environment.  
 Please make sure you read and respect it before contributing.
 
 ---
@@ -32,8 +32,8 @@ Please make sure you read and respect it before contributing.
 Use the GitHub UI to create a fork, then clone it locally:
 
 ```bash
-git clone https://github.com/skygenesisenterprise/aether-mail.git
-cd aether-mail
+git clone https://github.com/skygenesisenterprise/aether-mailer.git
+cd aether-mailer
 ```
 
 ### 2. Set Up Locally
@@ -41,8 +41,8 @@ cd aether-mail
 Install dependencies and run the development server (example for TypeScript/Node):
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 > See [README.md](./README.md) for platform-specific setup instructions.
@@ -77,7 +77,7 @@ Please write tests if applicable, and update documentation when necessary.
 Ensure your code doesn’t break existing functionality:
 
 ```bash
-npm test
+pnpm test
 ```
 
 ---
@@ -108,7 +108,7 @@ Please note that **final decisions regarding project direction, architecture, an
 
 ## 📩 Questions or Suggestions?
 
-Open a [GitHub Discussion](https://github.com/skygenesisenterprise/aether-mail/discussions)
+Open a [GitHub Discussion](https://github.com/skygenesisenterprise/aether-mailer/discussions)
 Or reach out to us at [contact@skygenesisenterprise.com](mailto:contact@skygenesisenterprise.com)
 
-Thank you for helping improve Aether Mail 💌
+Thank you for helping improve Aether Mailer 💌

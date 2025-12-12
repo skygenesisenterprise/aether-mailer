@@ -2,188 +2,220 @@
 
 # 🚀 Aether Mailer
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)](https://github.com/skygenesisenterprise/aether-mailer) [![License](https://img.shields.io/badge/licence-MIT-blue?style=for-the-badge)](https://github.com/skygenesisenterprise/aether-mailer/blob/main/LICENSE) [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/) [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/) [![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js)](https://nodejs.org/)
+[![Version](https://img.shields.io/badge/version-0.1.0-alpha-orange?style=for-the-badge)](https://github.com/skygenesisenterprise/aether-mailer) [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](https://github.com/skygenesisenterprise/aether-mailer/blob/main/LICENSE) [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/) [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/) [![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js)](https://nodejs.org/)
 
-**🔥 The Next-Generation Mail Server - Inspired by Stalwart**
+**🔥 Modern Mail Server Foundation - Built with Next.js & Express.js**
 
-A modern, secure, and scalable mail server solution built for the enterprise, featuring web-based administration and advanced email processing capabilities.
+A next-generation mail server foundation currently in early development, featuring a modern web stack and enterprise-ready architecture.
 
-[🚀 Quick Start](#-quick-start) • [✨ Features](#-features) • [📖 Docs](#-documentation) • [🤝 Contributing](#-contributing)
+[🚀 Quick Start](#-quick-start) • [📋 Current Status](#-current-status) • [🛠️ Tech Stack](#️-tech-stack) • [🗺️ Roadmap](#-roadmap) • [🤝 Contributing](#-contributing)
 
-[![GitHub stars](https://img.shields.io/github/stars/skygenesisenterprise/aether-mailer?style=social)](https://github.com/skygenesisenterprise/aether-mailer/stargazers) [![GitHub forks](https://img.shields.io/github/forks/skygenesisenterprise/aether-mailer?style=social)](https://github.com/skygenesisenterprise/aether-mailer/network) [![GitHub issues](https://img.shields.io/github/issues/skygenesisenterprise/aether-mailer)](https://github.com/skygenesisenterprise/aether-mailer/issues) [![GitHub pull requests](https://img.shields.io/github/issues-pr/skygenesisenterprise/aether-mailer)](https://github.com/skygenesisenterprise/aether-mailer/pulls)
+[![GitHub stars](https://img.shields.io/github/stars/skygenesisenterprise/aether-mailer?style=social)](https://github.com/skygenesisenterprise/aether-mailer/stargazers) [![GitHub forks](https://img.shields.io/github/forks/skygenesisenterprise/aether-mailer?style=social)](https://github.com/skygenesisenterprise/aether-mailer/network) [![GitHub issues](https://img.shields.io/github/issues/github/skygenesisenterprise/aether-mailer)](https://github.com/skygenesisenterprise/aether-mailer/issues)
 
 </div>
 
 ---
 
-## 🌟 Why Aether Mailer?
+## 🌟 What is Aether Mailer?
 
-Inspired by the innovative Stalwart mail server, **Aether Mailer** delivers enterprise-grade email infrastructure with:
+**Aether Mailer** is an ambitious project to build a modern, enterprise-grade mail server from the ground up. Currently in **alpha development**, we're establishing the foundation with a modern web stack and scalable architecture.
 
--   🎯 **Modern Architecture** - Built with Rust backend and React frontend for optimal performance
--   🔒 **Security-First** - Advanced encryption, authentication, and spam protection
--   ⚡ **High Performance** - Handle millions of emails with sub-millisecond latency
--   🌐 **Full Protocol Support** - IMAP, SMTP, JMAP, CalDAV, CardDAV, and WebDAV
--   📊 **Rich Web Interface** - Intuitive administration and monitoring dashboard
--   🧩 **Extensible** - Plugin system for custom functionality and integrations
+### 🎯 Our Vision
+- **Modern Architecture** - Built with TypeScript, Next.js, and Express.js
+- **Enterprise-Ready** - Designed for scalability, security, and maintainability  
+- **Web-First Administration** - Intuitive web-based management interface
+- **Protocol Support** - Planned support for SMTP, IMAP, JMAP, CalDAV, and CardDAV
+- **Developer-Friendly** - Clean code, comprehensive documentation, and extensible design
+
+---
+
+## 📋 Current Status
+
+> **⚠️ Early Development Notice**: This project is in **alpha stage** with basic infrastructure only. Core mail server functionality is under development.
+
+### ✅ **Currently Implemented**
+- **Next.js 16 Frontend** - Modern React application with TypeScript
+- **Express.js API Server** - RESTful API foundation with middleware
+- **Database Layer** - Prisma ORM with PostgreSQL configuration
+- **Authentication Structure** - JWT-based auth context (implementation pending)
+- **Development Environment** - Hot reload, TypeScript, and ESLint setup
+- **Styling System** - Tailwind CSS v4 with dark mode support
+
+### 🔄 **In Development**
+- **User Management System** - Registration, login, and profile management
+- **Database Schema** - User, domain, and email storage models
+- **API Endpoints** - User CRUD operations and authentication
+- **Security Middleware** - Rate limiting, CORS, and validation
+
+### 📋 **Planned Features**
+- **Mail Protocol Engines** - SMTP, IMAP, POP3 implementation
+- **Web Administration** - Complete dashboard for server management
+- **Multi-Domain Support** - Enterprise domain management
+- **Email Processing** - Queue system and delivery mechanisms
+- **Security Features** - Spam filtering, virus scanning, encryption
 
 ---
 
 ## 🚀 Quick Start
 
-### 🎯 One-Click Setup
-
-```bash
-# Clone & Install
-git clone https://github.com/skygenesisenterprise/aether-mailer.git
-cd aether-mailer
-pnpm install
-
-# Configure & Launch
-pnpm env:setup
-pnpm dev
-```
-
-**🎉 That's it! Your mail server is running at:**
-
--   **Web Interface**: [http://localhost:4000](http://localhost:4000)
--   **API**: [http://localhost:3000](http://localhost:3000)
--   **SMTP**: localhost:587 (STARTTLS) / 465 (TLS)
--   **IMAP**: localhost:993 (TLS) / 143 (STARTTLS)
-
-### 🐳 Docker Quick Start
-
-```bash
-# Production-ready in seconds
-docker-compose -f docker-compose.prod.yml up -d
-```
-
 ### 📋 Prerequisites
 
--   **Node.js** 18+ ⚡
--   **pnpm** 9.0+ 📦
--   **PostgreSQL** 14+ 🗄️
--   **Rust** 2021+ 🦀 (for backend development)
--   **Redis** 7+ 🔄 (optional, for caching)
+- **Node.js** 18.0.0 or higher
+- **pnpm** 9.0.0 or higher (recommended package manager)
+- **PostgreSQL** 14.0 or higher (for database)
 
----
+### 🔧 Installation & Setup
 
-## ✨ Features
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/skygenesisenterprise/aether-mailer.git
+   cd aether-mailer
+   ```
 
-### 🎨 **Modern Web Administration**
+2. **Install dependencies**
+   ```bash
+   pnpm install
+   ```
 
-#### 📊 **Dashboard & Analytics**
+3. **Environment setup**
+   ```bash
+   cp .env.example .env
+   # Configure your database and environment variables
+   ```
 
--   **Real-time Monitoring** - Live email traffic and system metrics
--   **User Management** - Create, edit, and manage email accounts
--   **Domain Administration** - Multi-domain support with DNS management
--   **Queue Monitoring** - Track email delivery status and queues
--   **Log Analysis** - Advanced logging with search and filtering
+4. **Database initialization**
+   ```bash
+   # Generate Prisma client
+   pnpm prisma generate
+   
+   # Run database migrations (when schema is ready)
+   pnpm prisma migrate dev
+   ```
 
-#### 🔧 **Configuration Management**
+5. **Start development servers**
+   ```bash
+   # Start both frontend and backend
+   pnpm dev
+   
+   # Or start individually:
+   pnpm dev:frontend  # Next.js on port 3000
+   pnpm dev:backend   # Express.js on port 8080
+   ```
 
--   **Web-based Config** - No more config files, everything through the UI
--   **Template System** - Pre-built configurations for common setups
--   **Backup & Restore** - Automated backups with point-in-time recovery
--   **SSL Certificate Management** - Let's Encrypt integration and custom certs
+### 🌐 Access Points
 
-### 🔧 **Technical Excellence**
-
-#### 🛡️ **Security & Compliance**
-
--   **End-to-End Encryption** - TLS 1.3 with perfect forward secrecy
--   **SPF/DKIM/DMARC** - Full email authentication support
--   **Anti-Spam Engine** - Bayesian filtering and RBL integration
--   **Rate Limiting** - DDoS protection and abuse prevention
--   **Audit Logging** - Complete audit trail for compliance
-
-#### ⚙️ **Advanced Email Processing**
-
--   **Multi-Protocol Support** - IMAP4rev2, SMTP, JMAP, CalDAV, CardDAV, WebDAV
--   **Sieve Filtering** - Server-side email filtering and sorting
--   **Quota Management** - Per-user and per-domain storage limits
--   **Auto-Reply** - Vacation messages and out-of-office replies
--   **Mailing Lists** - Built-in list server functionality
-
-#### 🚀 **Performance & Scalability**
-
--   **Horizontal Scaling** - Cluster support for high availability
--   **Database Sharding** - Efficient handling of large user bases
--   **Caching Layer** - Redis integration for optimal performance
--   **Load Balancing** - Built-in load distribution
--   **Background Processing** - Asynchronous email processing
-
-### 🌐 **Deployment Options**
-
-Deployment Type | Status | Description
----|---|---
-**Docker** | ✅ Stable | Single container deployment
-**Docker Compose** | ✅ Stable | Multi-service orchestration
-**Kubernetes** | 🔄 Beta | Cloud-native deployment
-**Bare Metal** | ✅ Stable | Traditional server installation
-**AWS/Azure/GCP** | 📋 Planned | Cloud marketplace images
+Once running, you can access:
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **API Server**: [http://localhost:8080](http://localhost:8080)
+- **Health Check**: [http://localhost:8080/health](http://localhost:8080/health)
 
 ---
 
 ## 🛠️ Tech Stack
 
-### 🎨 **Frontend (Web Interface)**
-
+### 🎨 **Frontend Layer**
 ```
-React 19 + TypeScript 5.9
-├── 🎨 Tailwind CSS v4 + Radix UI
-├── 🔄 Zustand 5.0 (State Management)
-├── 🛣️ React Router 7.9
-├── ⚡ Framer Motion (Animations)
-├── 📊 Recharts (Analytics)
-└── 🔧 ESLint + Biome (Code Quality)
+Next.js 16 + React 19 + TypeScript 5.9
+├── 🎨 Tailwind CSS v4 (Styling & Dark Mode)
+├── 🔄 React Context (State Management)
+├── 🛣️ Next.js App Router (Routing)
+├── 📝 TypeScript Strict Mode (Type Safety)
+└── 🔧 ESLint + Prettier (Code Quality)
 ```
 
-### 🦀 **Backend (Mail Engine)**
-
+### ⚙️ **Backend Layer**
 ```
-Rust 2021 + Tokio Runtime
-├── 📧 SMTP/IMAP/JMAP Engines
-├── 🗄️ PostgreSQL + Redis
-├── 🔐 JWT + OAuth2
-├── 🛡️ Security Middleware
-└── 📊 Prometheus Metrics
+Express.js 5.2.1 + TypeScript
+├── 🗄️ Prisma ORM (Database Layer)
+├── 🔐 JWT (Authentication - Pending)
+├── 🛡️ Helmet.js (Security Headers)
+├── 🌐 CORS (Cross-Origin Requests)
+├── 📦 Compression (Response Optimization)
+└── 📊 Morgan (Logging - Planned)
+```
+
+### 🗄️ **Data Layer**
+```
+PostgreSQL + Prisma
+├── 🏗️ Schema Management (Migrations)
+├── 🔍 Query Builder (Type-Safe Queries)
+├── 🔄 Connection Pooling (Performance)
+└── 📈 Seed Scripts (Development Data)
 ```
 
 ### 🐳 **Infrastructure**
-
 ```
-Docker & Kubernetes
-├── 🚀 CI/CD Pipeline
-├── 📈 Monitoring Stack
-├── 🔍 Log Aggregation
-├── 📊 Analytics Platform
-└── ☁️ Multi-Cloud Support
+Development & Deployment
+├── 🐳 Docker (Containerization - Planned)
+├── 🔧 Docker Compose (Multi-Service - Planned)
+├── 🚀 CI/CD Pipeline (GitHub Actions - Planned)
+└── ☁️ Cloud Deployment (AWS/GCP - Planned)
 ```
 
 ---
 
-## 📖 Documentation
+## 📁 Project Structure
 
-### 🚀 **Getting Started**
+```
+aether-mailer/
+├── app/                     # Next.js App Router
+│   ├── layout.tsx          # Root layout with providers
+│   ├── page.tsx            # Home page
+│   ├── login/              # Authentication pages
+│   ├── register/           # User registration
+│   ├── forgot/             # Password recovery
+│   └── styles/             # Global CSS and themes
+├── server/                 # Express.js API server
+│   ├── src/
+│   │   ├── config/         # Database and server config
+│   │   ├── controllers/    # Request handlers
+│   │   ├── middlewares/    # Express middleware
+│   │   ├── models/         # Data models
+│   │   ├── routes/         # API route definitions
+│   │   ├── services/       # Business logic
+│   │   └── server.ts       # Main server entry point
+│   └── tsconfig.json       # TypeScript configuration
+├── services/               # Core mail services (Future)
+├── cmd/                    # CLI tools (Future)
+├── prisma/                 # Database schema and migrations
+├── public/                 # Static assets
+├── docs/                   # Documentation (Future)
+└── tools/                  # Development utilities
+```
 
--   [📚 Installation Guide](docs/installation/)
--   [⚙️ Configuration](docs/configuration/)
--   [🔧 Migration Guide](docs/migration/)
--   [🚀 Production Deployment](docs/deployment/)
+---
 
-### 🏗️ **Architecture**
+## 🗺️ Development Roadmap
 
--   [📐 System Architecture](docs/architecture/)
--   [🔌 API Documentation](docs/api/)
--   [🗄️ Database Schema](docs/database/)
--   [🔒 Security Guide](docs/security/)
+### 🎯 **Phase 1: Foundation (Current - Q1 2025)**
+- ✅ **Project Setup** - Next.js + Express.js architecture
+- ✅ **Development Environment** - TypeScript, ESLint, hot reload
+- 🔄 **Database Schema** - User, domain, and email models
+- 🔄 **Authentication System** - JWT-based login/registration
+- 📋 **API Endpoints** - User management and configuration
+- 📋 **Frontend Pages** - Login, register, dashboard skeleton
 
-### 🧪 **Development**
+### 🚀 **Phase 2: Core Features (Q2 2025)**
+- 📋 **User Management** - Complete CRUD operations
+- 📋 **Domain Administration** - Multi-domain support
+- 📋 **Basic Email Storage** - Message persistence and retrieval
+- 📋 **Web Dashboard** - Administration interface
+- 📋 **Security Implementation** - Rate limiting, validation
+- 📋 **Testing Suite** - Unit and integration tests
 
--   [👨‍💻 Contributing Guide](docs/contributing/)
--   [🧪 Testing Guide](docs/tests/)
--   [📝 Code Standards](docs/development/conventions.md)
+### ⚙️ **Phase 3: Mail Protocols (Q3 2025)**
+- 📋 **SMTP Engine** - Incoming email processing
+- 📋 **IMAP Server** - Email retrieval and folder management
+- 📋 **Email Queue** - Outbound delivery system
+- 📋 **Basic Security** - SPF, DKIM implementation
+- 📋 **Webmail Interface** - Basic email client
+
+### 🌟 **Phase 4: Enterprise Features (Q4 2025)**
+- 📋 **Advanced Security** - Spam filtering, virus scanning
+- 📋 **CalDAV/CardDAV** - Calendar and contacts sync
+- 📋 **JMAP Support** - Modern email protocol
+- 📋 **High Availability** - Clustering and failover
+- 📋 **Performance Optimization** - Caching and scaling
 
 ---
 
@@ -193,101 +225,68 @@ Docker & Kubernetes
 
 ```bash
 # 🚀 Development
-pnpm dev              # Full stack development
-pnpm dev:frontend    # Frontend only (port 4000)
-pnpm dev:backend      # Backend only (port 3000)
+pnpm dev              # Start both frontend and backend
+pnpm dev:frontend     # Next.js only (port 3000)
+pnpm dev:backend      # Express.js only (port 8080)
 
 # 🏗️ Building
-pnpm build            # Production build
-pnpm build:frontend   # Frontend build
-pnpm build:backend    # Backend build
-
-# 🧪 Testing
-pnpm test             # All tests
-pnpm test:coverage    # With coverage report
-pnpm test:e2e         # End-to-end tests
+pnpm build            # Production build for both
+pnpm build:frontend   # Next.js production build
+pnpm build:backend    # Express.js TypeScript compilation
 
 # 🔧 Code Quality
-pnpm lint             # Lint and fix
-pnpm format           # Format code
-pnpm typecheck        # TypeScript checking
+pnpm lint             # ESLint checking
+pnpm lint:fix         # Auto-fix linting issues
+pnpm typecheck        # TypeScript type checking
 
-# 🐳 Docker
-pnpm docker:dev       # Development environment
-pnpm docker:prod      # Production environment
-pnpm docker:build     # Build images
+# 🗄️ Database
+pnpm prisma generate  # Generate Prisma client
+pnpm prisma migrate   # Run database migrations
+pnpm prisma studio    # Database browser
+pnpm prisma db seed   # Seed development data
 ```
 
-### 📋 **Code Standards**
+### 📋 **Development Guidelines**
 
--   ✅ **TypeScript Strict Mode** - Catch errors early
--   🎨 **Biome Formatting** - Consistent code style
--   📝 **Conventional Commits** - Clear git history
--   🧪 **Test Coverage** - Minimum 80% required
--   🔒 **Security First** - Automated security scans
-
----
-
-## 🗺️ Roadmap
-
-### 🎯 **Phase 1: Core Server (Q1 2025)**
-
--   ✅ SMTP/IMAP servers
--   ✅ Web administration interface
--   ✅ Basic security features
--   🔄 **In Progress**: JMAP support
--   🔄 **In Progress**: CalDAV/CardDAV
-
-### 🚀 **Phase 2: Enterprise Features (Q2 2025)**
-
--   📋 Advanced spam filtering
--   📅 Calendar and contacts sync
--   🔍 Full-text search
--   📊 Advanced analytics
--   🔄 High availability clustering
-
-### 🌟 **Phase 3: AI & Automation (Q3 2025)**
-
--   🤖 AI-powered spam detection
--   📝 Smart email routing
--   📊 Predictive analytics
--   🔔 Intelligent alerting
--   🤝 API integrations
-
-### 🚀 **Phase 4: Cloud Platform (Q4 2025)**
-
--   ☁️ Multi-cloud deployment
--   👥 Multi-tenant architecture
--   🔐 Advanced security suite
--   📈 Enterprise dashboard
--   🔌 Plugin marketplace
+- **TypeScript Strict Mode** - All code must pass strict type checking
+- **Conventional Commits** - Use standardized commit messages
+- **Component Structure** - Follow established patterns for React components
+- **API Design** - RESTful endpoints with proper HTTP methods
+- **Error Handling** - Comprehensive error handling and logging
+- **Testing** - Write tests for all new features (when test framework is added)
 
 ---
 
 ## 🤝 Contributing
 
-We believe in **open collaboration** and welcome contributions from everyone!
+We're looking for contributors to help build this ambitious project! Whether you're experienced with mail protocols, web development, or infrastructure, there's a place for you.
 
-### 🎯 **How to Contribute**
+### 🎯 **How to Get Started**
 
-1.  **🍴 Fork** the repository
-2.  **🌿 Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3.  **💻 Code** your amazing feature
-4.  **🧪 Test** thoroughly (`pnpm test`)
-5.  **📝 Commit** with conventional commits
-6.  **🚀 Push** to your branch
-7.  **🔄 Open** a Pull Request
+1. **Fork the repository** and create a feature branch
+2. **Check the issues** for tasks that need help
+3. **Join discussions** about architecture and features
+4. **Start small** - Documentation, tests, or minor features
+5. **Follow our code standards** and commit guidelines
 
-### 🏆 **Contribution Types**
+### 🏗️ **Areas Needing Help**
 
-Type | Description | Examples
----|---|---
-🐛 **Bug Fixes** | Fix reported issues | Memory leaks, protocol bugs
-✨ **Features** | New functionality | New protocol support, admin features
-📚 **Docs** | Improve documentation | API docs, deployment guides
-🎨 **UI/UX** | Interface improvements | Better dashboard, responsive design
-⚡ **Performance** | Speed optimizations | Caching, query optimization
-🔒 **Security** | Security enhancements | Encryption, validation
+- **Frontend Development** - React components, UI/UX design
+- **Backend Development** - API endpoints, business logic
+- **Database Design** - Schema development, migrations
+- **Mail Protocol Experts** - SMTP, IMAP, JMAP implementation
+- **Security Specialists** - Authentication, encryption, filtering
+- **DevOps Engineers** - Docker, deployment, CI/CD
+- **Documentation** - API docs, user guides, tutorials
+
+### 📝 **Contribution Process**
+
+1. **Choose an issue** or create a new one with your proposal
+2. **Create a branch** with a descriptive name
+3. **Implement your changes** following our guidelines
+4. **Test thoroughly** (when test framework is available)
+5. **Submit a pull request** with clear description
+6. **Address feedback** from maintainers and community
 
 ---
 
@@ -295,50 +294,52 @@ Type | Description | Examples
 
 ### 💬 **Get Help**
 
--   📖 [Documentation](docs/) - Comprehensive guides
--   🐛 [GitHub Issues](https://github.com/skygenesisenterprise/aether-mailer/issues) - Bug reports
--   💡 [Discussions](https://github.com/skygenesisenterprise/aether-mailer/discussions) - Feature requests
--   📧 [Email Support](mailto:support@skygenesisenterprise.com) - Direct help
--   💬 [Discord Community](https://discord.gg/aether-mailer) - Chat with us
+- 📖 **[Documentation](docs/)** - Comprehensive guides (in development)
+- 🐛 **[GitHub Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)** - Bug reports and feature requests
+- 💡 **[GitHub Discussions](https://github.com/skygenesisenterprise/aether-mailer/discussions)** - General questions and ideas
+- 📧 **Email** - support@skygenesisenterprise.com
 
-### 🐛 **Bug Reports**
+### 🐛 **Reporting Issues**
 
-Found a bug? Please help us fix it:
-
-1.  🔍 **Search** existing issues first
-2.  📝 **Create** detailed issue with:
-    -   Clear description
-    -   Steps to reproduce
-    -   Environment info
-    -   Logs/configuration
-3.  🏷️ **Label** appropriately
+When reporting bugs, please include:
+- Clear description of the problem
+- Steps to reproduce
+- Environment information (Node.js version, OS, etc.)
+- Error logs or screenshots
+- Expected vs actual behavior
 
 ---
 
-## 📊 Project Stats
+## 📊 Project Status
 
-Metric | Value | Trend
----|---|---
-⭐ GitHub Stars | [![GitHub stars](https://img.shields.io/github/stars/skygenesisenterprise/aether-mailer?style=flat)](https://github.com/skygenesisenterprise/aether-mailer/stargazers) | 📈 Growing
-🍴 Forks | [![GitHub forks](https://img.shields.io/github/forks/skygenesisenterprise/aether-mailer?style=flat)](https://github.com/skygenesisenterprise/aether-mailer/network) | 📈 Growing
-🐛 Issues | [![GitHub issues](https://img.shields.io/github/issues/skygenesisenterprise/aether-mailer)](https://github.com/skygenesisenterprise/aether-mailer/issues) | 🔄 Active
-📝 Contributors | [![GitHub contributors](https://img.shields.io/github/contributors/skygenesisenterprise/aether-mailer)](https://github.com/skygenesisenterprise/aether-mailer/graphs/contributors) | 📈 Growing
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Frontend Framework** | ✅ Working | Next.js 16 + React 19 |
+| **Backend API** | ✅ Working | Express.js with basic middleware |
+| **Database Layer** | 🔄 In Progress | Prisma configured, schema pending |
+| **Authentication** | 📋 Planned | JWT structure ready |
+| **User Management** | 📋 Planned | Basic CRUD operations |
+| **Mail Protocols** | 📋 Planned | SMTP/IMAP engines |
+| **Web Dashboard** | 📋 Planned | Administration interface |
+| **Security Features** | 📋 Planned | Rate limiting, validation |
+| **Testing Suite** | 📋 Planned | Unit and integration tests |
+| **Documentation** | 📋 Planned | API docs and guides |
 
 ---
 
 ## 🏆 Sponsors & Partners
 
-**Special thanks to our amazing sponsors who make this project possible:**
+**Development led by [Sky Genesis Enterprise](https://skygenesisenterprise.com)**
 
-[![Sky Genesis Enterprise](https://skygenesisenterprise.com/logo.png)](https://skygenesisenterprise.com)
+We're looking for sponsors and partners to help accelerate development of this open-source mail server project.
 
-**🤝 Become a [sponsor](https://github.com/sponsors/skygenesisenterprise) and support open-source development!**
+[🤝 Become a Sponsor](https://github.com/sponsors/skygenesisenterprise)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT Licence** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ```
 MIT License
@@ -360,23 +361,26 @@ copies or substantial portions of the Software.
 
 ## 🙏 Acknowledgments
 
--   🚀 **[Sky Genesis Enterprise](https://skygenesisenterprise.com)** - Development & maintenance
--   👥 **Stalwart Community** - Inspiration and technical insights
--   📚 **Open Source Community** - Tools and libraries
--   🎨 **Dev Community** - Feedback and contributions
+- **Sky Genesis Enterprise** - Project leadership and development
+- **Next.js Team** - Excellent React framework
+- **Express.js Community** - Robust web server framework
+- **Prisma Team** - Modern database toolkit
+- **Open Source Community** - Tools, libraries, and inspiration
 
 ---
 
 <div align="center">
 
-### 🚀 **Ready to Deploy Your Mail Server?**
+### 🚀 **Join Us in Building the Future of Email Infrastructure!**
 
-[⭐ Star This Repo](https://github.com/skygenesisenterprise/aether-mailer)• [📖 Read Documentation](docs/) • [🐛 Report Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)
+[⭐ Star This Repo](https://github.com/skygenesisenterprise/aether-mailer) • [🐛 Report Issues](https://github.com/skygenesisenterprise/aether-mailer/issues) • [💡 Start a Discussion](https://github.com/skygenesisenterprise/aether-mailer/discussions)
 
 ---
 
+**🔧 Currently in Alpha Development - All Contributions Welcome!**
+
 **Made with ❤️ by the [Sky Genesis Enterprise](https://skygenesisenterprise.com) team**
 
-*Building the future of email infrastructure, inspired by Stalwart*
+*Building a modern mail server, one commit at a time*
 
 </div>

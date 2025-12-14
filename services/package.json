@@ -1,0 +1,34 @@
+{
+  "name": "@aether-mailer/services",
+  "version": "0.1.0",
+  "description": "Core services for Aether Mailer",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "test": "echo \"No tests configured yet\" && exit 0"
+  },
+  "keywords": [
+    "aether-mailer",
+    "services",
+    "core"
+  ],
+  "author": "Sky Genesis Enterprise",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^25",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "eslint": "^9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

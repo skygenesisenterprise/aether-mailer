@@ -43,6 +43,7 @@ next-env.d.ts
 # Aether Mailer
 dist/
 .mailer
+node_modules/
 
 # Prisma 
 prisma/migrations

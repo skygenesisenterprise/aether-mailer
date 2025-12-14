@@ -1,3 +1,15 @@
+packages:
+  - 'server'
+  - 'app'
+  - 'cli'
+  - 'services'
+  - 'routers'
+  - 'tools'
+  - 'tests'
+  - 'options'
+  - 'package'
+  - 'snap'
+
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver

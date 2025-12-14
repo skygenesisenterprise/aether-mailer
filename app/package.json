@@ -1,7 +1,9 @@
 {
-  "name": "client",
+  "name": "@aether-mailer/app",
   "version": "0.1.0",
+  "description": "Frontend application for Aether Mailer",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

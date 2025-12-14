@@ -1,36 +1,99 @@
 {
-  "name": "client",
+  "name": "aether-mailer",
   "version": "0.1.0",
+  "description": "Modern mail server foundation with complete authentication system and monorepo architecture",
   "private": true,
+  "type": "module",
+  "workspaces": [
+    "app",
+    "server",
+    "cli",
+    "services",
+    "tools",
+    "routers"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "concurrently \"pnpm --filter app dev\" \"pnpm --filter server dev\"",
+    "dev:frontend": "pnpm --filter app dev",
+    "dev:backend": "pnpm --filter server dev",
+    "dev:cli": "pnpm --filter cli dev",
+    "build": "pnpm -r build",
+    "build:frontend": "pnpm --filter app build",
+    "build:backend": "pnpm --filter server build",
+    "build:cli": "pnpm --filter cli build",
+    "start": "concurrently \"pnpm --filter app start\" \"pnpm --filter server start\"",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "reset": "pnpm clean && pnpm install",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed",
+    "cli": "pnpm --filter cli cli",
+    "docker:build": "docker build -t aether-mailer .",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "prepare": "husky install",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
-    "compression": "^1.8.1",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "helmet": "^8.1.0",
-    "lucide-react": "^0.561.0",
-    "next": "16.0.10",
-    "react": "19.2.2",
-    "react-dom": "19.2.1"
+    "dotenv": "^17.2.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.0.0",
-    "@capacitor/core": "^8.0.0",
-    "@tailwindcss/postcss": "^4",
+    "@changesets/cli": "^2.27.1",
     "@types/node": "^25",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "concurrently": "^8.2.2",
     "eslint": "^9",
-    "eslint-config-next": "16.0.9",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
     "prisma": "5.22.0",
-    "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skygenesisenterprise/aether-mailer.git"
+  },
+  "keywords": [
+    "mail-server",
+    "email",
+    "smtp",
+    "imap",
+    "nextjs",
+    "express",
+    "typescript",
+    "monorepo",
+    "authentication",
+    "jwt"
+  ],
+  "author": {
+    "name": "Sky Genesis Enterprise",
+    "email": "dev@skygenesisenterprise.com",
+    "url": "https://skygenesisenterprise.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/skygenesisenterprise/aether-mailer/issues"
+  },
+  "homepage": "https://github.com/skygenesisenterprise/aether-mailer#readme",
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

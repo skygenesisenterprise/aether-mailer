@@ -1,15 +1,15 @@
 <div align="center">
 
-# Aether Mailer Web Application
+# 🚀 Aether Mailer Web Application
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-19.2.1-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css)
 
-**Modern Web Administration Interface for Aether Mailer**
+**Complete Mail Server Administration Interface with Dashboard & Management Tools**
 
-[🎯 Purpose](#-purpose) • [🏗️ Architecture](#️-architecture) • [📁 Structure](#-structure) • [🛠️ Development](#️-development) • [🔐 Authentication](#-authentication) • [🎨 Styling](#-styling)
+[🎯 Purpose](#-purpose) • [🏗️ Architecture](#️-architecture) • [📁 Structure](#-structure) • [🛠️ Development](#️-development) • [🔐 Authentication](#-authentication) • [📊 Features](#-features)
 
 </div>
 
@@ -17,7 +17,7 @@
 
 ## 🎯 Purpose
 
-The `/app/` directory contains the **Next.js 16 web application** that serves as the administration interface for Aether Mailer. This is the primary web UI for managing the mail server, users, domains, and monitoring system operations.
+The `/app/` directory contains the **Next.js 16 web application** that serves as the comprehensive administration interface for Aether Mailer. This is the primary web UI for managing the mail server, users, domains, monitoring system operations, and complete server administration.
 
 ### 🔄 Role in Ecosystem
 
@@ -29,10 +29,11 @@ The `/app/` directory contains the **Next.js 16 web application** that serves as
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-- **Web Interface** - User-friendly administration dashboard
-- **API Client** - Communicates with Express.js backend
+- **Web Interface** - Complete administration dashboard with all management tools
+- **API Client** - Communicates with Express.js backend for all operations
 - **Authentication** - JWT-based login and session management
 - **Responsive Design** - Works on desktop, tablet, and mobile browsers
+- **Comprehensive Management** - Full mail server administration capabilities
 
 ---
 
@@ -40,9 +41,10 @@ The `/app/` directory contains the **Next.js 16 web application** that serves as
 
 ### 📋 Current Implementation Status
 
-> **✅ Active Development**: Authentication system and UI components are implemented and functional.
+> **✅ Active Development**: Complete dashboard and management interface implemented and functional.
 
 #### ✅ **Currently Implemented**
+
 - **Next.js 16 Setup** - App Router with TypeScript strict mode
 - **Authentication System** - Complete JWT authentication with login/register forms
 - **UI Component Library** - Button, Card, Input components with shadcn/ui
@@ -51,20 +53,30 @@ The `/app/` directory contains the **Next.js 16 web application** that serves as
 - **Font Configuration** - Geist Sans and Geist Mono fonts
 - **Authentication Pages** - Login, register, forgot password with forms
 - **Auth Context** - JWT authentication with token management
-- **Utility Functions** - Helper functions for common operations
+- **Complete Dashboard** - Overview, delivery, network, performance, security
+- **Account Management** - Passwords, crypto, MFA, app passwords
+- **Directory System** - Accounts, domains, groups, roles, tenants management
+- **Settings Interface** - Application configuration management
+- **Reporting System** - ARF, DMARC, TLS analytics
+- **History Tracking** - Delivery and received message history
+- **Management Tools** - Logs and tracing interface
+- **Queue Management** - Queue monitoring and reporting
+- **Spam Management** - Testing and training interface
+- **Troubleshooting Tools** - Delivery and DMARC troubleshooting
 
 #### 🔄 **In Development**
-- **Dashboard** - System overview and metrics
-- **User Management** - CRUD operations for email accounts
-- **Domain Administration** - Multi-domain configuration
-- **Settings Panel** - Server configuration management
-- **Monitoring Dashboard** - Real-time system metrics
 
-#### 📋 **Planned Features**
 - **Email Interface** - Webmail client integration
 - **Advanced Analytics** - Detailed system monitoring
 - **Multi-language Support** - Internationalization
 - **Mobile App** - React Native companion app
+
+#### 📋 **Planned Features**
+
+- **Real-time Monitoring** - Live system metrics
+- **Advanced Security** - Enhanced security features
+- **API Documentation** - Interactive API docs
+- **Testing Suite** - Comprehensive testing framework
 
 ---
 
@@ -72,31 +84,84 @@ The `/app/` directory contains the **Next.js 16 web application** that serves as
 
 ```
 app/
-├── assets/                 # Static assets
-│   └── favicon.ico         # Site favicon
-├── components/             # React components
-│   ├── ui/                # UI component library
-│   │   ├── button.tsx     # Button component
-│   │   ├── card.tsx       # Card component
-│   │   └── input.tsx      # Input component
-│   ├── Sidebar.tsx        # Navigation sidebar
-│   └── login-form.tsx     # Login form component
-├── context/               # React contexts
-│   └── JwtAuthContext.tsx # JWT authentication context
-├── forgot/                # Password recovery page
+├── account/                    # Account management
+│   ├── app-passwords/         # Application passwords
+│   ├── crypto/                # Cryptographic settings
+│   ├── mfa/                   # Multi-factor authentication
+│   ├── password/              # Password management
+│   └── page.tsx              # Account overview
+├── assets/                    # Static assets
+│   └── favicon.ico           # Site favicon
+├── components/                # React components
+│   ├── ui/                   # UI component library
+│   │   ├── button.tsx       # Button component
+│   │   ├── card.tsx         # Card component
+│   │   └── input.tsx        # Input component
+│   ├── Sidebar.tsx           # Main navigation sidebar
+│   ├── SidebarSetting.tsx   # Settings navigation sidebar
+│   └── login-form.tsx       # Login form component
+├── context/                  # React contexts
+│   └── JwtAuthContext.tsx   # JWT authentication context
+├── dashboard/                # Main dashboard
+│   ├── delivry/             # Delivery metrics
+│   ├── network/             # Network statistics
+│   ├── overview/           # System overview
+│   ├── performance/        # Performance metrics
+│   ├── security/           # Security dashboard
+│   └── page.tsx           # Dashboard home
+├── directory/               # Directory management
+│   ├── accounts/           # User accounts
+│   ├── api_keys/          # API key management
+│   ├── domains/           # Domain configuration
+│   ├── groups/            # User groups
+│   ├── lists/             # Mailing lists
+│   ├── oauth-clients/     # OAuth clients
+│   ├── roles/             # Role management
+│   ├── tenants/           # Tenant management
+│   └── page.tsx          # Directory overview
+├── forgot/                 # Password recovery
 │   └── page.tsx          # Forgot password form
-├── lib/                   # Utility libraries
+├── history/                # History tracking
+│   ├── delivery/          # Delivery history
+│   ├── received/          # Received messages
+│   └── page.tsx          # History overview
+├── lib/                    # Utility libraries
+│   ├── logger.ts         # Logging utilities
+│   ├── navigation-config.ts # Navigation configuration
 │   └── utils.ts          # Helper functions
-├── login/                 # Authentication pages
+├── login/                  # Authentication pages
 │   ├── loading.tsx       # Loading state
 │   ├── options/          # Login options
 │   │   └── page.tsx      # Login options page
 │   └── page.tsx          # Main login page
-├── register/             # User registration page
+├── manage/                 # Management interface
+│   ├── logs/             # Log management
+│   ├── tracing/         # Tracing tools
+│   │   └── live/        # Live tracing
+│   └── page.tsx         # Management overview
+├── queues/                 # Queue management
+│   ├── reports/          # Queue reports
+│   └── page.tsx         # Queue overview
+├── register/               # User registration
 │   └── page.tsx          # Registration form
-├── styles/               # Global styles
+├── reports/                # Reporting system
+│   ├── arf/              # ARF reports
+│   ├── dmarc/            # DMARC reports
+│   ├── tls/              # TLS reports
+│   └── page.tsx         # Reports overview
+├── settings/               # Settings interface
+│   └── page.tsx         # Application settings
+├── spam/                   # Spam management
+│   ├── test/             # Spam testing
+│   ├── train/            # Spam training
+│   └── page.tsx         # Spam overview
+├── styles/                 # Global styles
 │   └── globals.css       # Tailwind CSS with theme variables
-├── layout.tsx            # Root layout with providers
+├── troubleshoot/           # Troubleshooting tools
+│   ├── delivery/         # Delivery troubleshooting
+│   ├── dmarc/            # DMARC troubleshooting
+│   └── page.tsx         # Troubleshooting overview
+├── layout.tsx             # Root layout with providers
 ├── page.tsx              # Home page with auth redirect
 ├── package.json          # Package configuration
 ├── tsconfig.json         # TypeScript configuration
@@ -113,11 +178,13 @@ app/
 ### 🚀 **Getting Started**
 
 1. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 2. **Start development server**
+
    ```bash
    pnpm dev
    ```
@@ -125,6 +192,7 @@ app/
 3. **Access the application**
    - **Development**: [http://localhost:3000](http://localhost:3000)
    - **Authentication**: Fully functional login/register system
+   - **Dashboard**: Complete administration interface
 
 ### 📋 **Available Commands**
 
@@ -175,12 +243,63 @@ The authentication system is fully implemented with:
 3. Invalid/missing token → Redirect to login
 ```
 
-### 📋 **Auth Components**
+---
 
-- **`login-form.tsx`** - Complete login form with validation
-- **`JwtAuthContext.tsx`** - Authentication state management
-- **Login Pages** - Multiple login options and methods
-- **Register Page** - User registration with form validation
+## 📊 Features Overview
+
+### 🎯 **Dashboard Features**
+
+| Feature                 | Description                              | Status     |
+| ----------------------- | ---------------------------------------- | ---------- |
+| **System Overview**     | Real-time system metrics and status      | ✅ Working |
+| **Delivery Metrics**    | Email delivery statistics and monitoring | ✅ Working |
+| **Network Statistics**  | Network performance and traffic analysis | ✅ Working |
+| **Performance Metrics** | System performance monitoring            | ✅ Working |
+| **Security Dashboard**  | Security events and threat monitoring    | ✅ Working |
+
+### 👥 **Account Management**
+
+| Feature                 | Description                       | Status     |
+| ----------------------- | --------------------------------- | ---------- |
+| **Account Overview**    | User account management interface | ✅ Working |
+| **Password Management** | Password change and recovery      | ✅ Working |
+| **App Passwords**       | Application-specific passwords    | ✅ Working |
+| **Crypto Settings**     | Cryptographic configuration       | ✅ Working |
+| **MFA Configuration**   | Multi-factor authentication setup | ✅ Working |
+
+### 🗂️ **Directory Management**
+
+| Feature                  | Description                        | Status     |
+| ------------------------ | ---------------------------------- | ---------- |
+| **User Accounts**        | Complete user account management   | ✅ Working |
+| **Domain Configuration** | Multi-domain setup and management  | ✅ Working |
+| **Group Management**     | User group creation and management | ✅ Working |
+| **Role Management**      | Role-based access control          | ✅ Working |
+| **Tenant Management**    | Multi-tenant support               | ✅ Working |
+| **API Key Management**   | API key generation and management  | ✅ Working |
+| **OAuth Clients**        | OAuth client configuration         | ✅ Working |
+| **Mailing Lists**        | Email list management              | ✅ Working |
+
+### 📈 **Reporting & Analytics**
+
+| Feature              | Description                           | Status     |
+| -------------------- | ------------------------------------- | ---------- |
+| **ARF Reports**      | Abuse Reporting Format analysis       | ✅ Working |
+| **DMARC Reports**    | DMARC authentication reports          | ✅ Working |
+| **TLS Reports**      | TLS encryption statistics             | ✅ Working |
+| **Queue Reports**    | Queue performance and status          | ✅ Working |
+| **History Tracking** | Message delivery and received history | ✅ Working |
+
+### 🛠️ **Management Tools**
+
+| Feature              | Description                           | Status     |
+| -------------------- | ------------------------------------- | ---------- |
+| **Log Management**   | System log viewing and filtering      | ✅ Working |
+| **Tracing Tools**    | Request tracing and debugging         | ✅ Working |
+| **Live Tracing**     | Real-time request monitoring          | ✅ Working |
+| **Queue Management** | Email queue monitoring and management | ✅ Working |
+| **Spam Management**  | Spam testing and training tools       | ✅ Working |
+| **Troubleshooting**  | Delivery and DMARC troubleshooting    | ✅ Working |
 
 ---
 
@@ -189,12 +308,14 @@ The authentication system is fully implemented with:
 ### 🎨 **Design System**
 
 #### **Component Library**
+
 - **shadcn/ui Integration** - Modern, accessible components
 - **Tailwind CSS v4** - Utility-first styling framework
 - **CSS Variables** - Dynamic theme customization
 - **Dark Mode Support** - Automatic system preference detection
 
 #### **Available Components**
+
 ```typescript
 // UI Components
 <Button variant="default|destructive|outline|secondary|ghost|link">
@@ -203,17 +324,10 @@ The authentication system is fully implemented with:
 ```
 
 #### **Typography**
+
 - **Primary Font**: Geist Sans (variable font)
 - **Monospace Font**: Geist Mono (for code and technical content)
 - **Font Loading**: Optimized with `subsets: ["latin"]`
-
-### 🎯 **Styling Guidelines**
-
-1. **Utility-First** - Use Tailwind utilities for most styling
-2. **Component Variants** - Leverage shadcn/ui component patterns
-3. **Theme Variables** - Use CSS variables for dynamic theming
-4. **Responsive Design** - Mobile-first with progressive enhancement
-5. **Accessibility** - Semantic HTML with proper contrast ratios
 
 ---
 
@@ -232,13 +346,6 @@ xl: 1280px  /* Desktops */
 2xl: 1536px /* Large screens */
 ```
 
-### 📱 **Mobile Considerations**
-
-- **Touch Targets** - Minimum 44px tap targets
-- **Viewport Meta** - Proper mobile viewport configuration
-- **Performance** - Optimized for mobile networks
-- **Progressive Enhancement** - Core functionality on all devices
-
 ---
 
 ## 🔌 API Integration
@@ -250,10 +357,10 @@ The web application communicates with the Express.js API server:
 ```typescript
 // API client configuration
 const apiClient = {
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 };
 ```
@@ -266,47 +373,28 @@ Web App (Next.js) → API Server (Express) → Database (PostgreSQL)
     JWT Tokens            Core Services
 ```
 
-### 📋 **API Endpoints**
-
-- **Authentication** - `/api/auth/*` (login, register, refresh)
-- **User Management** - `/api/users/*` (CRUD operations)
-- **Domain Configuration** - `/api/domains/*` (planned)
-- **System Metrics** - `/api/metrics/*` (planned)
-
----
-
-## 🚀 Performance Optimization
-
-### ⚡ **Current Optimizations**
-
-- **Next.js 16** - Latest React features and optimizations
-- **SWC Compiler** - Fast TypeScript compilation
-- **Tailwind JIT** - On-demand CSS generation
-- **Font Optimization** - Variable fonts with subset loading
-- **Component Lazy Loading** - Route-based code splitting
-
-### 📈 **Planned Optimizations**
-
-- **Image Optimization** - Next.js Image with WebP support
-- **Caching Strategy** - API response caching and stale-while-revalidate
-- **Bundle Analysis** - Regular bundle size monitoring
-- **Performance Monitoring** - Real user experience tracking
-
 ---
 
 ## 📊 Current Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Next.js Setup** | ✅ Working | App Router with TypeScript |
-| **Authentication** | ✅ Working | Complete JWT system with forms |
-| **UI Components** | ✅ Working | shadcn/ui integration |
-| **Styling System** | ✅ Working | Tailwind CSS v4 with dark mode |
-| **Layout System** | ✅ Working | Root layout with providers |
-| **API Integration** | 🔄 In Progress | Auth endpoints connected |
-| **Dashboard** | 📋 Planned | Main admin interface |
-| **User Management** | 📋 Planned | CRUD operations |
-| **Testing Suite** | 📋 Planned | Framework selection needed |
+| Component              | Status     | Notes                                |
+| ---------------------- | ---------- | ------------------------------------ |
+| **Next.js Setup**      | ✅ Working | App Router with TypeScript           |
+| **Authentication**     | ✅ Working | Complete JWT system with forms       |
+| **UI Components**      | ✅ Working | shadcn/ui integration                |
+| **Styling System**     | ✅ Working | Tailwind CSS v4 with dark mode       |
+| **Layout System**      | ✅ Working | Root layout with providers           |
+| **Dashboard**          | ✅ Working | Complete dashboard with all sections |
+| **Account Management** | ✅ Working | Full account management interface    |
+| **Directory System**   | ✅ Working | Complete directory management        |
+| **Settings Interface** | ✅ Working | Application configuration            |
+| **Reporting System**   | ✅ Working | ARF, DMARC, TLS reports              |
+| **History Tracking**   | ✅ Working | Delivery and received history        |
+| **Management Tools**   | ✅ Working | Logs, tracing, queue management      |
+| **Spam Management**    | ✅ Working | Testing and training interface       |
+| **Troubleshooting**    | ✅ Working | Delivery and DMARC tools             |
+| **API Integration**    | ✅ Working | All endpoints connected              |
+| **Navigation**         | ✅ Working | Complete navigation system           |
 
 ---
 
@@ -314,28 +402,28 @@ Web App (Next.js) → API Server (Express) → Database (PostgreSQL)
 
 ### 📋 **Immediate Priorities**
 
-1. **Dashboard Implementation**
-   - System overview widgets
-   - Real-time metrics display
-   - Quick action buttons
+1. **Email Interface**
+   - Webmail client integration
+   - Email composition and sending
+   - Inbox management
 
-2. **User Management**
-   - User list with search/filter
-   - User creation/editing forms
-   - Role-based permissions
+2. **Advanced Analytics**
+   - Real-time monitoring
+   - Detailed performance metrics
+   - Custom reporting
 
-3. **API Integration**
-   - Complete error handling
-   - Loading states
-   - Data caching strategies
+3. **Multi-language Support**
+   - i18n implementation
+   - Translation management
+   - Locale switching
 
 ### 🎯 **Short-term Goals**
 
-- Complete dashboard interface
-- Implement user management
-- Add domain configuration
-- Set up monitoring dashboard
-- Implement testing framework
+- Complete email interface
+- Implement advanced analytics
+- Add multi-language support
+- Set up comprehensive testing
+- Optimize performance
 
 ---
 
@@ -365,16 +453,16 @@ This web application is part of the Aether Mailer project, licensed under the **
 
 <div align="center">
 
-### 🎨 **Building the Modern Mail Server Administration Interface**
+### 🎨 **Complete Mail Server Administration Interface**
 
 [⭐ Star Project](https://github.com/skygenesisenterprise/aether-mailer) • [🐛 Report Issues](https://github.com/skygenesisenterprise/aether-mailer/issues) • [💡 Start Discussion](https://github.com/skygenesisenterprise/aether-mailer/discussions)
 
 ---
 
-**🔧 Active Development - Authentication System Complete!**
+**🔧 Active Development - Complete Dashboard & Management Interface!**
 
 **Made with ❤️ by the [Sky Genesis Enterprise](https://skygenesisenterprise.com) frontend team**
 
-*Creating an intuitive, powerful, and beautiful mail server management experience*
+_Creating a comprehensive, powerful, and beautiful mail server management experience_
 
 </div>

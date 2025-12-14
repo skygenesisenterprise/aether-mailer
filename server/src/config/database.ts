@@ -1,11 +1,8 @@
-import { PrismaClient } from "@app/generated/prisma/index";
+import { prisma } from '../../prisma/config.js';
 
 export const config = {
   port: process.env.PORT ? parseInt(process.env.PORT) : 8080,
   nodeEnv: process.env.NODE_ENV || "development",
-  database: {
-    url: process.env.DATABASE_URL || "file:./prisma/dev.db",
-  },
   jwt: {
     secret: process.env.JWT_SECRET || "your-secret-key",
     expiresIn: process.env.JWT_EXPIRES_IN || "24h",
@@ -21,14 +18,6 @@ export const config = {
     max: 100, // limit each IP to 100 requests per windowMs
   },
 };
-
-export const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: "file:../prisma/dev.db",
-    },
-  },
-});
 
 export const connectDatabase = async (): Promise<void> => {
   try {

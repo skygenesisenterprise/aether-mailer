@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  username    String   @unique
+  password    String
+  firstName   String?
+  lastName    String?
+  role        String   @default("USER")
+  isActive    Boolean  @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  domains     Domain[]
+  accounts    EmailAccount[]
+  sessions    Session[]
+  
+  @@map("users")
+}
+
+model Domain {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  maxUsers  Int      @default(100)
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  owner     User      @relation(fields: [ownerId], references: [id])
+  accounts  EmailAccount[]
+  
+  @@map("domains")
+}
+
+model EmailAccount {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  domainId  String
+  userId    String
+  password  String
+  quota     Int?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  domain    Domain   @relation(fields: [domainId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@map("email_accounts")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  
+  @@map("sessions")
+}

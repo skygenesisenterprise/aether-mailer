@@ -1,13 +1,5 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./app" },
-    { "path": "./cli" },
-    { "path": "./routers" },
-    { "path": "./server" },
-    { "path": "./services" },
-    { "path": "./tools" }
-  ],
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -26,7 +18,23 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "paths": {
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/context/*": ["./context/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/styles/*": ["./styles/*"]
+    },
+    "baseUrl": "."
   },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
   "exclude": ["node_modules"]
 }

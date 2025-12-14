@@ -21,6 +21,7 @@ async function main() {
 
   const cli = new CLI('mailer', VERSION);
 
+  // Register top-level commands
   cli.register(initCommand);
   cli.register(usersCommand);
   cli.register(domainsCommand);
@@ -29,6 +30,33 @@ async function main() {
   cli.register(metricsCommand);
   cli.register(configCommand);
   cli.register(backupCommand);
+
+  // Register direct aliases for common commands
+  cli.register({
+    name: 'status',
+    description: 'Check server status',
+    usage: 'mailer status [options]',
+    options: serverCommand.options,
+    async action(args, options) {
+      const statusSubcommand = serverCommand.subcommands?.status;
+      if (statusSubcommand) {
+        await statusSubcommand.action(args, options);
+      }
+    }
+  });
+
+  cli.register({
+    name: 'health',
+    description: 'Perform health checks',
+    usage: 'mailer health [options]',
+    options: serverCommand.options,
+    async action(args, options) {
+      const healthSubcommand = serverCommand.subcommands?.health;
+      if (healthSubcommand) {
+        await healthSubcommand.action(args, options);
+      }
+    }
+  });
 
   const args = process.argv.slice(2);
   await cli.run(args);

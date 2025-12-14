@@ -43,3 +43,8 @@ next-env.d.ts
 # Aether Mailer
 dist/
 .mailer
+
+# Prisma 
+prisma/migrations
+prisma/generated
+prisma/dev.db

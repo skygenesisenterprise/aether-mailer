@@ -1,0 +1,62 @@
+{
+  "name": "@aether-mailer/server",
+  "version": "0.1.0",
+  "description": "API Server for Aether Mailer Administration",
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "test": "echo \"No tests configured yet\" && exit 0",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx src/scripts/seed.ts"
+  },
+  "keywords": [
+    "aether-mailer",
+    "api",
+    "server",
+    "express",
+    "typescript",
+    "mail-server"
+  ],
+  "author": "Sky Genesis Enterprise",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.2.1",
+    "cors": "^2.8.5",
+    "helmet": "^8.1.0",
+    "compression": "^1.8.1",
+    "dotenv": "^17.2.3",
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "joi": "^17.11.0",
+    "express-rate-limit": "^7.1.5",
+    "uuid": "^9.0.1",
+    "nodemailer": "^6.9.7"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/uuid": "^9.0.7",
+    "@types/nodemailer": "^6.4.14",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "eslint": "^9",
+    "prisma": "^6.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

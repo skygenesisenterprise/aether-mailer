@@ -8,7 +8,12 @@ const nextConfig: NextConfig = {
   output: "standalone",
 
   images: {
-    domains: [],
+    domains: [
+      "mailer.skygenesisenterprise.com",
+      "mailer.skygenesisenterprise.net",
+      "127.0.0.0",
+      "localhost"
+    ],
     unoptimized: false,
   },
 

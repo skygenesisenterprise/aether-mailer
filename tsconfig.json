@@ -6,7 +6,11 @@
     { "path": "./routers" },
     { "path": "./server" },
     { "path": "./services" },
-    { "path": "./tools" }
+    { "path": "./tools" },
+    { "path": "./options" },
+    { "path": "./package" },
+    { "path": "./snap" },
+    { "path": "./tests" }
   ],
   "compilerOptions": {
     "target": "ES2017",

@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@loglayer/transport-pino": "^2.2.15",
-    "@prisma/client": "5.22.0",
+    "@prisma/client": "7.1.0",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "dotenv": "^17.2.3",

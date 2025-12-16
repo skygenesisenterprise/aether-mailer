@@ -131,8 +131,8 @@ importers:
   cli:
     dependencies:
       dotenv:
-        specifier: ^16.4.5
-        version: 16.6.1
+        specifier: ^17.2.3
+        version: 17.2.3
     devDependencies:
       '@types/node':
         specifier: ^25.0.2

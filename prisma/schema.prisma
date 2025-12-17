@@ -1,5 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Aether Mailer Prisma Schema
+// Modern mail server foundation inspired by Stalwart Mail Server
+// Supports comprehensive email management, authentication, and delivery
 
 generator client {
   provider = "prisma-client-js"
@@ -7,73 +8,546 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
+// ===================================================================
+// USER MANAGEMENT & AUTHENTICATION
+// ===================================================================
+
 model User {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  username    String   @unique
-  password    String
-  firstName   String?
-  lastName    String?
-  role        String   @default("USER")
-  isActive    Boolean  @default(true)
-  lastLogin   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String    @id @default(uuid())
+  username          String    @unique
+  email             String    @unique
+  passwordHash      String    @map("password")
+  firstName         String?
+  lastName          String?
+  displayName       String?
+  role              UserRole   @default(USER)
+  isActive          Boolean   @default(true)
+  isVerified        Boolean   @default(false)
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorSecret  String?
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime  @default(now())
+  
+  // Email preferences
+  timezone          String    @default("UTC")
+  locale            String    @default("en")
+  theme             String    @default("light")
+  
+  // Quota limits
+  maxEmailsPerDay  Int       @default(1000)
+  maxStorageMB      Int       @default(1000)
   
   // Relations
-  domains     Domain[]
-  accounts    EmailAccount[]
-  sessions    Session[]
+  ownedDomains      Domain[]   @relation("DomainOwner")
+  accounts          EmailAccount[]
+  sessions          Session[]
+  domainMemberships  DomainMember[]
+  emailFilters      EmailFilter[]
+  emailSignatures   EmailSignature[]
+  sentEmails        SentEmail[]
+  accessLogs         AccessLog[]
+  apiKeys           ApiKey[]
+  notifications      Notification[]
   
   @@map("users")
 }
 
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  DOMAIN_ADMIN
+  USER
+  READ_ONLY
+}
+
+// ===================================================================
+// DOMAIN MANAGEMENT
+// ===================================================================
+
 model Domain {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  maxUsers  Int      @default(100)
-  ownerId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  name                String    @unique
+  displayName         String?
+  description         String?
+  
+  // Status
+  isActive            Boolean   @default(true)
+  isVerified          Boolean   @default(false)
+  
+  // Limits
+  maxUsers            Int       @default(100)
+  maxEmailsPerDay     Int       @default(10000)
+  maxStorageMB        Int       @default(10000)
+  
+  // DNS & Configuration
+  dkimSelector        String?
+  dkimPublicKey       String?
+  dkimPrivateKey      String?
+  spfRecord          String?
+  dmarcRecord        String?
+  
+  // Timestamps
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  verifiedAt          DateTime?
   
   // Relations
-  owner     User      @relation(fields: [ownerId], references: [id])
-  accounts  EmailAccount[]
+  owner               User       @relation("DomainOwner", fields: [ownerId], references: [id])
+  ownerId             String
+  members             DomainMember[]
+  emailAccounts       EmailAccount[]
+  aliases             EmailAlias[]
+  mailingLists        MailingList[]
+  domainSettings      DomainSetting[]
+  mxRecords          DnsRecord[]
   
   @@map("domains")
 }
 
-model EmailAccount {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  domainId  String
-  userId    String
-  password  String
-  quota     Int?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model DomainMember {
+  id         String    @id @default(uuid())
+  userId     String
+  domainId   String
+  role       DomainRole @default(MEMBER)
+  joinedAt   DateTime  @default(now())
   
   // Relations
-  domain    Domain   @relation(fields: [domainId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain     Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, domainId])
+  @@map("domain_members")
+}
+
+enum DomainRole {
+  OWNER
+  ADMIN
+  MEMBER
+  READ_ONLY
+}
+
+model DnsRecord {
+  id       String  @id @default(uuid())
+  domainId String
+  type     String  @default("MX")
+  name     String?
+  value    String?
+  priority Int?
+  ttl      Int?
+  
+  // Relations
+  domain   Domain  @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  
+  @@map("dns_records")
+}
+
+// ===================================================================
+// EMAIL ACCOUNTS & ALIASES
+// ===================================================================
+
+model EmailAccount {
+  id             String     @id @default(uuid())
+  email          String     @unique
+  domainId       String
+  userId         String
+  passwordHash   String     @map("password")
+  
+  // Account settings
+  isActive       Boolean    @default(true)
+  isDefault      Boolean    @default(false)
+  displayName    String?
+  replyTo        String?
+  
+  // Quota management
+  currentStorage Int        @default(0)
+  maxStorageMB   Int        @default(1000)
+  emailsSent     Int        @default(0)
+  emailsReceived Int        @default(0)
+  
+  // Auto-reply
+  autoReplyEnabled Boolean    @default(false)
+  autoReplySubject String?
+  autoReplyText     String?
+  autoReplyStart    DateTime?
+  autoReplyEnd      DateTime?
+  
+  // Forwarding (stored as JSON for SQLite compatibility)
+  forwardEnabled   Boolean    @default(false)
+  forwardData      String?    // JSON array of forward addresses
+  
+  // Timestamps
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  lastLoginAt    DateTime?
+  
+  // Relations
+  domain         Domain     @relation(fields: [domainId], references: [id])
+  user           User       @relation(fields: [userId], references: [id])
+  
+  // Security & Spam
+  spamFilterLevel SpamLevel  @default(MEDIUM)
+  quarantineMode Boolean    @default(false)
+  
+  // Whitelist/Blacklist (stored as JSON)
+  filterData      String?    // JSON object with whitelist/blacklist arrays
+  
+  sentEmails     SentEmail[]
   
   @@map("email_accounts")
 }
+
+enum SpamLevel {
+  LOW
+  MEDIUM
+  HIGH
+  AGGRESSIVE
+}
+
+model EmailAlias {
+  id       String  @id @default(uuid())
+  alias    String  @unique
+  target   String
+  domainId String
+  
+  // Relations
+  domain   Domain  @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  
+  @@map("email_aliases")
+}
+
+// ===================================================================
+// EMAIL MANAGEMENT
+// ===================================================================
+
+model SentEmail {
+  id            String        @id @default(uuid())
+  fromAccountId String
+  messageId     String        @unique
+  subject       String?
+  bodyText      String?
+  bodyHtml      String?
+  
+  // Recipients (stored as JSON for SQLite compatibility)
+  recipients    String?       // JSON object with to, cc, bcc arrays
+  
+  // Status & Tracking
+  status        EmailStatus    @default(PENDING)
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  openedAt      DateTime?
+  clickedAt      DateTime?
+  
+  // Metadata
+  size          Int?
+  priority      EmailPriority @default(NORMAL)
+  
+  // Timestamps
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Relations
+  fromAccount   EmailAccount  @relation(fields: [fromAccountId], references: [id])
+  attachments   EmailAttachment[]
+  events        EmailEvent[]
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String
+  
+  @@map("sent_emails")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+  DEFERRED
+  OPENED
+  CLICKED
+  COMPLAINED
+  UNSUBSCRIBED
+}
+
+enum EmailPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model EmailAttachment {
+  id        String  @id @default(uuid())
+  emailId   String
+  filename  String
+  mimeType  String
+  size      Int
+  path      String?
+  checksum  String?
+  
+  // Relations
+  email     SentEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  
+  @@map("email_attachments")
+}
+
+model EmailEvent {
+  id        String     @id @default(uuid())
+  emailId   String
+  event     EventType
+  data      Json?
+  timestamp DateTime   @default(now())
+  
+  // Relations
+  email     SentEmail   @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  
+  @@map("email_events")
+}
+
+enum EventType {
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  COMPLAINED
+  UNSUBSCRIBED
+  DELIVERY_DELAYED
+  REJECTED
+  QUEUED
+}
+
+// ===================================================================
+// FILTERS & SIGNATURES
+// ===================================================================
+
+model EmailFilter {
+  id         String      @id @default(uuid())
+  userId     String
+  name       String
+  conditions Json        // Filter conditions as JSON
+  action     FilterAction
+  isActive   Boolean     @default(true)
+  priority   Int         @default(0)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("email_filters")
+}
+
+enum FilterAction {
+  MOVE_TO_FOLDER
+  MARK_AS_READ
+  DELETE
+  FORWARD
+  REPLY_WITH_TEMPLATE
+  ADD_LABEL
+  QUARANTINE
+  REJECT
+}
+
+model EmailSignature {
+  id         String    @id @default(uuid())
+  userId     String
+  name       String
+  content    String
+  isDefault  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  
+  // Relations
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("email_signatures")
+}
+
+// ===================================================================
+// MAILING LISTS
+// ===================================================================
+
+model MailingList {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  email       String   @unique
+  domainId    String
+  description String?
+  isActive    Boolean  @default(true)
+  moderated   Boolean  @default(false)
+  
+  // Settings
+  allowSubscribe  Boolean @default(true)
+  allowUnsubscribe Boolean @default(true)
+  requireApproval Boolean @default(false)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  domain      Domain    @relation(fields: [domainId], references: [id])
+  subscribers MailingListSubscriber[]
+  
+  @@map("mailing_lists")
+}
+
+model MailingListSubscriber {
+  id             String  @id @default(uuid())
+  listId         String
+  email          String
+  subscribedAt   DateTime @default(now())
+  unsubscribedAt DateTime?
+  
+  // Relations
+  list           MailingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  
+  @@unique([listId, email])
+  @@map("mailing_list_subscribers")
+}
+
+// ===================================================================
+// API & SECURITY
+// ===================================================================
 
 model Session {
   id        String   @id @default(uuid())
   userId    String
   token     String   @unique
+  userAgent String?
+  ipAddress String?
   expiresAt DateTime
   createdAt DateTime @default(now())
   
   // Relations
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("sessions")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  keyHash     String    @map("key")
+  permissions String?    // JSON array of permissions
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageLogs   ApiUsage[]
+  
+  @@map("api_keys")
+}
+
+model ApiUsage {
+  id         String   @id @default(uuid())
+  apiKeyId   String
+  endpoint   String
+  method     String
+  statusCode Int
+  responseTime Int?
+  timestamp  DateTime @default(now())
+  
+  // Relations
+  apiKey     ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  
+  @@map("api_usage")
+}
+
+model AccessLog {
+  id         String     @id @default(uuid())
+  userId     String?
+  action     String
+  resource   String?
+  ipAddress  String?
+  userAgent  String?
+  success    Boolean
+  details    String?
+  timestamp  DateTime   @default(now())
+  
+  // Relations
+  user       User?      @relation(fields: [userId], references: [id])
+  
+  @@map("access_logs")
+}
+
+// ===================================================================
+// NOTIFICATIONS & SETTINGS
+// ===================================================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  
+  // Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SYSTEM
+  SECURITY
+  QUOTA_WARNING
+  EMAIL_DELIVERY_FAILURE
+  DOMAIN_VERIFICATION
+  ACCOUNT_SUSPENSION
+  MAINTENANCE
+  FEATURE_UPDATE
+}
+
+model DomainSetting {
+  id       String  @id @default(uuid())
+  domainId String
+  key      String
+  value    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  domain   Domain  @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  
+  @@unique([domainId, key])
+  @@map("domain_settings")
+}
+
+// ===================================================================
+// SYSTEM & METRICS
+// ===================================================================
+
+model SystemMetric {
+  id        String   @id @default(uuid())
+  metric    String
+  value     Float
+  tags      Json?
+  timestamp DateTime @default(now())
+  
+  @@index([metric, timestamp])
+  @@map("system_metrics")
+}
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  category  String?
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_config")
 }

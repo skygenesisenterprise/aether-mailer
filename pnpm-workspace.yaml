@@ -9,6 +9,7 @@ packages:
   - 'options'
   - 'package'
   - 'snap'
+  - 'prisma'
 
 ignoredBuiltDependencies:
   - sharp

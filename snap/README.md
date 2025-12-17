@@ -2,7 +2,6 @@
 
 # 📦 Aether Mailer Snap Services
 
-
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](https://github.com/skygenesisenterprise/aether-mailer/blob/main/LICENSE) [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/) [![Snap](https://img.shields.io/badge/Snap-Store-green?style=for-the-badge&logo=snapcraft)](https://snapcraft.io/)
 
 **🚀 Snap Package for Aether Mailer - Universal Linux Distribution**
@@ -35,37 +34,37 @@ Cross-platform package distribution for Aether Mailer using Snap technology.
 
 ```bash
 # Install from Snap Store (recommended)
-sudo snap install aether-mailer
+sudo snap install mailer
 
 # Install with specific channel
-sudo snap install aether-mailer --channel=stable
+sudo snap install mailer --channel=stable
 ```
 
 ### 🔧 **Development Install**
 
 ```bash
 # Install local development build
-sudo snap install --dangerous aether-mailer_*.snap
+sudo snap install --dangerous mailer*.snap
 
 # Connect required interfaces
-sudo snap connect aether-mailer:network-bind
-sudo snap connect aether-mailer:home
+sudo snap connect mailer:network-bind
+sudo snap connect mailer:home
 ```
 
 ### 📋 **Available Channels**
 
 ```bash
 # Stable channel (recommended for production)
-sudo snap refresh aether-mailer --channel=stable
+sudo snap refresh mailer --channel=stable
 
 # Beta channel (new features, tested)
-sudo snap refresh aether-mailer --channel=beta
+sudo snap refresh mailer --channel=beta
 
 # Edge channel (latest development)
-sudo snap refresh aether-mailer --channel=edge
+sudo snap refresh mailer --channel=edge
 
 # Candidate channel (pre-release testing)
-sudo snap refresh aether-mailer --channel=candidate
+sudo snap refresh mailer --channel=candidate
 ```
 
 ---
@@ -82,7 +81,7 @@ cd snap/
 pnpm install
 
 # Build TypeScript
-pnpm build
+pnpm run build
 
 # Create snap package
 snapcraft
@@ -95,18 +94,18 @@ sudo snap install --dangerful *.snap
 
 ```bash
 # Test snap installation
-snap info aether-mailer
+snap info mailer
 
 # Check snap status
-snap services aether-mailer
+snap services mailer
 
 # View snap logs
-snap logs aether-mailer
+snap logs mailer
 
 # Test snap functionality
-aether-mailer --help
-aether-mailer status
-aether-mailer version
+mailer --help
+mailer status
+mailer version
 ```
 
 ### 🔧 **Development Workflow**
@@ -117,11 +116,11 @@ pnpm dev
 
 # 2. Run tests and type checking
 pnpm test
-pnpm typecheck
-pnpm lint
+pnpm run typecheck
+pnpm run lint
 
 # 3. Build new version
-pnpm build
+pnpm run build
 
 # 4. Create snap package
 snapcraft
@@ -130,7 +129,7 @@ snapcraft
 sudo snap install --dangerous *.snap
 
 # 6. Verify functionality
-aether-mailer status
+mailer status
 ```
 
 ---
@@ -172,7 +171,7 @@ confinement: strict
 
 apps:
   aether-mailer:
-    command: bin/aether-mailer
+    command: bin/mailer
     plugs:
       - network-bind
       - home
@@ -195,32 +194,32 @@ parts:
 
 ```bash
 # Network access (required)
-sudo snap connect aether-mailer:network
+sudo snap connect mailer:network
 
 # Network binding (for server)
-sudo snap connect aether-mailer:network-bind
+sudo snap connect mailer:network-bind
 
 # Home directory access
-sudo snap connect aether-mailer:home
+sudo snap connect mailer:home
 
 # System configuration (optional)
-sudo snap connect aether-mailer:system-observe
+sudo snap connect mailer:system-observe
 ```
 
 ### 📋 **Configuration Files**
 
 ```bash
 # Snap configuration directory
-~/snap/aether-mailer/common/
+~/snap/mailer/common/
 
 # Configuration files
-~/snap/aether-mailer/common/config/
+~/snap/mailer/common/config/
 ├── app.json              # Application settings
 ├── database.json         # Database configuration
 └── logging.json          # Logging preferences
 
 # Data directory
-~/snap/aether-mailer/common/data/
+~/snap/mailer/common/data/
 ├── database/             # Database files
 ├── logs/                 # Log files
 └── certificates/        # SSL certificates
@@ -230,10 +229,10 @@ sudo snap connect aether-mailer:system-observe
 
 ```bash
 # Snap-specific environment
-SNAP_USER_COMMON=$HOME/snap/aether-mailer/common
-SNAP_USER_DATA=$HOME/snap/aether-mailer/current
-SNAP_COMMON=/snap/aether-mailer/common
-SNAP_DATA=/snap/aether-mailer/current
+SNAP_USER_COMMON=$HOME/snap/mailer/common
+SNAP_USER_DATA=$HOME/snap/mailer/current
+SNAP_COMMON=/snap/mailer/common
+SNAP_DATA=/snap/mailer/current
 
 # Application configuration
 AETHER_MAILER_CONFIG=$SNAP_USER_COMMON/config
@@ -245,44 +244,46 @@ AETHER_MAILER_LOGS=$SNAP_USER_COMMON/logs
 
 ## 🚀 Usage
 
+> **💡 Note:** The snap package installs under the name `aether-mailer` but exposes the `mailer` command for simplified use.
+
 ### 🎯 **Basic Commands**
 
 ```bash
 # Start Aether Mailer
-sudo snap start aether-mailer
+sudo snap start mailer
 
 # Stop Aether Mailer
-sudo snap stop aether-mailer
+sudo snap stop mailer
 
 # Restart service
-sudo snap restart aether-mailer
+sudo snap restart mailer
 
 # Check service status
-sudo snap services aether-mailer
+sudo snap services mailer
 
 # View logs
-snap logs aether-mailer
+snap logs mailer
 
 # Run commands
-aether-mailer status
-aether-mailer start
-aether-mailer stop
+mailer status
+mailer start
+mailer stop
 ```
 
 ### 📊 **Service Management**
 
 ```bash
 # Enable auto-start
-sudo snap enable aether-mailer
+sudo snap enable mailer
 
 # Disable auto-start
-sudo snap disable aether-mailer
+sudo snap disable mailer
 
 # Run as daemon
-sudo snap run --daemon aether-mailer
+sudo snap run --daemon mailer
 
 # Run in foreground
-aether-mailer --foreground
+mailer --foreground
 ```
 
 ---
@@ -296,33 +297,33 @@ aether-mailer --foreground
 snap refresh --list
 
 # Update to latest version
-sudo snap refresh aether-mailer
+sudo snap refresh mailer
 
 # Update to specific channel
-sudo snap refresh aether-mailer --channel=beta
+sudo snap refresh mailer --channel=beta
 
 # Hold current version
-sudo snap refresh --hold aether-mailer
+sudo snap refresh --hold mailer
 
 # Remove hold
-sudo snap refresh --unhold aether-mailer
+sudo snap refresh --unhold mailer
 ```
 
 ### 🔧 **Maintenance Commands**
 
 ```bash
 # Clean old versions
-sudo snap remove aether-mailer --revision=<old-revision>
+sudo snap remove mailer --revision=<old-revision>
 
 # Check disk usage
-du -sh ~/snap/aether-mailer/
+du -sh ~/snap/mailer/
 
 # Backup configuration
-cp -r ~/snap/aether-mailer/common/ ~/aether-mailer-backup/
+cp -r ~/snap/mailer/common/ ~/mailer-backup/
 
 # Reset to defaults
-sudo snap remove aether-mailer
-sudo snap install aether-mailer
+sudo snap remove mailer
+sudo snap install mailer
 ```
 
 ---
@@ -333,18 +334,18 @@ sudo snap install aether-mailer
 
 ```bash
 # Permission denied
-sudo snap connect aether-mailer:network-bind
+sudo snap connect mailer:network-bind
 
 # Service not starting
-snap logs aether-mailer
-sudo snap restart aether-mailer
+snap logs mailer
+sudo snap restart mailer
 
 # Configuration issues
-aether-mailer config --validate
-aether-mailer config --reset
+mailer config --validate
+mailer config --reset
 
 # Network problems
-sudo snap connect aether-mailer:network
+sudo snap connect mailer:network
 ping 8.8.8.8
 ```
 
@@ -352,17 +353,17 @@ ping 8.8.8.8
 
 ```bash
 # Snap information
-snap info aether-mailer
+snap info mailer
 
 # Service status
-systemctl status snap.aether-mailer.aether-mailer.service
+systemctl status snap.mailer.mailer.service
 
 # Network connections
 netstat -tlnp | grep :3000
 netstat -tlnp | grep :8080
 
 # Process information
-ps aux | grep aether-mailer
+ps aux | grep mailer
 ```
 
 ---

@@ -4,26 +4,36 @@
   "description": "Snap package for Aether Mailer",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/main.js",
+  "bin": {
+    "mailer-snap": "./dist/main.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "dev": "tsx src/main.ts",
+    "build:watch": "tsc -p tsconfig.build.json --watch",
+    "start": "node dist/main.js",
+    "cli": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "test": "echo \"No tests configured yet\" && exit 0"
+    "test": "echo \"No tests configured yet\" && exit 0",
+    "clean": "rm -rf dist"
   },
   "keywords": [
     "aether-mailer",
     "snap",
-    "packaging"
+    "packaging",
+    "mail-server",
+    "cli"
   ],
   "author": "Sky Genesis Enterprise",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
   "devDependencies": {
-    "@types/node": "^25",
+    "@types/node": "^25.0.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "eslint": "^9"

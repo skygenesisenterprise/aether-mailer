@@ -43,17 +43,10 @@
     "prepare": "husky install",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish"
-  },
-  "dependencies": {
-    "@loglayer/transport-pino": "^2.2.15",
-    "@prisma/client": "5.22.0",
-    "@radix-ui/react-slot": "^1.2.4",
-    "class-variance-authority": "^0.7.1",
-    "dotenv": "^17.2.3",
-    "loglayer": "^8.1.1",
-    "pino": "^10.1.0",
-    "tailwind-merge": "^3.4.0"
+    "release": "pnpm build && changeset publish",
+    "install:all": "pnpm install && pnpm -r install",
+    "update:all": "pnpm update && pnpm -r update",
+    "clean:deps": "pnpm -r exec rm -rf node_modules && rm -rf node_modules pnpm-lock.yaml"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
@@ -85,7 +78,8 @@
     "typescript",
     "monorepo",
     "authentication",
-    "jwt"
+    "jwt",
+    "workspace"
   ],
   "author": {
     "name": "Sky Genesis Enterprise",

@@ -10,7 +10,8 @@
     { "path": "./options" },
     { "path": "./package" },
     { "path": "./snap" },
-    { "path": "./tests" }
+    { "path": "./tests" },
+    { "path": "./prisma"}
   ],
   "compilerOptions": {
     "target": "ES2017",

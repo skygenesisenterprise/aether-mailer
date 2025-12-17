@@ -1,0 +1,46 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "./dist"
+  },
+  "include": [
+    "packages/*/src/**/*",
+    "tools/*/src/**/*",
+    "services/*/src/**/*",
+    "routers/*/src/**/*",
+    "snap/src/**/*",
+    "cli/src/**/*",
+    "options/src/**/*",
+    "tests/src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".next",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*.stories.ts",
+    "**/node_modules"
+  ],
+  "references": [
+    { "path": "./app" },
+    { "path": "./server" },
+    { "path": "./cli" },
+    { "path": "./services" },
+    { "path": "./tools" },
+    { "path": "./routers" },
+    { "path": "./options" },
+    { "path": "./package" },
+    { "path": "./snap" },
+    { "path": "./tests" },
+    { "path": "./prisma" }
+  ]
+}

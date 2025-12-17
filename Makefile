@@ -1,7 +1,7 @@
 # Aether Mailer Makefile
 # Modern mail server foundation with monorepo architecture
 
-.PHONY: help install dev build test lint clean docker db cli release
+.PHONY: help install dev build test lint clean docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log
 
 # Default target
 .DEFAULT_GOAL := help
@@ -336,6 +336,210 @@ check-deps: ## Check if all dependencies are installed
 	@echo "$(BLUE)Checking dependencies...$(RESET)"
 	@pnpm list --depth=0 || (echo "$(RED)Dependencies missing. Run 'make install'$(RESET)" && exit 1)
 
+# Package Management Commands
+pkg-install: ## Install dependencies (auto-detects pnpm/npm)
+	@echo "$(BLUE)Installing dependencies...$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm install; \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm install; \
+	fi
+
+pkg-update: ## Update dependencies
+	@echo "$(BLUE)Updating dependencies...$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm update; \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm update; \
+	fi
+
+pkg-add: ## Add package (usage: make pkg-add PKG=package-name)
+	@if [ -z "$(PKG)" ]; then \
+		echo "$(RED)Error: Please specify PKG=package-name$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Adding package: $(PKG)$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm add $(PKG); \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm install $(PKG); \
+	fi
+
+pkg-add-dev: ## Add dev package (usage: make pkg-add-dev PKG=package-name)
+	@if [ -z "$(PKG)" ]; then \
+		echo "$(RED)Error: Please specify PKG=package-name$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Adding dev package: $(PKG)$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm add -D $(PKG); \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm install $(PKG) --save-dev; \
+	fi
+
+pkg-remove: ## Remove package (usage: make pkg-remove PKG=package-name)
+	@if [ -z "$(PKG)" ]; then \
+		echo "$(RED)Error: Please specify PKG=package-name$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Removing package: $(PKG)$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm remove $(PKG); \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm uninstall $(PKG); \
+	fi
+
+pkg-outdated: ## Show outdated packages
+	@echo "$(BLUE)Checking outdated packages...$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm outdated; \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm outdated; \
+	fi
+
+pkg-audit: ## Audit dependencies for security
+	@echo "$(BLUE)Auditing dependencies...$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm audit; \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm audit; \
+	fi
+
+pkg-audit-fix: ## Fix security vulnerabilities
+	@echo "$(BLUE)Fixing security vulnerabilities...$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm audit --fix; \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm audit fix; \
+	fi
+
+pkg-list: ## List installed packages
+	@echo "$(BLUE)Installed packages:$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm list --depth=0; \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm list --depth=0; \
+	fi
+
+pkg-clean: ## Clean package manager cache
+	@echo "$(BLUE)Cleaning package cache...$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm store prune; \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm cache clean --force; \
+	fi
+
+pkg-why: ## Show why package is installed (usage: make pkg-why PKG=package-name)
+	@if [ -z "$(PKG)" ]; then \
+		echo "$(RED)Error: Please specify PKG=package-name$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Why $(PKG) is installed:$(RESET)"
+	@if command -v pnpm >/dev/null 2>&1; then \
+		pnpm why $(PKG); \
+	else \
+		echo "$(YELLOW)pnpm not found, using npm...$(RESET)"; \
+		npm why $(PKG); \
+	fi
+
+# System Commands (without pnpm)
+sys-install: ## Install using npm instead of pnpm
+	@echo "$(BLUE)Installing dependencies with npm...$(RESET)"
+	@npm install
+
+sys-clean: ## Clean using system tools
+	@echo "$(BLUE)Cleaning with system tools...$(RESET)"
+	@rm -rf node_modules package-lock.json
+	@find . -name "dist" -type d -exec rm -rf {} + 2>/dev/null || true
+	@find . -name ".next" -type d -exec rm -rf {} + 2>/dev/null || true
+	@find . -name "*.log" -delete 2>/dev/null || true
+
+sys-dev-frontend: ## Start frontend with next dev directly
+	@echo "$(BLUE)Starting frontend with Next.js...$(RESET)"
+	@cd app && npx next dev
+
+sys-dev-backend: ## Start backend with node directly
+	@echo "$(BLUE)Starting backend server...$(RESET)"
+	@cd server && npm run dev
+
+sys-build-frontend: ## Build frontend with next build directly
+	@echo "$(BLUE)Building frontend with Next.js...$(RESET)"
+	@cd app && npx next build
+
+sys-lint: ## Lint with eslint directly
+	@echo "$(BLUE)Linting with ESLint...$(RESET)"
+	@npx eslint . --ext .ts,.tsx,.js,.jsx
+
+sys-format: ## Format with prettier directly
+	@echo "$(BLUE)Formatting with Prettier...$(RESET)"
+	@npx prettier --write .
+
+sys-typecheck: ## Type check with tsc directly
+	@echo "$(BLUE)Type checking with TypeScript...$(RESET)"
+	@npx tsc --noEmit
+
+sys-status: ## Show system status without pnpm
+	@echo "$(BLUE)System Status:$(RESET)"
+	@echo "  Name: $(PROJECT_NAME)"
+	@echo "  Version: $(VERSION)"
+	@echo "  Node.js: $(shell node --version)"
+	@echo "  npm: $(shell npm --version)"
+	@echo ""
+	@echo "$(BLUE)Project Size:$(RESET)"
+	@du -sh . --exclude=node_modules --exclude=.git --exclude=dist --exclude=.next
+
+sys-logs: ## Show logs with system tools
+	@echo "$(BLUE)System logs:$(RESET)"
+	@journalctl -u npm 2>/dev/null || echo "No systemd npm logs found"
+	@tail -f /var/log/npm-debug.log 2>/dev/null || echo "No npm debug log found"
+
+sys-ports: ## Check ports with system tools
+	@echo "$(BLUE)Port status:$(RESET)"
+	@netstat -tlnp 2>/dev/null | grep -E ':(3000|8080|5432)' || ss -tlnp | grep -E ':(3000|8080|5432)' || echo "No services found on standard ports"
+
+sys-processes: ## Show running processes
+	@echo "$(BLUE)Running processes:$(RESET)"
+	@ps aux | grep -E '(node|next|npm)' | grep -v grep || echo "No Node.js processes found"
+
+sys-env: ## Show environment variables
+	@echo "$(BLUE)Environment variables:$(RESET)"
+	@echo "  NODE_ENV: $(NODE_ENV)"
+	@echo "  PATH: $(PATH)"
+	@echo "  PWD: $(PWD)"
+
+# Docker system commands
+sys-docker-build: ## Build with docker directly
+	@echo "$(BLUE)Building Docker image...$(RESET)"
+	@docker build -t $(PROJECT_NAME):$(VERSION) .
+
+sys-docker-run: ## Run docker container directly
+	@echo "$(BLUE)Running Docker container...$(RESET)"
+	@docker run -d -p 3000:3000 -p 8080:8080 --name $(PROJECT_NAME) $(PROJECT_NAME):$(VERSION)
+
+sys-docker-stop: ## Stop docker container
+	@echo "$(BLUE)Stopping Docker container...$(RESET)"
+	@docker stop $(PROJECT_NAME) || true
+	@docker rm $(PROJECT_NAME) || true
+
+# Git system commands
+sys-git-status: ## Git status with system tools
+	@echo "$(BLUE)Git status:$(RESET)"
+	@git status --porcelain
+
+sys-git-log: ## Git log with system tools
+	@echo "$(BLUE)Recent commits:$(RESET)"
+	@git log --oneline -10
+
 # Welcome Message
 welcome: ## Show welcome message
 	@echo "$(BLUE)Welcome to $(PROJECT_NAME) v$(VERSION)!$(RESET)"
@@ -345,5 +549,19 @@ welcome: ## Show welcome message
 	@echo "  make dev            # Start development servers"
 	@echo "  make build          # Build all packages"
 	@echo "  make test           # Run tests"
+	@echo ""
+	@echo "$(YELLOW)Package management (auto-detects pnpm/npm):$(RESET)"
+	@echo "  make pkg-install    # Install dependencies"
+	@echo "  make pkg-update     # Update dependencies"
+	@echo "  make pkg-add PKG=name # Add package"
+	@echo "  make pkg-remove PKG=name # Remove package"
+	@echo "  make pkg-audit      # Security audit"
+	@echo ""
+	@echo "$(YELLOW)System commands (no pnpm):$(RESET)"
+	@echo "  make sys-install    # Install with npm"
+	@echo "  make sys-dev-frontend # Start frontend directly"
+	@echo "  make sys-build-frontend # Build frontend directly"
+	@echo "  make sys-lint       # Lint with ESLint"
+	@echo "  make sys-format     # Format with Prettier"
 	@echo ""
 	@echo "$(YELLOW)For all commands, run: make help$(RESET)"

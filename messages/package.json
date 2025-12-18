@@ -31,7 +31,7 @@
   "author": "Sky Genesis Enterprise",
   "license": "MIT",
   "dependencies": {
-    "i18next": "^23.15.0",
+    "i18next": "^25.7.3",
     "react-i18next": "^15.0.0"
   },
   "devDependencies": {

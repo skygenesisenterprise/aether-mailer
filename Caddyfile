@@ -1,0 +1,45 @@
+{
+	# Global configuration
+	auto_https off
+	admin localhost:2019
+	
+	# Frontend (Next.js app)
+	aether-mailer.localhost {
+		reverse_proxy frontend:3000
+		
+		# Security headers
+		header {
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			X-XSS-Protection "1; mode=block"
+			Referrer-Policy strict-origin-when-cross-origin
+		}
+		
+		# Handle static assets
+		@static {
+			path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+		}
+		header @static Cache-Control "public, max-age=31536000, immutable"
+	}
+	
+	# Backend API
+	api.aether-mailer.localhost {
+		reverse_proxy backend:8080
+		
+		# CORS headers for API
+		header {
+			Access-Control-Allow-Origin "*"
+			Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+			Access-Control-Allow-Headers "Content-Type, Authorization"
+		}
+		
+		# Handle preflight requests
+		@options method OPTIONS
+		respond @options 204
+	}
+	
+	# Direct backend access (for development)
+	backend.aether-mailer.localhost {
+		reverse_proxy backend:8080
+	}
+}

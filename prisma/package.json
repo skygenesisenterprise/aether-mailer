@@ -23,7 +23,7 @@
   "author": "Sky Genesis Enterprise",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "5.22.0"
+    "@prisma/client": "7.2.0"
   },
   "devDependencies": {
     "@types/node": "^25",

@@ -34,7 +34,7 @@
     "helmet": "^8.1.0",
     "compression": "^1.8.1",
     "dotenv": "^17.2.3",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.2.0",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.2",
     "joi": "^17.11.0",

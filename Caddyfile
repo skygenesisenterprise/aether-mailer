@@ -1,45 +1,102 @@
 {
-	# Global configuration
+	########################################
+	# Global Caddy configuration
+	########################################
+
+	# HTTPS géré dynamiquement en prod (désactivé en local)
 	auto_https off
+
+	# Interface d’administration (interne uniquement)
 	admin localhost:2019
-	
-	# Frontend (Next.js app)
-	aether-mailer.localhost {
+
+	# Logs globaux
+	log {
+		level INFO
+		format console
+	}
+}
+
+########################################
+# Public Gateway (single entrypoint)
+########################################
+# Exposé publiquement via un seul port (ex: 3000)
+# Domaine dynamique via variable d’environnement
+########################################
+{$HOST_DOMAIN:localhost} {
+
+	####################################
+	# API v1 (public)
+	####################################
+	# Toutes les requêtes vers /api/v1/*
+	# sont routées vers le backend interne
+	####################################
+	handle_path /api/v1/* {
+		reverse_proxy backend:8080 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Host {host}
+		}
+	}
+
+	####################################
+	# Frontend (Next.js)
+	####################################
+	# Toutes les autres routes vont vers
+	# le client web (SSR / SPA)
+	####################################
+	handle {
 		reverse_proxy frontend:3000
-		
-		# Security headers
-		header {
-			X-Content-Type-Options nosniff
-			X-Frame-Options DENY
-			X-XSS-Protection "1; mode=block"
-			Referrer-Policy strict-origin-when-cross-origin
-		}
-		
-		# Handle static assets
-		@static {
-			path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
-		}
-		header @static Cache-Control "public, max-age=31536000, immutable"
 	}
-	
-	# Backend API
-	api.aether-mailer.localhost {
-		reverse_proxy backend:8080
-		
-		# CORS headers for API
-		header {
-			Access-Control-Allow-Origin "*"
-			Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-			Access-Control-Allow-Headers "Content-Type, Authorization"
-		}
-		
-		# Handle preflight requests
-		@options method OPTIONS
-		respond @options 204
+
+	####################################
+	# Sécurité HTTP globale
+	####################################
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+
+		# HSTS activé uniquement si HTTPS
+		Strict-Transport-Security "max-age=31536000; includeSubDomains" {if_ssl}
 	}
-	
-	# Direct backend access (for development)
-	backend.aether-mailer.localhost {
+
+	####################################
+	# Cache agressif des assets statiques
+	####################################
+	@static {
+		path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2 *.webp *.avif
+	}
+	header @static {
+		Cache-Control "public, max-age=31536000, immutable"
+	}
+}
+
+########################################
+# Internal services (NON PUBLIC)
+########################################
+
+####################################
+# Healthcheck (infra / orchestration)
+####################################
+health.localhost {
+	reverse_proxy backend:8080 {
+		header_up X-Health-Check "true"
+	}
+}
+
+########################################
+# Optional: local dev fallback
+########################################
+# Permet d’utiliser l’app sans DNS
+########################################
+:3000 {
+
+	handle_path /api/v1/* {
 		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
 	}
 }

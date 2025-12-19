@@ -1,6 +1,59 @@
 version: "3.8"
 
 services:
+  gateway:
+    image: caddy:alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-gateway
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      HOST_DOMAIN: ${HOST_DOMAIN:-localhost}
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - aether-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: /api/v1
+    expose:
+      - "3000"
+    networks:
+      - aether-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-aether_identity}
+      REDIS_URL: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-aether-redis-2025}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aether-network
+
   postgres:
     image: postgres:16-alpine
     container_name: ${COMPOSE_PROJECT_NAME:-aether}-postgres
@@ -8,75 +61,49 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-aether_identity}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ${BACKUP_DIR:-./backups}:/backups
-      - ${INIT_SCRIPTS_DIR:-./init-scripts}:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"            # ← IMPORTANT : pour éviter le conflit local
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 10
+    networks:
+      - aether-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-redis
+    command: redis-server /usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-aether-redis-2025}
+      - REDIS_MAX_MEMORY=${REDIS_MAX_MEMORY:-512mb}
+      - REDIS_SESSION_TTL=${REDIS_SESSION_TTL:-86400}
+      - REDIS_CACHE_TTL=${REDIS_CACHE_TTL:-3600}
+      - REDIS_RATE_LIMIT_WINDOW=${REDIS_RATE_LIMIT_WINDOW:-900}
+      - REDIS_RATE_LIMIT_MAX=${REDIS_RATE_LIMIT_MAX:-100}
+    volumes:
+      - redis_data:/data
+      - ./redis/redis-${NODE_ENV:-prod}.conf:/usr/local/etc/redis/redis.conf:ro
+      - ${REDIS_LOGS_DIR:-./logs/redis}:/var/log/redis
+    expose:
+      - "6379"
     restart: ${RESTART_POLICY:-unless-stopped}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-aether_identity}"]
-      interval: ${POSTGRES_HEALTH_CHECK_INTERVAL:-10s}
-      timeout: ${POSTGRES_HEALTH_CHECK_TIMEOUT:-5s}
-      retries: ${POSTGRES_HEALTH_CHECK_RETRIES:-10}
-      start_period: ${POSTGRES_HEALTH_CHECK_START_PERIOD:-30s}
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: ${REDIS_HEALTH_CHECK_INTERVAL:-10s}
+      timeout: ${REDIS_HEALTH_CHECK_TIMEOUT:-3s}
+      retries: ${REDIS_HEALTH_CHECK_RETRIES:-5}
+      start_period: ${REDIS_HEALTH_CHECK_START_PERIOD:-30s}
     networks:
       - aether-network
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: ${COMPOSE_PROJECT_NAME:-aether}-backend
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_PROVIDER: postgresql
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-aether_identity}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB:-aether_identity}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
-      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
-    volumes:
-      - ${BACKUP_DIR:-./backups}:/app/backups
-      - ${LOGS_DIR:-./logs}:/app/logs
-      - ${DATA_DIR:-./data}:/app/data
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: ${RESTART_POLICY:-unless-stopped}
-    networks:
-      - aether-network
-
-  frontend:
-  build:
-    context: .
-    dockerfile: Dockerfile
-  container_name: ${COMPOSE_PROJECT_NAME:-aether}-frontend
-  environment:
-    NODE_ENV: ${NODE_ENV:-production}
-    BACKEND_URL: http://backend:8080
-    API_BASE_URL: http://backend:8080/api/v1
-    NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
-    NEXT_TELEMETRY_DISABLED: 1
-  ports:
-    - "${FRONTEND_PORT:-3000}:3000"
-  depends_on:
-    backend:
-      condition: service_healthy
-  restart: ${RESTART_POLICY:-unless-stopped}
-  networks:
-    - aether-network
 
 volumes:
   postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   aether-network:

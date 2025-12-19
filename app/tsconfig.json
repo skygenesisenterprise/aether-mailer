@@ -1,5 +1,4 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -26,7 +25,9 @@
       "@/lib/*": ["./lib/*"],
       "@/styles/*": ["./styles/*"]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "types": ["next", "node"],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "next-env.d.ts",
@@ -36,5 +37,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "ts-node": {
+    "esm": true,
+    "compilerOptions": {
+      "module": "esnext"
+    }
+  }
 }

@@ -8,11 +8,31 @@ const nextConfig: NextConfig = {
   output: "standalone",
 
   images: {
-    domains: [
-      "mailer.skygenesisenterprise.com",
-      "mailer.skygenesisenterprise.net",
-      "127.0.0.0",
-      "localhost",
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "mailer.skygenesisenterprise.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "mailer.skygenesisenterprise.net",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "127.0.0.0",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "",
+        pathname: "/**",
+      },
     ],
     unoptimized: false,
   },

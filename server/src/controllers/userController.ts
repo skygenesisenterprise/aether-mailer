@@ -1,215 +1,241 @@
-import { Request, Response } from 'express';
-import { AuthenticatedRequest, requireAdmin } from '../middlewares/auth.js';
+import { Request, Response } from "express";
 import {
-  getUsers,
+  getAllUsers,
   getUserById,
   createUser,
   updateUser,
   deleteUser,
-  changePassword
-} from '../services/userService.js';
+  changePassword,
+  suspendUser,
+  activateUser,
+} from "../services/userService.js";
 
-export const getUsersController = async (req: Request, res: Response) => {
+const router = Router();
+
+// Public routes (no authentication required)
+router.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
     const filters = {
       email: req.query.email as string,
       role: req.query.role as string,
-      isActive: req.query.isActive ? req.query.isActive === 'true' : undefined,
+      isActive: req.query.isActive ? req.query.isActive === "true" : undefined,
       page: parseInt(req.query.page as string) || 1,
-      limit: parseInt(req.query.limit as string) || 10
+      limit: parseInt(req.query.limit as string) || 10,
     };
 
-    const result = await getUsers(filters);
+    const result = await getAllUsers(filters);
 
     res.status(200).json({
       success: true,
       data: result.users,
-      pagination: result.pagination
+      pagination: result.pagination,
     });
   } catch (error: any) {
     res.status(500).json({
       success: false,
       error: {
-        code: 'SERVER_ERROR',
-        message: error.message || 'Failed to get users'
-      }
+        code: "USERS_ERROR",
+        message: error.message || "Failed to retrieve users",
+      },
     });
   }
-};
+});
 
-export const getUserByIdController = async (req: Request, res: Response) => {
+// Get user by ID (public for user lookup)
+router.get("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
+    const result = await getUserById(id);
 
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_USER_ID',
-          message: 'User ID is required'
-        }
-      });
-    }
-
-    const user = await getUserById(id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'USER_NOT_FOUND',
-          message: 'User not found'
-        }
-      });
+    if (!result.success) {
+      return res.status(404).json(result);
     }
 
     res.status(200).json({
       success: true,
-      data: user
+      data: result.data,
     });
   } catch (error: any) {
     res.status(500).json({
       success: false,
       error: {
-        code: 'SERVER_ERROR',
-        message: error.message || 'Failed to get user'
-      }
+        code: "USER_ERROR",
+        message: error.message || "Failed to retrieve user",
+      },
     });
   }
-};
+});
 
-export const createUserController = async (req: Request, res: Response) => {
+// Protected routes (authentication required)
+router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await createUser(req.body);
 
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
     res.status(201).json({
       success: true,
-      data: result,
-      message: 'User created successfully'
+      data: result.data,
+      message: "User created successfully",
     });
   } catch (error: any) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       error: {
-        code: 'CREATION_ERROR',
-        message: error.message || 'Failed to create user'
-      }
+        code: "USER_ERROR",
+        message: error.message || "Failed to create user",
+      },
     });
   }
-};
+});
 
-export const updateUserController = async (req: Request, res: Response) => {
+router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_USER_ID',
-          message: 'User ID is required'
-        }
-      });
-    }
-
+    const { id } = req.params as { id: string };
     const result = await updateUser(id, req.body);
 
+    if (!result.success) {
+      if (result.error?.code === "NOT_FOUND") {
+        return res.status(404).json(result);
+      }
+      return res.status(400).json(result);
+    }
+
     res.status(200).json({
       success: true,
-      data: result,
-      message: 'User updated successfully'
+      data: result.data,
+      message: "User updated successfully",
     });
   } catch (error: any) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       error: {
-        code: 'UPDATE_ERROR',
-        message: error.message || 'Failed to update user'
-      }
+        code: "USER_ERROR",
+        message: error.message || "Failed to update user",
+      },
     });
   }
-};
+});
 
-export const deleteUserController = async (req: Request, res: Response) => {
+router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
+    const result = await deleteUser(id);
 
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_USER_ID',
-          message: 'User ID is required'
-        }
-      });
+    if (!result.success) {
+      if (result.error?.code === "NOT_FOUND") {
+        return res.status(404).json(result);
+      }
+      return res.status(400).json(result);
     }
-
-    await deleteUser(id);
 
     res.status(200).json({
       success: true,
-      message: 'User deleted successfully'
+      message: "User deleted successfully",
     });
   } catch (error: any) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       error: {
-        code: 'DELETION_ERROR',
-        message: error.message || 'Failed to delete user'
-      }
+        code: "USER_ERROR",
+        message: error.message || "Failed to delete user",
+      },
     });
   }
-};
+});
 
-export const changePasswordController = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { newPassword } = req.body;
+// Password management routes
+router.put(
+  "/:id/change-password",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params as { id: string };
+      const { currentPassword, newPassword } = req.body as {
+        currentPassword: string;
+        newPassword: string;
+      };
 
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_USER_ID',
-          message: 'User ID is required'
-        }
-      });
-    }
+      const result = await changePassword(id, { currentPassword, newPassword });
 
-    if (!newPassword) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'MISSING_PASSWORD',
-          message: 'New password is required'
-        }
-      });
-    }
-
-    // Seul l'utilisateur lui-même ou un admin peut changer le mot de passe
-    if (req.user!.id !== id && req.user!.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'INSUFFICIENT_PERMISSIONS',
-          message: 'You can only change your own password'
-        }
-      });
-    }
-
-    await changePassword(id, newPassword);
-
-    res.status(200).json({
-      success: true,
-      message: 'Password changed successfully'
-    });
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      error: {
-        code: 'PASSWORD_CHANGE_ERROR',
-        message: error.message || 'Failed to change password'
+      if (!result.success) {
+        return res.status(400).json(result);
       }
-    });
-  }
-};
+
+      res.status(200).json({
+        success: true,
+        message: "Password changed successfully",
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: "USER_ERROR",
+          message: error.message || "Failed to change password",
+        },
+      });
+    }
+  },
+);
+
+// User suspension routes
+router.put(
+  "/:id/suspend",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params as { id: string };
+      const { reason } = req.body as { reason: string };
+
+      const result = await updateUser(id, { isActive: false });
+
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "User suspended successfully",
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: "USER_ERROR",
+          message: error.message || "Failed to suspend user",
+        },
+      });
+    }
+  },
+);
+
+// User activation routes
+router.put(
+  "/:id/activate",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params as { id: string };
+
+      const result = await updateUser(id, { isActive: true });
+
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "User activated successfully",
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: "USER_ERROR",
+          message: error.message || "Failed to activate user",
+        },
+      });
+    }
+  },
+);
+
+export default router;

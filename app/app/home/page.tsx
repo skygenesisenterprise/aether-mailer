@@ -100,28 +100,28 @@ const quickActions = [
     description: "Composer et envoyer un nouvel email",
     icon: <Send className="size-5" />,
     href: "/dashboard/delivery",
-    color: "bg-blue-500",
+    color: "bg-primary",
   },
   {
     title: "Gérer les utilisateurs",
     description: "Ajouter ou modifier des comptes utilisateur",
     icon: <Users className="size-5" />,
     href: "/directory/accounts",
-    color: "bg-green-500",
+    color: "bg-chart-2",
   },
   {
     title: "Configurer un domaine",
     description: "Ajouter un nouveau domaine de messagerie",
     icon: <Globe className="size-5" />,
     href: "/directory/domains",
-    color: "bg-purple-500",
+    color: "bg-chart-3",
   },
   {
     title: "Voir les logs",
     description: "Analyser les logs système et d'erreur",
     icon: <Activity className="size-5" />,
     href: "/manage/logs",
-    color: "bg-orange-500",
+    color: "bg-chart-5",
   },
 ];
 
@@ -166,7 +166,9 @@ export default function HomePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-chart-2 bg-clip-text text-transparent">
+            Tableau de bord
+          </h1>
           <p className="text-muted-foreground">
             Bienvenue dans Aether Mailer - Vue d'ensemble de votre système de
             messagerie
@@ -187,7 +189,7 @@ export default function HomePage() {
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statsCards.map((stat, index) => (
-          <Card key={index}>
+          <Card key={index} className="transition-shadow hover:shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {stat.title}
@@ -206,21 +208,21 @@ export default function HomePage() {
       </div>
 
       {/* Quick Actions & Recent Activity */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Quick Actions */}
-        <Card>
+        <Card className="transition-shadow hover:shadow-lg">
           <CardHeader>
             <CardTitle>Actions rapides</CardTitle>
             <CardDescription>
               Accès rapide aux fonctionnalités principales
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {quickActions.map((action, index) => (
               <Button
                 key={index}
                 variant="outline"
-                className="w-full justify-start h-auto p-4"
+                className="w-full justify-start h-auto p-4 hover:bg-accent hover:text-accent-foreground"
                 asChild
               >
                 <a href={action.href} className="flex items-center gap-3">
@@ -240,7 +242,7 @@ export default function HomePage() {
         </Card>
 
         {/* Recent Activity */}
-        <Card className="lg:col-span-2">
+        <Card className="transition-shadow hover:shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Activité récente</CardTitle>
@@ -281,12 +283,12 @@ export default function HomePage() {
       </div>
 
       {/* System Health */}
-      <Card>
+      <Card className="transition-shadow hover:shadow-lg">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Santé du système</CardTitle>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
               <span className="text-sm text-green-600">
                 Tous les services en ligne
               </span>
@@ -330,7 +332,7 @@ export default function HomePage() {
 
       {/* Charts Section */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="transition-shadow hover:shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="size-4" />
@@ -339,17 +341,21 @@ export default function HomePage() {
             <CardDescription>Nombre d'emails envoyés par jour</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
+            <div className="flex items-center justify-center h-64 border border-dashed rounded-lg">
               <div className="text-center">
-                <BarChart3 className="size-8 mx-auto mb-2" />
-                <p>Graphique de volume d'emails</p>
-                <p className="text-xs">Intégration avec Chart.js prévue</p>
+                <BarChart3 className="size-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-muted-foreground">
+                  Graphique de volume d'emails
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Intégration avec Chart.js prévue
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="transition-shadow hover:shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="size-4" />

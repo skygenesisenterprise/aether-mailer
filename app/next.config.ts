@@ -12,19 +12,18 @@ const nextConfig: NextConfig = {
       "mailer.skygenesisenterprise.com",
       "mailer.skygenesisenterprise.net",
       "127.0.0.0",
-      "localhost"
+      "localhost",
     ],
     unoptimized: false,
   },
 
   async rewrites() {
     // Configuration robuste pour développement et production
-    const isDevelopment = process.env.NODE_ENV === "development";
     const isProduction = process.env.NODE_ENV === "production";
-    
+
     // Déterminer l'URL du backend selon l'environnement
     let backendUrl: string;
-    
+
     if (process.env.BACKEND_URL) {
       // Priorité à la variable d'environnement explicite
       backendUrl = process.env.BACKEND_URL;
@@ -40,9 +39,9 @@ const nextConfig: NextConfig = {
     try {
       new URL(backendUrl);
     } catch (error) {
-      console.error('❌ Invalid backend URL:', backendUrl, error);
+      console.error("❌ Invalid backend URL:", backendUrl, error);
       // Fallback sécurisé
-      backendUrl = isDevelopment ? "http://localhost:8080" : "https://api.yourdomain.com";
+      backendUrl = "http://localhost:8080";
     }
 
     const rewrites = [
@@ -71,14 +70,13 @@ const nextConfig: NextConfig = {
       },
     ];
 
-    console.log('📝 Rewrites configured:', rewrites.length, 'rules');
+    console.log("📝 Rewrites configured:", rewrites.length, "rules");
     return rewrites;
   },
 
   async headers() {
-    const isDevelopment = process.env.NODE_ENV === "development";
     const isProduction = process.env.NODE_ENV === "production";
-    
+
     const baseHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "origin-when-cross-origin" },
@@ -89,13 +87,17 @@ const nextConfig: NextConfig = {
     if (isProduction) {
       baseHeaders.push(
         { key: "X-Frame-Options", value: "DENY" },
-        { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" }
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=31536000; includeSubDomains",
+        },
+        {
+          key: "Permissions-Policy",
+          value: "camera=(), microphone=(), geolocation=()",
+        },
       );
     } else {
-      baseHeaders.push(
-        { key: "X-Frame-Options", value: "SAMEORIGIN" }
-      );
+      baseHeaders.push({ key: "X-Frame-Options", value: "SAMEORIGIN" });
     }
 
     return [

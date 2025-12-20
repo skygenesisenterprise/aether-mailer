@@ -1,4 +1,4 @@
-export default function ForgotPage() {
+export default function QueuesMessagesPage() {
     return (
       <div>
         <h1>Queues Reports</h1>

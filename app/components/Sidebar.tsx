@@ -407,7 +407,7 @@ export function Sidebar() {
         {!isCollapsed && (
           <div className="flex items-center gap-2">
             <Mail className="size-6 text-primary" />
-            <span className="font-semibold text-lg">Aether</span>
+            <span className="font-semibold text-lg">Aether Mailer</span>
           </div>
         )}
         <Button

@@ -40,7 +40,7 @@
     "joi": "^17.11.0",
     "express-rate-limit": "^8.2.1",
     "uuid": "^9.0.1",
-    "nodemailer": "^6.9.7"
+    "nodemailer": "^7.0.12"
   },
   "devDependencies": {
     "@types/node": "^25",
@@ -50,7 +50,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/uuid": "^9.0.7",
-    "@types/nodemailer": "^6.4.14",
+    "@types/nodemailer": "^7.0.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "eslint": "^9",

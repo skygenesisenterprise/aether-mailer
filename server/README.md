@@ -1,637 +1,409 @@
 <div align="center">
 
-# Aether Mailer API Server
+# 🚀 Aether Mailer Server
 
-![Aether Mailer](https://img.shields.io/badge/Aether-Mailer-1.0.0-blue?style=for-the-badge)
-![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)
-![Express](https://img.shields.io/badge/Express-5.2.1-black?style=for-the-badge&logo=express)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](https://github.com/skygenesisenterprise/aether-mailer/blob/main/LICENSE) [![Go](https://img.shields.io/badge/Go-1.21+-blue?style=for-the-badge&logo=go)](https://golang.org/) [![Gin](https://img.shields.io/badge/Gin-1.9+-lightgrey?style=for-the-badge&logo=go)](https://gin-gonic.com/)
 
-**Enterprise-grade REST API server for Aether Mailer administration**
+**🔥 Modern Mail Server Backend - Go-based RESTful API with Complete Authentication**
 
-[Features](#-features) • [Installation](#-installation) • [API Documentation](#-api-documentation) • [Development](#-development) • [Deployment](#-deployment)
+A high-performance mail server backend built with Go, featuring a complete authentication system, RESTful API, and enterprise-ready architecture.
+
+[🚀 Quick Start](#-quick-start) • [📋 Current Status](#-current-status) • [🛠️ Tech Stack](#️-tech-stack) • [📁 Architecture](#-architecture) • [🔐 API Endpoints](#-api-endpoints)
+
+[![GitHub stars](https://img.shields.io/github/stars/skygenesisenterprise/aether-mailer?style=social)](https://github.com/skygenesisenterprise/aether-mailer/stargazers) [![GitHub forks](https://img.shields.io/github/forks/skygenesisenterprise/aether-mailer?style=social)](https://github.com/skygenesisenterprise/aether-mailer/network) [![GitHub issues](https://img.shields.io/github/issues/github/skygenesisenterprise/aether-mailer)](https://github.com/skygenesisenterprise/aether-mailer/issues)
 
 </div>
 
 ---
 
-## 📋 Overview
+## 🌟 What is Aether Mailer Server?
 
-The Aether Mailer API Server is the backbone of the Aether Mailer web administration interface. Built with Express.js and TypeScript, it provides secure, scalable REST endpoints for managing users, domains, email configurations, and monitoring mail server operations.
+**Aether Mailer Server** is a comprehensive mail server backend built with Go and modern web technologies. Featuring a **complete authentication system**, **RESTful API**, and **enterprise-ready design**, we're building the future of email infrastructure with Go's performance and concurrency.
 
-### 🎯 Key Responsibilities
+### 🎯 Our Vision
 
-- **User Management** - Authentication, authorization, and user administration
-- **Domain Administration** - Multi-domain support and DNS management
-- **Configuration Management** - Server settings and policy management
-- **Monitoring & Analytics** - Real-time metrics and health monitoring
-- **Security** - Rate limiting, CORS, and security middleware
-
----
-
-## ✨ Features
-
-### 🔐 **Security & Authentication**
-- JWT-based authentication with configurable expiration
-- Password hashing with bcrypt
-- Rate limiting per IP and endpoint
-- CORS configuration for cross-origin requests
-- Security headers with Helmet.js
-- Request validation and sanitization
-
-### 🛡️ **Enterprise Security**
-- SQL injection prevention with Prisma ORM
-- XSS protection with input sanitization
-- CSRF protection for state-changing operations
-- Request size limits (10MB default)
-- Environment-based error reporting
-
-### 📊 **Monitoring & Health**
-- Comprehensive health check endpoint
-- Database connection monitoring
-- Service dependency tracking
-- Performance metrics collection
-- Graceful shutdown handling
-
-### 🔧 **Developer Experience**
-- TypeScript strict mode for type safety
-- Hot reload in development mode
-- Comprehensive error handling
-- Structured logging
-- API documentation ready
-
-### 🚀 **Performance**
-- Request compression with gzip
-- Connection pooling for database
-- Efficient middleware pipeline
-- Memory-optimized operations
-- Horizontal scaling support
+- **High-Performance Architecture** - Go-based server with Gin framework
+- **Complete Authentication** - JWT-based system with login/register endpoints
+- **Enterprise-Ready** - Scalable, secure, and maintainable design
+- **RESTful API** - Intuitive API with proper HTTP methods and error handling
+- **Protocol Support** - Planned support for SMTP, IMAP, JMAP, CalDAV, and CardDAV
+- **Developer-Friendly** - Clean code, comprehensive documentation, and extensible design
 
 ---
 
-## 🏗️ Architecture
+## 📋 Current Status
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Aether Mailer API                         │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Routes    │  │ Controllers │  │     Services         │  │
-│  │             │  │             │  │                       │  │
-│  │ /api/v1/*   │──▶│ UserCtrl   │──▶│ UserService         │  │
-│  │ /health     │  │ DomainCtrl  │  │ DomainService        │  │
-│  │ /metrics    │  │ ConfigCtrl  │  │ ConfigService        │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ Middleware  │  │   Models    │  │     Database         │  │
-│  │             │  │             │  │                       │  │
-│  │ Auth        │  │ User        │  │ PostgreSQL           │  │
-│  │ RateLimit   │  │ Domain      │  │ Prisma ORM           │  │
-│  │ Validation  │  │ Config      │  │ Connection Pool      │  │
-│  │ CORS        │  │ Metrics     │  │ Migrations           │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+> **✅ Active Development**: Authentication system complete, Go project structure established, core infrastructure functional.
 
-### 📁 Project Structure
+### ✅ **Currently Implemented**
 
-```
-server/
-├── src/
-│   ├── config/           # Configuration files
-│   │   └── database.ts   # Database connection and config
-│   ├── controllers/      # Request handlers
-│   │   └── userControllers.ts
-│   ├── middlewares/      # Express middleware
-│   │   └── userMiddlewares.ts
-│   ├── models/          # Data models and schemas
-│   │   └── userModels.ts
-│   ├── routes/          # API route definitions
-│   │   └── userRoutes.ts
-│   ├── services/        # Business logic layer
-│   │   └── userServices.ts
-│   ├── tests/           # Test suites
-│   │   └── auth.test.ts
-│   └── server.ts        # Main application entry point
-├── CODEOWNERS           # Code ownership rules
-├── README.md           # This documentation
-├── tsconfig.json       # TypeScript configuration
-└── tsconfig.build.json # Build-specific TypeScript config
-```
+- **Complete Authentication System** - JWT authentication with login/register endpoints
+- **Go Project Structure** - Clean architecture with proper package organization
+- **Gin API Server** - Complete RESTful API with authentication endpoints
+- **Database Layer** - GORM with PostgreSQL and user models
+- **Development Environment** - Hot reload, proper Go modules, and testing
+- **Clean Architecture** - Separated concerns with controllers, services, and models
+
+### 🔄 **In Development**
+
+- **User Management Dashboard** - Complete CRUD API for user administration
+- **Domain Management** - Multi-domain configuration and management
+- **Security Enhancements** - Rate limiting, input validation, and CORS
+- **API Documentation** - Comprehensive API documentation and testing
+
+### 📋 **Planned Features**
+
+- **Mail Protocol Engines** - SMTP, IMAP, POP3 implementation in Go
+- **Email Processing** - Queue system and delivery mechanisms with goroutines
+- **Advanced Security** - Spam filtering, virus scanning, encryption
+- **Real-time Updates** - WebSocket support for live email updates
 
 ---
 
-## 🚀 Installation
+## 🚀 Quick Start
 
 ### 📋 Prerequisites
 
-- **Node.js** 18.0.0 or higher
-- **pnpm** 9.0.0 or higher (recommended)
-- **PostgreSQL** 14.0 or higher
-- **TypeScript** 5.0 or higher
+- **Go** 1.21.0 or higher
+- **PostgreSQL** 14.0 or higher (for database)
+- **Make** (for command shortcuts - included with most systems)
 
-### 🔧 Setup Instructions
+### 🔧 Installation & Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/skygenesisenterprise/aether-mailer.git
-   cd server
+   cd aether-mailer/server
    ```
 
 2. **Install dependencies**
+
    ```bash
-   pnpm install
+   go mod download
    ```
 
-3. **Environment configuration**
+3. **Set up environment**
+
    ```bash
    cp .env.example .env
-   # Edit .env with your configuration
+   # Edit .env with your database configuration
    ```
 
-4. **Database setup**
+4. **Run the server**
+
    ```bash
-   # Generate Prisma client
-   pnpm prisma generate
-   
-   # Run database migrations
-   pnpm prisma migrate dev
-   
-   # Seed database (optional)
-   pnpm prisma db seed
+   go run main.go
    ```
 
-5. **Start development server**
-   ```bash
-   pnpm dev
-   ```
+### 🌐 Access Points
 
-### 🌍 Environment Variables
+Once running, you can access:
 
-Create a `.env` file in the server root:
+- **API Server**: [http://localhost:8080](http://localhost:8080)
+- **Health Check**: [http://localhost:8080/health](http://localhost:8080/health)
+
+### 🎯 **Essential Commands**
 
 ```bash
-# Server Configuration
-NODE_ENV=development
-PORT=8080
-API_CORS_ORIGINS=http://localhost:3000,http://localhost:4000
-
-# Database Configuration
-DATABASE_URL=postgresql://username:password@localhost:5432/aether_mailer
-
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key
-JWT_EXPIRES_IN=24h
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-
-# Redis Configuration (optional, for caching/sessions)
-REDIS_URL=redis://localhost:6379
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# Logging
-LOG_LEVEL=info
-LOG_FORMAT=json
+go run main.go              # Start development server (port 8080)
+go build -o server          # Build binary
+go test ./...               # Run all tests
+go mod tidy                 # Clean up dependencies
 ```
 
 ---
 
-## 📚 API Documentation
+## 🛠️ Tech Stack
 
-### 🔗 Base URL
+### ⚙️ **Backend Layer**
 
-- **Development**: `http://localhost:8080`
-- **Production**: `https://api.yourdomain.com`
-
-### 🏥 Health Check
-
-```http
-GET /health
+```
+Go 1.21+ + Gin Framework
+├── 🗄️ GORM (Database Layer)
+├── 🔐 JWT Authentication (Complete Implementation)
+├── 🛡️ Middleware (Security, CORS, Logging)
+├── 🌐 HTTP Router (Gin Router)
+├── 📦 JSON Serialization (Native Go)
+└── 📊 Structured Logging (Logrus/Zap)
 ```
 
-**Response:**
+### 🗄️ **Data Layer**
+
+```
+ PostgreSQL + GORM
+├── 🏗️ Schema Management (Auto-migration)
+├── 🔍 Query Builder (Type-Safe Queries)
+├── 🔄 Connection Pooling (Performance)
+├── 👤 User Models (Complete Implementation)
+└── 📈 Seed Scripts (Development Data)
+```
+
+---
+
+## 📁 Architecture
+
+### 🏗️ **Server Structure**
+
+```
+server/
+├── cmd/
+│   └── server/
+│       └── main.go          # CLI entry point
+├── src/
+│   ├── config/             # Database and server configuration
+│   ├── controllers/        # HTTP request handlers (auth, users, domains)
+│   ├── middleware/         # Gin middleware (auth, validation, monitoring)
+│   ├── models/            # Data models and structs
+│   ├── routes/            # API route definitions
+│   ├── services/          # Business logic (auth, users, domains)
+│   └── tests/             # Unit and integration tests
+├── main.go                # Main server entry point
+├── go.mod                 # Go modules file
+├── go.sum                 # Go modules checksum
+└── README.md              # This file
+```
+
+### 🔄 **Data Flow Architecture**
+
+```
+┌──────────────────┐    ┌─────────────────┐
+│   Gin API        │    │   PostgreSQL    │
+│   (Backend)      │◄──►│   (Database)    │
+│  Port 8080       │    │  Port 5432      │
+└──────────────────┘    └─────────────────┘
+          │                       │
+          ▼                       ▼
+    API Endpoints         User/Domain Data
+    Authentication         GORM ORM
+    Business Logic        Auto-migrations
+```
+
+---
+
+## 🔐 API Endpoints
+
+### Authentication Endpoints
+
+#### POST `/api/auth/register`
+
+Register a new user account.
+
+**Request Body:**
+
 ```json
 {
-  "status": "OK",
-  "timestamp": "2025-01-12T10:30:00.000Z",
-  "uptime": 3600.123,
-  "environment": "development",
-  "version": "1.0.0",
-  "services": {
-    "database": "connected",
-    "api": "running",
-    "monitoring": "active"
-  }
+  "email": "user@example.com",
+  "password": "securePassword123",
+  "name": "John Doe"
 }
 ```
 
-### 🔐 Authentication
+**Response (201):**
 
-All API endpoints (except `/health`) require JWT authentication.
-
-```http
-Authorization: Bearer <jwt_token>
-```
-
-### 📊 API Endpoints
-
-#### User Management
-```http
-GET    /api/v1/users          # List all users
-POST   /api/v1/users          # Create new user
-GET    /api/v1/users/:id      # Get user by ID
-PUT    /api/v1/users/:id      # Update user
-DELETE /api/v1/users/:id      # Delete user
-```
-
-#### Authentication
-```http
-POST   /api/v1/auth/login     # User login
-POST   /api/v1/auth/logout    # User logout
-POST   /api/v1/auth/refresh   # Refresh JWT token
-GET    /api/v1/auth/profile   # Get current user profile
-```
-
-#### Domain Management
-```http
-GET    /api/v1/domains        # List all domains
-POST   /api/v1/domains        # Create new domain
-GET    /api/v1/domains/:id    # Get domain by ID
-PUT    /api/v1/domains/:id    # Update domain
-DELETE /api/v1/domains/:id    # Delete domain
-```
-
-#### Configuration
-```http
-GET    /api/v1/config         # Get server configuration
-PUT    /api/v1/config         # Update server configuration
-POST   /api/v1/config/test    # Test configuration changes
-```
-
-#### Monitoring
-```http
-GET    /api/v1/metrics        # Get system metrics
-GET    /api/v1/logs           # Get application logs
-GET    /api/v1/status         # Get detailed service status
-```
-
-### 📝 Response Format
-
-**Success Response:**
 ```json
 {
-  "success": true,
-  "data": { /* response data */ },
-  "message": "Operation completed successfully",
-  "timestamp": "2025-01-12T10:30:00.000Z"
-}
-```
-
-**Error Response:**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input data",
-    "details": { /* error details */ }
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
   },
-  "timestamp": "2025-01-12T10:30:00.000Z"
-}
-```
-
----
-
-## 🛠️ Development
-
-### 🏃‍♂️ Running the Server
-
-```bash
-# Development mode with hot reload
-pnpm dev
-
-# Production build
-pnpm build
-
-# Start production server
-pnpm start
-
-# Run in watch mode
-pnpm dev:watch
-```
-
-### 🧪 Testing
-
-```bash
-# Run all tests
-pnpm test
-
-# Run tests with coverage
-pnpm test:coverage
-
-# Run specific test file
-pnpm test auth.test.ts
-
-# Run tests in watch mode
-pnpm test:watch
-```
-
-### 🔍 Code Quality
-
-```bash
-# Lint code
-pnpm lint
-
-# Fix linting issues
-pnpm lint:fix
-
-# Type checking
-pnpm typecheck
-
-# Format code
-pnpm format
-```
-
-### 📝 Database Operations
-
-```bash
-# Generate Prisma client
-pnpm prisma generate
-
-# Create new migration
-pnpm prisma migrate dev --name migration_name
-
-# Apply pending migrations
-pnpm prisma migrate deploy
-
-# Reset database
-pnpm prisma migrate reset
-
-# View database
-pnpm prisma studio
-```
-
-### 🐛 Debugging
-
-The server supports debugging with Node.js inspector:
-
-```bash
-# Debug with breakpoints
-node --inspect-brk dist/server.js
-
-# Debug with VS Code
-# Use the provided .vscode/launch.json configuration
-```
-
----
-
-## 🚀 Deployment
-
-### 🐳 Docker Deployment
-
-1. **Build Docker image**
-   ```bash
-   docker build -t aether-mailer-api .
-   ```
-
-2. **Run with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
-
-3. **Production Docker Compose**
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
-
-### ☁️ Cloud Deployment
-
-#### AWS ECS
-```bash
-# Build and push to ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
-docker build -t aether-mailer-api .
-docker tag aether-mailer-api:latest $ECR_REGISTRY/aether-mailer-api:latest
-docker push $ECR_REGISTRY/aether-mailer-api:latest
-```
-
-#### Google Cloud Run
-```bash
-# Build and deploy
-gcloud builds submit --tag gcr.io/PROJECT_ID/aether-mailer-api
-gcloud run deploy aether-mailer-api --image gcr.io/PROJECT_ID/aether-mailer-api --platform managed
-```
-
-#### Azure Container Instances
-```bash
-# Deploy with Azure CLI
-az container create \
-  --resource-group aether-mailer \
-  --name aether-mailer-api \
-  --image aether-mailer-api:latest \
-  --cpu 1 \
-  --memory 2 \
-  --ports 8080
-```
-
-### 🔧 Production Configuration
-
-#### Environment Setup
-```bash
-# Production environment variables
-NODE_ENV=production
-PORT=8080
-DATABASE_URL=postgresql://prod_user:prod_pass@db.example.com:5432/aether_mailer_prod
-JWT_SECRET=production-jwt-secret-key
-API_CORS_ORIGINS=https://admin.yourdomain.com
-```
-
-#### Security Considerations
-- Use HTTPS in production
-- Configure proper CORS origins
-- Use strong JWT secrets
-- Enable database connection SSL
-- Configure proper rate limiting
-- Set up monitoring and alerting
-
-#### Performance Optimization
-- Enable request compression
-- Configure database connection pooling
-- Use Redis for session storage
-- Implement proper caching strategies
-- Monitor memory usage and CPU
-
----
-
-## 📊 Monitoring & Observability
-
-### 📈 Metrics Collection
-
-The server automatically collects and exposes metrics for:
-
-- **Request Metrics** - Response times, error rates, throughput
-- **Database Metrics** - Connection pool usage, query performance
-- **System Metrics** - Memory usage, CPU utilization, disk space
-- **Application Metrics** - Active users, email counts, domain stats
-
-### 🔍 Logging
-
-Structured logging with configurable levels:
-
-```typescript
-// Example log entry
-{
-  "timestamp": "2025-01-12T10:30:00.000Z",
-  "level": "info",
-  "message": "User login successful",
-  "context": {
-    "userId": "12345",
-    "ip": "192.168.1.100",
-    "userAgent": "Mozilla/5.0..."
+  "tokens": {
+    "accessToken": "jwt_access_token",
+    "refreshToken": "jwt_refresh_token"
   }
 }
 ```
 
-### 🏥 Health Checks
+#### POST `/api/auth/login`
 
-Comprehensive health monitoring for:
+Authenticate user and receive tokens.
 
-- **Database Connectivity** - Connection status and query performance
-- **External Services** - Third-party API availability
-- **System Resources** - Memory, disk, and CPU thresholds
-- **Application Status** - Service dependencies and internal state
+**Request Body:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  },
+  "tokens": {
+    "accessToken": "jwt_access_token",
+    "refreshToken": "jwt_refresh_token"
+  }
+}
+```
+
+#### POST `/api/auth/refresh`
+
+Refresh access token using refresh token.
+
+**Request Body:**
+
+```json
+{
+  "refreshToken": "jwt_refresh_token"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "tokens": {
+    "accessToken": "new_jwt_access_token"
+  }
+}
+```
+
+#### POST `/api/auth/logout`
+
+Invalidate current session.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+### Health Endpoint
+
+#### GET `/health`
+
+Check server health status.
+
+**Response (200):**
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "database": "connected"
+}
+```
 
 ---
 
-## 🔒 Security
+## 🔐 Authentication System
 
-### 🛡️ Security Features
+### 🎯 **Complete Implementation**
 
-- **Authentication** - JWT-based with configurable expiration
-- **Authorization** - Role-based access control (RBAC)
-- **Rate Limiting** - Configurable limits per IP and endpoint
-- **Input Validation** - Comprehensive request validation
-- **SQL Injection Prevention** - Parameterized queries with Prisma
-- **XSS Protection** - Input sanitization and output encoding
-- **CSRF Protection** - Token-based CSRF prevention
-- **Security Headers** - Helmet.js for security headers
+The authentication system is fully implemented with:
 
-### 🔐 Security Best Practices
+- **JWT Tokens** - Secure token-based authentication with refresh mechanism
+- **Login/Register Endpoints** - Complete user authentication flow with validation
+- **Password Security** - bcrypt hashing for secure password storage
+- **Middleware Protection** - Route-based authentication guards
+- **Token Refresh** - Automatic token renewal mechanism
 
-1. **Environment Variables** - Never commit secrets to version control
-2. **Database Security** - Use SSL connections and proper user permissions
-3. **API Security** - Implement proper authentication and authorization
-4. **Input Validation** - Validate all incoming data
-5. **Error Handling** - Don't expose sensitive information in error messages
-6. **Logging** - Log security events for audit trails
-7. **Dependencies** - Keep dependencies updated and scan for vulnerabilities
+### 🔄 **Authentication Flow**
 
----
+```go
+// Registration Process
+1. User submits registration → API validation
+2. Password hashing with bcrypt → Database storage
+3. JWT tokens generated → Client receives tokens
+4. User registered successfully
 
-## 🤝 Contributing
+// Login Process
+1. User submits credentials → API validation
+2. Password verification → JWT token generation
+3. Tokens returned → Client stores tokens
+4. Authenticated requests with Bearer token
 
-We welcome contributions from the community! Please follow our guidelines:
-
-### 📝 Development Guidelines
-
-1. **Code Style** - Follow the existing TypeScript and ESLint configuration
-2. **Testing** - Write tests for new features and bug fixes
-3. **Documentation** - Update documentation for API changes
-4. **Commits** - Use conventional commit messages
-5. **Pull Requests** - Create PRs with clear descriptions and testing
-
-### 🧪 Testing Requirements
-
-- Unit tests for all new functions
-- Integration tests for API endpoints
-- Test coverage minimum 80%
-- All tests must pass before merging
-
-### 📋 Pull Request Process
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests and documentation
-5. Submit a pull request
-6. Address review feedback
-7. Merge to main branch
+// Token Refresh
+1. Client sends refresh token → Validate token
+2. Generate new access token → Return to client
+3. Invalid tokens → Error response
+4. Expired refresh token → Re-authentication required
+```
 
 ---
 
-## 📞 Support
+## 💻 Development
 
-### 🐛 Bug Reports
+### 🎯 **Development Commands**
 
-Found a bug? Please create an issue with:
+```bash
+go run main.go              # Start development server (port 8080)
+go build -o server          # Build production binary
+go test ./...               # Run all tests
+go test -v ./tests/...      # Run tests with verbose output
+go mod tidy                # Clean up dependencies
+go fmt ./...               # Format all Go files
+go vet ./...               # Run Go vet for potential issues
+```
 
-- Clear description of the problem
-- Steps to reproduce
-- Environment information
-- Error logs and screenshots
-- Expected vs actual behavior
+### 📋 **Development Workflow**
 
-### 💡 Feature Requests
+```bash
+# Daily development
+go run main.go              # Start working
+go fmt ./...               # Format code
+go test ./...              # Run tests
+go vet ./...               # Check for issues
 
-Have an idea for a new feature? Please:
+# Database changes
+go run main.go --migrate   # Run migrations (if implemented)
+```
 
-- Check existing issues first
-- Provide clear use case
-- Describe expected behavior
-- Consider implementation complexity
+---
 
-### 📧 Contact
+## 📊 Project Status
 
-- **GitHub Issues**: [Create an issue](https://github.com/skygenesisenterprise/aether-mailer/issues)
-- **Discussions**: [Join the discussion](https://github.com/skygenesisenterprise/aether-mailer/discussions)
-- **Email**: support@skygenesisenterprise.com
+| Component                 | Status         | Notes                           |
+| ------------------------- | -------------- | ------------------------------- |
+| **Gin API Server**        | ✅ Working     | RESTful API with auth endpoints |
+| **Authentication System** | ✅ Working     | Complete JWT implementation     |
+| **Database Layer**        | ✅ Working     | GORM with PostgreSQL            |
+| **Security**              | 🔄 In Progress | Rate limiting, validation       |
+| **Mail Protocols**        | 📋 Planned     | SMTP/IMAP engines in Go         |
+| **Testing Suite**         | 🔄 In Progress | Unit and integration tests      |
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2025 Sky Genesis Enterprise
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
+This project is licensed under the **MIT License** - see the [LICENSE](../LICENSE) file for details.
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **Sky Genesis Enterprise** - Development and maintenance
-- **Express.js Team** - Excellent web framework
-- **Prisma Team** - Modern database toolkit
-- **TypeScript Team** - Type-safe JavaScript
-- **Open Source Community** - Tools and libraries
+- **Sky Genesis Enterprise** - Project leadership and development
+- **Go Community** - High-performance programming language
+- **Gin Framework** - Lightweight HTTP web framework
+- **GORM Team** - Modern Go database library
+- **Open Source Community** - Tools, libraries, and inspiration
 
 ---
 
 <div align="center">
 
-**🚀 Ready to power your mail server administration?**
+### 🚀 **Building the Future of Email Infrastructure with Go!**
 
-[⭐ Star This Repo](https://github.com/skygenesisenterprise/aether-mailer) • [📖 Documentation](../docs/) • [🐛 Report Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)
+[⭐ Star This Repo](https://github.com/skygenesisenterprise/aether-mailer) • [🐛 Report Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)
 
 **Made with ❤️ by the [Sky Genesis Enterprise](https://skygenesisenterprise.com) team**
+
+_Building a modern mail server with complete authentication and Go's performance_
 
 </div>

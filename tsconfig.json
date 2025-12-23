@@ -4,7 +4,6 @@
     { "path": "./app" },
     { "path": "./cli" },
     { "path": "./routers" },
-    { "path": "./server" },
     { "path": "./services" },
     { "path": "./tools" },
     { "path": "./options" },

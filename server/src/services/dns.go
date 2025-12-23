@@ -14,7 +14,7 @@ import (
 	"github.com/miekg/dns"
 	"gorm.io/gorm"
 
-	"github.com/skygenesisenterprise/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 )
 
 // DNSService represents DNS service

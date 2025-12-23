@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/skygenesisenterprise/server/src/middleware"
-	"github.com/skygenesisenterprise/server/src/services"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 )
 
 // SMTPController represents SMTP controller

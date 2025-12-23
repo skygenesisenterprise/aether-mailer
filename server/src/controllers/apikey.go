@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/skygenesisenterprise/server/src/models"
-	"github.com/skygenesisenterprise/server/src/services"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 )
 
 // ApiKeyController handles API key operations

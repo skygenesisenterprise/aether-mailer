@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"skygenesisenterprise/server/cmd/server"
+	"github.com/skygenesisenterprise/aether-mailer/server/cmd/server"
 )
 
 func main() {

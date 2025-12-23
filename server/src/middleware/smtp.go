@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/skygenesisenterprise/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 )
 
 // SMTPMiddleware handles SMTP-specific validation and processing

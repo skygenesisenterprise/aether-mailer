@@ -1,8 +1,6 @@
-module github.com/skygenesisenterprise/server
+module github.com/skygenesisenterprise/aether-mailer/server
 
-go 1.23
-
-toolchain go1.24.11
+go 1.25.5
 
 require (
 	github.com/gin-gonic/gin v1.9.1

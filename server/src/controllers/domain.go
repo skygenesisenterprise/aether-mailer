@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/skygenesisenterprise/server/src/models"
-	"github.com/skygenesisenterprise/server/src/services"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 	"github.com/gin-gonic/gin"
 )
 

@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/skygenesisenterprise/server/src/controllers"
-	"github.com/skygenesisenterprise/server/src/middleware"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/controllers"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
 )
 
 // SMTPRoutes handles SMTP management routes

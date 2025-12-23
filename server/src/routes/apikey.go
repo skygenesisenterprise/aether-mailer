@@ -2,8 +2,8 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/skygenesisenterprise/server/src/controllers"
-	"github.com/skygenesisenterprise/server/src/middleware"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/controllers"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
 )
 
 // ApiKeyRoutes handles API key routes

@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/skygenesisenterprise/server/src/config"
-	"github.com/skygenesisenterprise/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )

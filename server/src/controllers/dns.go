@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"github.com/skygenesisenterprise/server/src/models"
-	"github.com/skygenesisenterprise/server/src/services"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 )
 
 // DNSController represents DNS controller

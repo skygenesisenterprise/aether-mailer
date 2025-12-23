@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skygenesisenterprise/server/src/models"
-	"github.com/skygenesisenterprise/server/src/services"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )

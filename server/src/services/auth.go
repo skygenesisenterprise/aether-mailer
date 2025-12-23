@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/skygenesisenterprise/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"

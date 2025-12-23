@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skygenesisenterprise/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"github.com/gin-gonic/gin"
 )
 

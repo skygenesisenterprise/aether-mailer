@@ -3,8 +3,8 @@ package routes
 import (
 	"net/http"
 
-	"github.com/skygenesisenterprise/server/src/controllers"
-	"github.com/skygenesisenterprise/server/src/middleware"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/controllers"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
 	"github.com/gin-gonic/gin"
 )
 

@@ -5,6 +5,33 @@ import (
 	"time"
 )
 
+// DNSRecordType represents DNS record types
+type DNSRecordType string
+
+const (
+	DNSRecordTypeA      DNSRecordType = "A"
+	DNSRecordTypeAAAA   DNSRecordType = "AAAA"
+	DNSRecordTypeMX     DNSRecordType = "MX"
+	DNSRecordTypeTXT    DNSRecordType = "TXT"
+	DNSRecordTypeCNAME  DNSRecordType = "CNAME"
+	DNSRecordTypeNS     DNSRecordType = "NS"
+	DNSRecordTypeSOA    DNSRecordType = "SOA"
+	DNSRecordTypeSRV    DNSRecordType = "SRV"
+	DNSRecordTypePTR    DNSRecordType = "PTR"
+	DNSRecordTypeCAA    DNSRecordType = "CAA"
+	DNSRecordTypeDNSKEY DNSRecordType = "DNSKEY"
+	DNSRecordTypeDS     DNSRecordType = "DS"
+	DNSRecordTypeRRSIG  DNSRecordType = "RRSIG"
+)
+
+// DNSSECKeyType represents DNSSEC key types
+type DNSSECKeyType string
+
+const (
+	DNSSECKeyTypeZSK DNSSECKeyType = "ZSK"
+	DNSSECKeyTypeKSK DNSSECKeyType = "KSK"
+)
+
 // DNSRecord represents a DNS record
 type DNSRecord struct {
 	ID         uint           `json:"id" gorm:"primaryKey"`

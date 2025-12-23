@@ -661,7 +661,7 @@ func (c *DNSController) GetDNSProviderCredentials(ctx *gin.Context) {
 		return
 	}
 
-	credentials, err := c.dnsService.GetDNSProviderCredentials(ctx.Request.Context(), userIDUint, providerID)
+	credentials, err := c.dnsService.GetDNSProviderCredentials(ctx.Request.Context(), uint(userIDUint), providerID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -707,7 +707,7 @@ func (c *DNSController) CreateDNSProviderCredential(ctx *gin.Context) {
 	}
 
 	credential := &models.DNSProviderCredential{
-		UserID:      userIDUint,
+		UserID:      uint(userIDUint),
 		ProviderID:  req.ProviderID,
 		Name:        req.Name,
 		Credentials: req.Credentials,

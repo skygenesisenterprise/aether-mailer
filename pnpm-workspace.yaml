@@ -1,7 +1,6 @@
 packages:
   - 'app'
   - 'cli'
-  - 'services'
   - 'routers'
   - 'tools'
   - 'tests'

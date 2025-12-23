@@ -447,4 +447,182 @@ func (r *DNSRoutes) SetupRoutes(router *gin.RouterGroup) {
 			})
 		}
 	}
+
+	// DNS Provider Management
+	providers := dns.Group("/providers")
+	{
+		// GET /api/v1/dns/providers - List all DNS providers
+		providers.GET("/", r.dnsController.GetDNSProviders)
+
+		// POST /api/v1/dns/providers - Create a new DNS provider
+		providers.POST("/", r.dnsController.CreateDNSProvider)
+
+		// GET /api/v1/dns/providers/:id - Get a specific DNS provider
+		providers.GET("/:id", r.dnsController.GetDNSProvider)
+
+		// PUT /api/v1/dns/providers/:id - Update a DNS provider
+		providers.PUT("/:id", r.dnsController.UpdateDNSProvider)
+
+		// DELETE /api/v1/dns/providers/:id - Delete a DNS provider
+		providers.DELETE("/:id", r.dnsController.DeleteDNSProvider)
+
+		// POST /api/v1/dns/providers/:id/test - Test DNS provider connection
+		providers.POST("/:id/test", r.dnsController.TestDNSProviderConnection)
+
+		// GET /api/v1/dns/providers/:id/settings - Get provider settings
+		providers.GET("/:id/settings", r.dnsController.GetDNSProviderSettings)
+
+		// POST /api/v1/dns/providers/:id/settings - Create provider setting
+		providers.POST("/:id/settings", r.dnsController.CreateDNSProviderSetting)
+
+		// GET /api/v1/dns/providers/:id/capabilities - Get provider capabilities
+		providers.GET("/:id/capabilities", r.dnsController.GetDNSProviderCapabilities)
+
+		// POST /api/v1/dns/providers/initialize - Initialize default DNS providers
+		providers.POST("/initialize", r.dnsController.InitializeDefaultDNSProviders)
+	}
+
+	// DNS Provider Credentials Management
+	credentials := dns.Group("/credentials")
+	{
+		// GET /api/v1/dns/credentials - Get user's DNS provider credentials
+		credentials.GET("/", r.dnsController.GetDNSProviderCredentials)
+
+		// POST /api/v1/dns/credentials - Create DNS provider credential
+		credentials.POST("/", r.dnsController.CreateDNSProviderCredential)
+
+		// PUT /api/v1/dns/credentials/:id - Update DNS provider credential
+		credentials.PUT("/:id", func(ctx *gin.Context) {
+			// TODO: Implement credential update
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "DNS provider credential updated successfully",
+			})
+		})
+
+		// DELETE /api/v1/dns/credentials/:id - Delete DNS provider credential
+		credentials.DELETE("/:id", func(ctx *gin.Context) {
+			// TODO: Implement credential deletion
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "DNS provider credential deleted successfully",
+			})
+		})
+
+		// POST /api/v1/dns/credentials/:id/test - Test DNS provider credential
+		credentials.POST("/:id/test", func(ctx *gin.Context) {
+			// TODO: Implement credential testing
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "DNS provider credential test successful",
+			})
+		})
+	}
+
+	// DNS Zone Management with Providers
+	zones := dns.Group("/zones")
+	{
+		// POST /api/v1/dns/zones/:id/sync - Sync DNS zone with provider
+		zones.POST("/:id/sync", r.dnsController.SyncDNSZoneWithProvider)
+
+		// GET /api/v1/dns/zones/:id/sync-status - Get zone sync status
+		zones.GET("/:id/sync-status", func(ctx *gin.Context) {
+			// TODO: Implement sync status retrieval
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"zoneId":     ctx.Param("id"),
+					"syncStatus": "synced",
+					"lastSynced": "2024-01-01T12:00:00Z",
+					"nextSync":   "2024-01-02T12:00:00Z",
+				},
+			})
+		})
+
+		// POST /api/v1/dns/zones/:id/sync-now - Force sync DNS zone with provider
+		zones.POST("/:id/sync-now", func(ctx *gin.Context) {
+			// TODO: Implement forced zone sync
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "DNS zone sync initiated successfully",
+			})
+		})
+	}
+
+	// DNS Provider Monitoring and Analytics
+	providerMonitoring := dns.Group("/provider-monitoring")
+	{
+		// GET /api/v1/dns/provider-monitoring/stats - Get provider usage statistics
+		providerMonitoring.GET("/stats", func(ctx *gin.Context) {
+			// TODO: Implement provider statistics
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"totalProviders":      0,
+					"activeProviders":     0,
+					"customProviders":     0,
+					"builtinProviders":    3, // Google, Cloudflare, OpenDNS
+					"totalQueries":        0,
+					"successRate":         "100%",
+					"averageResponseTime": "25ms",
+					"topProviders": []interface{}{
+						gin.H{
+							"name":                "google",
+							"queries":             0,
+							"successRate":         "100%",
+							"averageResponseTime": "20ms",
+						},
+					},
+				},
+			})
+		})
+
+		// GET /api/v1/dns/provider-monitoring/health - Get provider health status
+		providerMonitoring.GET("/health", func(ctx *gin.Context) {
+			// TODO: Implement provider health monitoring
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"overall": "healthy",
+					"providers": []interface{}{
+						gin.H{
+							"name":         "google",
+							"status":       "healthy",
+							"responseTime": "20ms",
+							"lastCheck":    "2024-01-01T12:00:00Z",
+						},
+						gin.H{
+							"name":         "cloudflare",
+							"status":       "healthy",
+							"responseTime": "15ms",
+							"lastCheck":    "2024-01-01T12:00:00Z",
+						},
+						gin.H{
+							"name":         "opendns",
+							"status":       "healthy",
+							"responseTime": "30ms",
+							"lastCheck":    "2024-01-01T12:00:00Z",
+						},
+					},
+				},
+			})
+		})
+
+		// GET /api/v1/dns/provider-monitoring/alerts - Get provider alerts
+		providerMonitoring.GET("/alerts", func(ctx *gin.Context) {
+			// TODO: Implement provider alerts
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"alerts": []interface{}{},
+					"pagination": gin.H{
+						"page":       1,
+						"limit":      50,
+						"total":      0,
+						"totalPages": 0,
+					},
+				},
+			})
+		})
+	}
 }

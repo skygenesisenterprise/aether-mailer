@@ -13,6 +13,7 @@ type Config struct {
 	JWT       JWTConfig       `json:"jwt"`
 	CORS      CORSConfig      `json:"cors"`
 	RateLimit RateLimitConfig `json:"rateLimit"`
+	APIKey    APIKeyConfig    `json:"apiKey"`
 	NodeEnv   string          `json:"nodeEnv"`
 }
 
@@ -49,6 +50,15 @@ type RateLimitConfig struct {
 	Max      int `json:"max"`
 }
 
+// APIKeyConfig represents API key configuration
+type APIKeyConfig struct {
+	Prefix     string `json:"prefix"`
+	KeyLength  int    `json:"keyLength"`
+	HashRounds int    `json:"hashRounds"`
+	DefaultTTL int    `json:"defaultTTL"`
+	SystemKey  string `json:"systemKey"`
+}
+
 // LoadConfig loads configuration from environment variables
 func LoadConfig() (*Config, error) {
 	config := &Config{
@@ -74,6 +84,13 @@ func LoadConfig() (*Config, error) {
 		RateLimit: RateLimitConfig{
 			WindowMS: getEnvInt("RATE_LIMIT_WINDOW_MS", 15*60*1000), // 15 minutes
 			Max:      getEnvInt("RATE_LIMIT_MAX", 100),              // limit each IP to 100 requests per window
+		},
+		APIKey: APIKeyConfig{
+			Prefix:     getEnv("API_KEY_PREFIX", "sk_"),
+			KeyLength:  getEnvInt("API_KEY_LENGTH", 32),
+			HashRounds: getEnvInt("API_KEY_HASH_ROUNDS", 12),
+			DefaultTTL: getEnvInt("API_KEY_DEFAULT_TTL", 720), // 30 days in hours
+			SystemKey:  getEnv("API_KEY_SYSTEM", ""),
 		},
 		NodeEnv: getEnv("NODE_ENV", "development"),
 	}

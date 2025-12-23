@@ -10,13 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/rs/cors"
+	"github.com/rs/zerolog/log"
 	"github.com/skygenesisenterprise/server/src/config"
 	"github.com/skygenesisenterprise/server/src/controllers"
 	"github.com/skygenesisenterprise/server/src/middleware"
 	"github.com/skygenesisenterprise/server/src/routes"
-	"github.com/gin-gonic/gin"
-	"github.com/rs/cors"
-	"github.com/rs/zerolog/log"
+	"github.com/skygenesisenterprise/server/src/services"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -29,7 +30,10 @@ type Server struct {
 	authController   *controllers.AuthController
 	userController   *controllers.UserController
 	domainController *controllers.DomainController
+	apiKeyController *controllers.ApiKeyController
 	authMiddleware   *middleware.AuthMiddleware
+	apiKeyMiddleware *middleware.ApiKeyMiddleware
+	domainMiddleware *middleware.DomainMiddleware
 	monitoring       *middleware.MonitoringMiddleware
 }
 
@@ -57,28 +61,38 @@ func NewServer() (*Server, error) {
 		gin.SetMode(gin.DebugMode)
 	}
 
+	// Initialize services
+	apiKeyService := services.NewApiKeyService(db, &cfg.APIKey)
+
 	// Initialize middleware
 	monitoringMiddleware := middleware.NewMonitoringMiddleware()
 	authMiddleware := middleware.NewAuthMiddleware(nil, cfg) // authService will be nil for now
+	apiKeyMiddleware := middleware.NewApiKeyMiddleware(apiKeyService, cfg)
 
 	// Initialize controllers
 	authController := controllers.NewAuthController(nil)     // authService will be nil for now
 	userController := controllers.NewUserController(nil)     // userService will be nil for now
 	domainController := controllers.NewDomainController(nil) // domainService will be nil for now
+	apiKeyController := controllers.NewApiKeyController(apiKeyService)
+
+	// Initialize domain middleware
 	domainMiddleware := middleware.NewDomainMiddleware()
 
 	// Apply global middleware
 	router.Use(monitoringMiddleware.MonitoringMiddleware())
-	router.Use(monitoringMiddleware.RequestLoggerMiddleware())
-	router.Use(monitoringMiddleware.ErrorTrackingMiddleware())
-	router.Use(cors.New(cors.Options{
+	router.Use(gin.Recovery())
+
+	// Apply CORS middleware
+	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   cfg.CORS.Origins,
 		AllowCredentials: cfg.CORS.Credentials,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Request-ID"},
-	}))
-	router.Use(gin.Recovery())
-	router.Use(monitoringMiddleware.RateLimitMiddleware())
+		AllowedHeaders:   []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Request-ID", "X-API-Key"},
+	})
+	router.Use(func(ctx *gin.Context) {
+		corsMiddleware.HandlerFunc(ctx.Writer, ctx.Request)
+		ctx.Next()
+	})
 
 	return &Server{
 		config:           cfg,
@@ -87,7 +101,10 @@ func NewServer() (*Server, error) {
 		authController:   authController,
 		userController:   userController,
 		domainController: domainController,
+		apiKeyController: apiKeyController,
 		authMiddleware:   authMiddleware,
+		apiKeyMiddleware: apiKeyMiddleware,
+		domainMiddleware: domainMiddleware,
 		monitoring:       monitoringMiddleware,
 	}, nil
 }
@@ -119,8 +136,18 @@ func connectDatabase(cfg *config.Config) (*gorm.DB, error) {
 
 // setupRoutes configures all application routes
 func (s *Server) setupRoutes() {
-	// API v1 group
+	// API v1 group - ALL ROUTES REQUIRE API KEY
 	v1 := s.router.Group("/api/v1")
+	v1.Use(s.apiKeyMiddleware.ValidateAPIKey()) // <-- OBLIGATORY API KEY VALIDATION
+
+	// Initialize system key
+	if err := s.initializeSystemKey(); err != nil {
+		log.Error().Err(err).Msg("Failed to initialize system key")
+	}
+
+	// API key management routes
+	apiKeyRoutes := routes.NewApiKeyRoutes(s.apiKeyController, s.apiKeyMiddleware, s.authMiddleware)
+	apiKeyRoutes.SetupRoutes(v1)
 
 	// Health routes
 	healthRoutes := routes.NewHealthRoutes(s.monitoring)
@@ -135,7 +162,7 @@ func (s *Server) setupRoutes() {
 	userRoutes.SetupRoutes(v1)
 
 	// Domain routes
-	domainRoutes := routes.NewDomainRoutes(s.domainController, s.authMiddleware, domainMiddleware)
+	domainRoutes := routes.NewDomainRoutes(s.domainController, s.authMiddleware, s.domainMiddleware)
 	domainRoutes.SetupRoutes(v1)
 
 	// Root health endpoint
@@ -274,6 +301,20 @@ func (s *Server) Start() error {
 	}
 
 	<-ctx.Done()
+	return nil
+}
+
+// initializeSystemKey initializes the system API key
+func (s *Server) initializeSystemKey() error {
+
+	if s.config.APIKey.SystemKey != "" {
+		log.Info().
+			Msg("🔑 System API key initialized successfully")
+		log.Warn().
+			Str("systemKey", s.config.APIKey.SystemKey).
+			Msg("⚠️  SYSTEM API KEY - KEEP SECRET AND SECURE")
+	}
+
 	return nil
 }
 

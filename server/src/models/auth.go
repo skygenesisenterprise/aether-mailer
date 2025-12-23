@@ -223,6 +223,31 @@ type ApiKeyResponse struct {
 	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
 }
 
+// UpdateApiKeyRequest represents the update API key request
+type UpdateApiKeyRequest struct {
+	Name        string   `json:"name" binding:"required"`
+	Permissions []string `json:"permissions" binding:"required"`
+}
+
+// ValidateApiKeyRequest represents the validate API key request
+type ValidateApiKeyRequest struct {
+	APIKey string `json:"apiKey" binding:"required"`
+}
+
+// ApiKeyUsageStats represents API key usage statistics
+type ApiKeyUsageStats struct {
+	KeyID           string     `json:"keyId"`
+	Name            string     `json:"name"`
+	LastUsedAt      *time.Time `json:"lastUsedAt,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	TotalRequests   int        `json:"totalRequests"`
+	SuccessRequests int        `json:"successRequests"`
+	ErrorRequests   int        `json:"errorRequests"`
+	Last24Hours     int        `json:"last24Hours"`
+	Last7Days       int        `json:"last7Days"`
+	Last30Days      int        `json:"last30Days"`
+}
+
 // AuthConfig represents the authentication configuration
 type AuthConfig struct {
 	PasswordPolicy  PasswordPolicy  `json:"passwordPolicy"`

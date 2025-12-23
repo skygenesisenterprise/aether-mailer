@@ -3,9 +3,7 @@ import type { NextRequest } from "next/server";
 import { requiresAuthentication } from "./app/lib/navigation-config";
 
 // Import specialized proxies
-import { serverProxy } from "./server/proxy";
 import { monitoringProxy } from "./monitoring/proxy";
-import { servicesProxy } from "./services/proxy";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,25 +15,10 @@ export function proxy(request: NextRequest) {
     console.log("Middleware - BACKEND_URL:", process.env.BACKEND_URL);
   }
 
-  // Delegate to specialized proxies
-  if (pathname.startsWith("/api/v1/")) {
-    const serverRequest = serverProxy(request);
-    if (serverRequest) {
-      return fetch(serverRequest);
-    }
-  }
-
   if (pathname.startsWith("/monitoring/")) {
     const monitoringRequest = monitoringProxy(request);
     if (monitoringRequest) {
       return fetch(monitoringRequest);
-    }
-  }
-
-  if (pathname.startsWith("/api/services/")) {
-    const servicesRequest = servicesProxy(request);
-    if (servicesRequest) {
-      return fetch(servicesRequest);
     }
   }
 

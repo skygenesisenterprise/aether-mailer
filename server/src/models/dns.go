@@ -32,10 +32,39 @@ const (
 	DNSSECKeyTypeKSK DNSSECKeyType = "KSK"
 )
 
+// DNSZone represents a DNS zone
+type DNSZone struct {
+	ID         uint           `json:"id" gorm:"primaryKey"`
+	DomainID   uint           `json:"domainId" gorm:"not null;index"`
+	ProviderID *uint          `json:"providerId,omitempty" gorm:"index"`
+	Name       string         `json:"name" gorm:"not null"`
+	PrimaryNS  string         `json:"primaryNS" gorm:"not null"`
+	AdminEmail string         `json:"adminEmail" gorm:"not null"`
+	Serial     uint32         `json:"serial" gorm:"default:1"`
+	Refresh    uint32         `json:"refresh" gorm:"default:3600"`
+	Retry      uint32         `json:"retry" gorm:"default:600"`
+	Expire     uint32         `json:"expire" gorm:"default:86400"`
+	Minimum    uint32         `json:"minimum" gorm:"default:3600"`
+	TTL        uint32         `json:"ttl" gorm:"default:3600"`
+	IsActive   bool           `json:"isActive" gorm:"default:true"`
+	IsAutoSync bool           `json:"isAutoSync" gorm:"default:false"`
+	LastSynced *time.Time     `json:"lastSynced"`
+	CreatedAt  time.Time      `json:"createdAt"`
+	UpdatedAt  time.Time      `json:"updatedAt"`
+	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
+
+	// Relations
+	Domain   Domain       `json:"domain" gorm:"foreignKey:DomainID"`
+	Zone     *DNSZone     `json:"zone,omitempty" gorm:"foreignKey:ZoneID"`
+	Provider *DNSProvider `json:"provider,omitempty" gorm:"foreignKey:ProviderID"`
+	Records  []DNSRecord  `json:"records,omitempty" gorm:"foreignKey:ZoneID"`
+}
+
 // DNSRecord represents a DNS record
 type DNSRecord struct {
 	ID         uint           `json:"id" gorm:"primaryKey"`
 	DomainID   uint           `json:"domainId" gorm:"not null;index"`
+	ZoneID     *uint          `json:"zoneId,omitempty" gorm:"index"`
 	Type       DNSRecordType  `json:"type" gorm:"not null"`
 	Name       string         `json:"name" gorm:"not null"`
 	Value      string         `json:"value" gorm:"not null"`
@@ -141,6 +170,27 @@ type DNSProviderCredential struct {
 	// Relations
 	User     User        `json:"user" gorm:"foreignKey:UserID"`
 	Provider DNSProvider `json:"provider" gorm:"foreignKey:ProviderID"`
+}
+
+// DNSSECKey represents a DNSSEC key
+type DNSSECKey struct {
+	ID         uint           `json:"id" gorm:"primaryKey"`
+	DomainID   uint           `json:"domainId" gorm:"not null;index"`
+	KeyType    DNSSECKeyType  `json:"keyType" gorm:"not null"`
+	Flags      int            `json:"flags" gorm:"not null"`
+	Algorithm  int            `json:"algorithm" gorm:"not null"`
+	PublicKey  string         `json:"publicKey" gorm:"type:text;not null"`
+	PrivateKey string         `json:"privateKey" gorm:"type:text;not null"`
+	KeyTag     int            `json:"keyTag" gorm:"not null"`
+	Digest     string         `json:"digest" gorm:"type:text"`
+	DigestType int            `json:"digestType"`
+	IsActive   bool           `json:"isActive" gorm:"default:true"`
+	CreatedAt  time.Time      `json:"createdAt"`
+	UpdatedAt  time.Time      `json:"updatedAt"`
+	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
+
+	// Relations
+	Domain Domain `json:"domain" gorm:"foreignKey:DomainID"`
 }
 
 // DNSProviderCapability represents capabilities of DNS providers

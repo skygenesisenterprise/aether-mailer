@@ -3,9 +3,8 @@ package routes
 import (
 	"net/http"
 
-	"github.com/skygenesisenterprise/aether-mailer/server/src/controllers"
-	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
 )
 
 // HealthRoutes handles health check routes

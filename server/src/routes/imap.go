@@ -55,57 +55,6 @@ func (r *IMAPRoutes) SetupRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// SMTPRoutes handles SMTP routes
-type SMTPRoutes struct {
-	smtpController *controllers.SMTPController
-	authMiddleware *middleware.AuthMiddleware
-}
-
-// NewSMTPRoutes creates new SMTP routes
-func NewSMTPRoutes(smtpController *controllers.SMTPController, authMiddleware *middleware.AuthMiddleware) *SMTPRoutes {
-	return &SMTPRoutes{
-		smtpController: smtpController,
-		authMiddleware: authMiddleware,
-	}
-}
-
-// SetupRoutes configures SMTP routes
-func (r *SMTPRoutes) SetupRoutes(router *gin.RouterGroup) {
-	smtp := router.Group("/smtp")
-	{
-		// Apply authentication middleware to all SMTP routes
-		smtp.Use(r.authMiddleware.AuthenticateToken())
-
-		// Email sending routes
-		smtp.POST("/send", r.smtpController.SendEmail)
-		smtp.POST("/send/bulk", r.smtpController.SendMultipleEmails)
-
-		// Queue management routes
-		queue := smtp.Group("/queue")
-		{
-			queue.GET("/status", r.smtpController.GetQueueStatus)
-			queue.GET("/messages", r.smtpController.GetQueuedMessages)
-			queue.POST("/messages/:id/retry", r.smtpController.RetryQueuedMessage)
-			queue.DELETE("/messages/:id", r.smtpController.DeleteQueuedMessage)
-		}
-
-		// Session management routes
-		sessions := smtp.Group("/sessions")
-		{
-			sessions.GET("", r.smtpController.GetSMTPSessions)
-			sessions.GET("/:id", r.smtpController.GetSMTPSession)
-		}
-
-		// Statistics and monitoring routes
-		smtp.GET("/stats", r.smtpController.GetSMTPStats)
-		smtp.GET("/logs", r.smtpController.GetSMTPLogs)
-		smtp.GET("/sent", r.smtpController.GetSentMessages)
-
-		// Testing routes
-		smtp.POST("/test-connection", r.smtpController.TestSMTPConnection)
-	}
-}
-
 // EmailRoutes handles generic email routes
 type EmailRoutes struct {
 	imapController *controllers.IMAPController

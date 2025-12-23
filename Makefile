@@ -1,7 +1,7 @@
 # Aether Mailer Makefile
 # Modern mail server foundation with monorepo architecture
 
-.PHONY: help install dev build test lint clean docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log
+.PHONY: help install dev build test lint clean docker-build docker-run docker-compose-up docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log
 
 # Default target
 .DEFAULT_GOAL := help
@@ -141,14 +141,38 @@ cli-install: ## Install CLI globally
 	@pnpm --filter cli link
 
 # Docker
-docker-build: ## Build Docker image
+docker-build: ## Build Docker image (equivalent to docker build --no-cache -f Dockerfile -t aether-mailer .)
 	@echo "$(BLUE)Building Docker image...$(RESET)"
-	@docker build -t $(PROJECT_NAME):$(VERSION) .
-	@docker tag $(PROJECT_NAME):$(VERSION) $(PROJECT_NAME):latest
+	@docker build --no-cache -f Dockerfile -t aether-mailer .
 
-docker-run: ## Run with Docker Compose
+docker-run: ## Run Docker container with Caddy gateway (single public port 3000, internal services on 8080)
+	@echo "$(BLUE)Removing existing container if exists...$(RESET)"
+	@docker stop aether-mailer 2>/dev/null || true
+	@docker rm aether-mailer 2>/dev/null || true
+	@echo "$(BLUE)Running Docker container with Caddy reverse proxy...$(RESET)"
+	@echo "$(GREEN)Public access: http://localhost:3000$(RESET)"
+	@echo "$(GREEN)Frontend: http://localhost:3000 (via Caddy)$(RESET)"
+	@echo "$(GREEN)API: http://localhost:3000/api/v1/* (via Caddy)$(RESET)"
+	@echo "$(GREEN)Health: http://localhost:3000/health (via Caddy)$(RESET)"
+	@echo "$(YELLOW)Internal services (not exposed): backend:8080, frontend:3001$(RESET)"
+	@docker run -d --name aether-mailer -p 3000:3000 aether-mailer
+
+docker-compose-up: ## Run with Docker Compose (legacy)
 	@echo "$(BLUE)Starting services with Docker Compose...$(RESET)"
 	@docker-compose up -d
+
+docker-logs: ## Show Docker container logs
+	@echo "$(BLUE)Showing container logs...$(RESET)"
+	@docker logs -f aether-mailer
+
+docker-stop: ## Stop and remove Docker container
+	@echo "$(BLUE)Stopping and removing container...$(RESET)"
+	@docker stop aether-mailer 2>/dev/null || true
+	@docker rm aether-mailer 2>/dev/null || true
+
+docker-shell: ## Open shell in running container
+	@echo "$(BLUE)Opening shell in container...$(RESET)"
+	@docker exec -it aether-mailer /bin/sh
 
 docker-stop: ## Stop Docker Compose services
 	@echo "$(BLUE)Stopping Docker Compose services...$(RESET)"

@@ -349,19 +349,25 @@ func (s *DomainService) GetDomainStats() (*struct {
 	}
 
 	// Get total domains
-	if err := s.db.Model(&models.Domain{}).Count((*int64)(&stats.Total)).Error; err != nil {
+	var total int64
+	if err := s.db.Model(&models.Domain{}).Count(&total).Error; err != nil {
 		return nil, fmt.Errorf("failed to count total domains: %w", err)
 	}
+	stats.Total = int(total)
 
 	// Get active domains
-	if err := s.db.Model(&models.Domain{}).Where("is_active = ?", true).Count((*int64)(&stats.Active)).Error; err != nil {
+	var active int64
+	if err := s.db.Model(&models.Domain{}).Where("is_active = ?", true).Count(&active).Error; err != nil {
 		return nil, fmt.Errorf("failed to count active domains: %w", err)
 	}
+	stats.Active = int(active)
 
 	// Get verified domains
-	if err := s.db.Model(&models.Domain{}).Where("is_verified = ?", true).Count((*int64)(&stats.Verified)).Error; err != nil {
+	var verified int64
+	if err := s.db.Model(&models.Domain{}).Where("is_verified = ?", true).Count(&verified).Error; err != nil {
 		return nil, fmt.Errorf("failed to count verified domains: %w", err)
 	}
+	stats.Verified = int(verified)
 
 	// Calculate inactive and unverified
 	stats.Inactive = stats.Total - stats.Active

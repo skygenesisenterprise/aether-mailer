@@ -3,22 +3,22 @@ package middleware
 import (
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
-	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 )
 
 // AuthMiddleware handles authentication
 type AuthMiddleware struct {
 	authService *services.AuthService
-	config      *Config
+	config      *config.Config
 }
 
 // NewAuthMiddleware creates a new authentication middleware
-func NewAuthMiddleware(authService *services.AuthService, config *Config) *AuthMiddleware {
+func NewAuthMiddleware(authService *services.AuthService, config *config.Config) *AuthMiddleware {
 	return &AuthMiddleware{
 		authService: authService,
 		config:      config,

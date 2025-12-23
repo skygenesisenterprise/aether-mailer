@@ -293,27 +293,6 @@ func (s *ApiKeyService) InitializeSystemKey() error {
 	return nil
 }
 
-// GenerateSystemAPIKey generates a system API key with 16 characters
-func (s *ApiKeyService) GenerateSystemAPIKey() string {
-	// Generate 16 random bytes for system key
-	randomBytes := make([]byte, 16)
-	if _, err := rand.Read(randomBytes); err != nil {
-		log.Error().Err(err).Msg("Failed to generate random bytes for system API key")
-		return ""
-	}
-
-	// Encode to base64 and clean up
-	key := base64.URLEncoding.EncodeToString(randomBytes)
-	key = strings.TrimRight(key, "=")
-
-	// Ensure exactly 16 characters
-	if len(key) > 16 {
-		key = key[:16]
-	}
-
-	return fmt.Sprintf("sk_%s", key)
-}
-
 // generateUUID generates a UUID (simplified version)
 func generateUUID() string {
 	// This is a simplified UUID generator

@@ -293,22 +293,28 @@ func (s *UserService) GetUserStats() (*models.UserStats, error) {
 	var stats models.UserStats
 
 	// Get total users
-	if err := s.db.Model(&models.User{}).Count((*int64)(&stats.Total)).Error; err != nil {
+	var total int64
+	if err := s.db.Model(&models.User{}).Count(&total).Error; err != nil {
 		return nil, fmt.Errorf("failed to count total users: %w", err)
 	}
+	stats.Total = int(total)
 
 	// Get active users
-	if err := s.db.Model(&models.User{}).Where("is_active = ?", true).Count((*int64)(&stats.Active)).Error; err != nil {
+	var active int64
+	if err := s.db.Model(&models.User{}).Where("is_active = ?", true).Count(&active).Error; err != nil {
 		return nil, fmt.Errorf("failed to count active users: %w", err)
 	}
+	stats.Active = int(active)
 
 	// Get inactive users
 	stats.Inactive = stats.Total - stats.Active
 
 	// Get email verified users
-	if err := s.db.Model(&models.User{}).Where("is_email_verified = ?", true).Count((*int64)(&stats.EmailVerified)).Error; err != nil {
+	var emailVerified int64
+	if err := s.db.Model(&models.User{}).Where("is_email_verified = ?", true).Count(&emailVerified).Error; err != nil {
 		return nil, fmt.Errorf("failed to count email verified users: %w", err)
 	}
+	stats.EmailVerified = int(emailVerified)
 
 	// Get email unverified users
 	stats.EmailUnverified = stats.Total - stats.EmailVerified

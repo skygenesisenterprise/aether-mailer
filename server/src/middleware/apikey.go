@@ -1,13 +1,13 @@
 package middleware
 
 import (
-	"crypto/subtle"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
 	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 )
@@ -15,11 +15,11 @@ import (
 // ApiKeyMiddleware handles API key authentication
 type ApiKeyMiddleware struct {
 	apiKeyService *services.ApiKeyService
-	config        *Config
+	config        *config.Config
 }
 
 // NewApiKeyMiddleware creates a new API key middleware
-func NewApiKeyMiddleware(apiKeyService *services.ApiKeyService, config *Config) *ApiKeyMiddleware {
+func NewApiKeyMiddleware(apiKeyService *services.ApiKeyService, config *config.Config) *ApiKeyMiddleware {
 	return &ApiKeyMiddleware{
 		apiKeyService: apiKeyService,
 		config:        config,

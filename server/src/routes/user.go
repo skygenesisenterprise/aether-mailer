@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"net/http"
 
 	"github.com/skygenesisenterprise/aether-mailer/server/src/controllers"
 	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"

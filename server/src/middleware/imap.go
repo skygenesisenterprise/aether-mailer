@@ -37,7 +37,7 @@ func (m *IMAPMiddleware) ValidateCreateSession() gin.HandlerFunc {
 		}
 
 		// Validate hostname
-		if req.Hostname == "" || strings.TrimSpace(req.Hostname) == "" {
+		if req.Hostname == nil || strings.TrimSpace(*req.Hostname) == "" {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"error": gin.H{
@@ -53,7 +53,7 @@ func (m *IMAPMiddleware) ValidateCreateSession() gin.HandlerFunc {
 
 		// Validate hostname format
 		hostnameRegex := regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*$`)
-		if !hostnameRegex.MatchString(strings.TrimSpace(req.Hostname)) {
+		if !hostnameRegex.MatchString(strings.TrimSpace(*req.Hostname)) {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"error": gin.H{
@@ -120,7 +120,10 @@ func (m *IMAPMiddleware) ValidateCreateSession() gin.HandlerFunc {
 		}
 
 		// Sanitize input
-		req.Hostname = strings.TrimSpace(req.Hostname)
+		if req.Hostname != nil {
+			trimmed := strings.TrimSpace(*req.Hostname)
+			req.Hostname = &trimmed
+		}
 		req.ClientIP = strings.TrimSpace(req.ClientIP)
 		if req.Username != nil {
 			trimmed := strings.TrimSpace(*req.Username)

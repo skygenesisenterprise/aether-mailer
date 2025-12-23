@@ -12,10 +12,37 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"gorm.io/gorm"
-
 	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
+	"gorm.io/gorm"
 )
+
+// convertDNSRecordType converts models.DNSRecordType to dns.Type
+func convertDNSRecordType(recordType models.DNSRecordType) uint16 {
+	switch recordType {
+	case models.DNSRecordTypeA:
+		return dns.TypeA
+	case models.DNSRecordTypeAAAA:
+		return dns.TypeAAAA
+	case models.DNSRecordTypeMX:
+		return dns.TypeMX
+	case models.DNSRecordTypeTXT:
+		return dns.TypeTXT
+	case models.DNSRecordTypeCNAME:
+		return dns.TypeCNAME
+	case models.DNSRecordTypeNS:
+		return dns.TypeNS
+	case models.DNSRecordTypeSOA:
+		return dns.TypeSOA
+	case models.DNSRecordTypeSRV:
+		return dns.TypeSRV
+	case models.DNSRecordTypePTR:
+		return dns.TypePTR
+	case models.DNSRecordTypeCAA:
+		return dns.TypeCAA
+	default:
+		return dns.TypeA
+	}
+}
 
 // DNSService represents DNS service
 type DNSService struct {
@@ -32,7 +59,7 @@ func (s *DNSService) CreateDNSZone(ctx context.Context, domainID uint, name, pri
 	zone := &models.DNSZone{
 		DomainID:   domainID,
 		Name:       name,
-		Serial:     time.Now().Unix(),
+		Serial:     uint32(time.Now().Unix()),
 		PrimaryNS:  primaryNS,
 		AdminEmail: adminEmail,
 		IsActive:   true,
@@ -345,7 +372,7 @@ func (s *DNSService) CheckDNSPropagation(ctx context.Context, domainID uint, rec
 
 		start := time.Now()
 		m := new(dns.Msg)
-		m.SetQuestion(dns.Fqdn(domain.Name), dns.Type(recordType))
+		m.SetQuestion(dns.Fqdn(domain.Name), convertDNSRecordType(recordType))
 		m.RecursionDesired = true
 
 		c := new(dns.Client)

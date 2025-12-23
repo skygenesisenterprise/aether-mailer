@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -14,11 +15,11 @@ import (
 // AuthService handles authentication operations
 type AuthService struct {
 	db     *gorm.DB
-	config *Config
+	config *config.Config
 }
 
 // NewAuthService creates a new authentication service
-func NewAuthService(db *gorm.DB, config *Config) *AuthService {
+func NewAuthService(db *gorm.DB, config *config.Config) *AuthService {
 	return &AuthService{
 		db:     db,
 		config: config,
@@ -139,12 +140,6 @@ func (s *AuthService) Register(userData RegisterRequest) (*AuthResponse, error) 
 		}, nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check existing username: %w", err)
-	}
-
-	// Hash password
-	hashedPassword, err := s.HashPassword(userData.Password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	// Create user
@@ -317,6 +312,12 @@ func (s *AuthService) RefreshToken(refreshTokenString string) (*AuthResponse, er
 		return nil, fmt.Errorf("failed to find session: %w", err)
 	}
 
+	// Get user from session
+	var user models.User
+	if err := s.db.Where("id = ?", session.UserID).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("failed to find user: %w", err)
+	}
+
 	// Generate new access token
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userId": session.UserID,
@@ -331,16 +332,16 @@ func (s *AuthService) RefreshToken(refreshTokenString string) (*AuthResponse, er
 
 	// Create user profile for response
 	userProfile := models.UserProfile{
-		ID:              session.User.ID,
-		Email:           session.User.Email,
-		Username:        session.User.Username,
-		FirstName:       session.User.FirstName,
-		LastName:        session.User.LastName,
-		Role:            string(session.User.Role),
-		IsActive:        session.User.IsActive,
-		IsEmailVerified: session.User.IsEmailVerified,
-		CreatedAt:       session.User.CreatedAt,
-		UpdatedAt:       session.User.UpdatedAt,
+		ID:              user.ID,
+		Email:           user.Email,
+		Username:        user.Username,
+		FirstName:       user.FirstName,
+		LastName:        user.LastName,
+		Role:            string(user.Role),
+		IsActive:        user.IsActive,
+		IsEmailVerified: user.IsEmailVerified,
+		CreatedAt:       user.CreatedAt,
+		UpdatedAt:       user.UpdatedAt,
 	}
 
 	return &AuthResponse{

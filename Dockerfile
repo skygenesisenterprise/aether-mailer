@@ -1,14 +1,30 @@
-# Multi-stage build for @app/ frontend
-FROM node:20-alpine AS app-base
+# Multi-stage build for Aether Mailer - All-in-One Container
+# Architecture: Next.js (3000) + Go Backend (8080) + PostgreSQL (5432) + Redis (6379)
+
+# Stage 1: Build Go server
+FROM golang:1.23-alpine AS server-builder
+WORKDIR /server
+
+# Install git (required for some Go modules)
+RUN apk add --no-cache git
+
+# Copy Go mod files
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+
+# Copy server source code
+COPY server/ ./
+
+# Build the Go server
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+
+# Stage 2: Build Next.js frontend
+FROM node:20-alpine AS frontend-builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install pnpm
 RUN npm install -g pnpm
-
-# Build @app/ frontend
-FROM app-base AS app-builder
-WORKDIR /app
 
 # Copy workspace configuration
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
@@ -22,23 +38,62 @@ COPY app/ ./app/
 # Install dependencies in workspace mode
 RUN pnpm install --no-frozen-lockfile
 
-# Build the application
+# Build application
 RUN cd app && pnpm build
 
-# Production runner for the app
-FROM node:20-alpine AS app-runner
+# Stage 3: Production image with all services
+FROM alpine:latest AS production
+
+# Install runtime dependencies
+RUN apk --no-cache add \
+    ca-certificates \
+    tzdata \
+    postgresql \
+    postgresql-contrib \
+    redis \
+    curl \
+    su-exec \
+    nodejs \
+    npm \
+    build-base
+
+# Create application user
+RUN addgroup --system --gid 1001 appuser && \
+    adduser --system --uid 1001 --ingroup appuser appuser
+
+# Create directories BEFORE copying files
+RUN mkdir -p /var/lib/postgresql/data /var/run/postgresql /var/log/postgresql && \
+    mkdir -p /var/lib/redis /var/run/redis /var/log/redis && \
+    chown -R appuser:appuser /var/lib/postgresql /var/lib/redis /var/run/postgresql /var/run/redis /var/log/postgresql /var/log/redis
+
 WORKDIR /app
 
-ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy built applications
+COPY --from=server-builder --chown=appuser:appuser /server/main ./server/
+COPY --from=frontend-builder --chown=appuser:appuser /app/app/.next/standalone ./
+COPY --from=frontend-builder --chown=appuser:appuser /app/app/.next/static ./.next/static
 
-# Copy built app
-COPY --from=app-builder --chown=nextjs:nodejs /app/app/.next/standalone ./
-COPY --from=app-builder --chown=nextjs:nodejs /app/app/.next/static ./.next/static
+# Copy configurations
+COPY --chown=appuser:appuser prisma/ ./prisma/
+COPY --chown=appuser:appuser docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
-USER nextjs
+# Install Prisma CLI globally
+RUN npm install -g prisma
+
+# Switch to application user
+USER appuser
+
+# Expose only public port (Next.js)
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+
+# Environment variables
+ENV NODE_ENV=production
+ENV GO_ENV=production
+ENV DATABASE_PROVIDER=postgresql
+ENV POSTGRES_DB=aether_mailer
+ENV POSTGRES_USER=mailer
+ENV POSTGRES_PASSWORD=mailer_postgres
+
+# Start all services
 CMD ["./docker-entrypoint.sh"]

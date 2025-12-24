@@ -12,10 +12,11 @@ fi
 # Setup Environment Variables
 #############################################
 setup_env() {
-    export POSTGRES_DB=mailer
+    export POSTGRES_DB=aether_mailer
     export POSTGRES_USER=mailer
     export POSTGRES_HOST=localhost
     export POSTGRES_PORT=5432
+    export POSTGRES_PASSWORD=mailer_postgres
     export DATABASE_URL="postgresql://$POSTGRES_USER@localhost:5432/$POSTGRES_DB"
 
     export SERVER_PORT=8080
@@ -33,7 +34,7 @@ start_postgres() {
         echo "🐘 Starting PostgreSQL on internal port $POSTGRES_PORT..."
 
         mkdir -p /var/lib/postgresql/data
-        chown -R appuser:appuser /var/lib/postgresql/data
+        chown -R mailer:mailer /var/lib/postgresql/data
 
         if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
             echo "⚡ Initializing PostgreSQL database..."
@@ -124,7 +125,6 @@ cleanup() {
     [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null || true
     [ -n "$NEXTJS_PID" ] && kill "$NEXTJS_PID" 2>/dev/null || true
     [ -n "$POSTGRES_PID" ] && kill "$POSTGRES_PID" 2>/dev/null || true
-    [ -f "/var/run/redis/redis-server.pid" ] && kill $(cat /var/run/redis/redis-server.pid) 2>/dev/null || true
     wait || true
     echo "✅ All services stopped"
 }

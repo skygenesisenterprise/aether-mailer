@@ -50,7 +50,6 @@ RUN apk --no-cache add \
     tzdata \
     postgresql \
     postgresql-contrib \
-    redis \
     curl \
     su-exec \
     nodejs \
@@ -58,31 +57,30 @@ RUN apk --no-cache add \
     build-base
 
 # Create application user
-RUN addgroup --system --gid 1001 appuser && \
-    adduser --system --uid 1001 --ingroup appuser appuser
+RUN addgroup --system --gid 1001 mailer && \
+    adduser --system --uid 1001 --ingroup mailer mailer
 
 # Create directories BEFORE copying files
 RUN mkdir -p /var/lib/postgresql/data /var/run/postgresql /var/log/postgresql && \
-    mkdir -p /var/lib/redis /var/run/redis /var/log/redis && \
-    chown -R appuser:appuser /var/lib/postgresql /var/lib/redis /var/run/postgresql /var/run/redis /var/log/postgresql /var/log/redis
+    chown -R mailer:mailer /var/lib/postgresql /var/run/postgresql /var/log/postgresql
 
 WORKDIR /app
 
 # Copy built applications
-COPY --from=server-builder --chown=appuser:appuser /server/main ./server/
-COPY --from=frontend-builder --chown=appuser:appuser /app/app/.next/standalone ./
-COPY --from=frontend-builder --chown=appuser:appuser /app/app/.next/static ./.next/static
+COPY --from=server-builder --chown=mailer:mailer /server/main ./server/
+COPY --from=frontend-builder --chown=mailer:mailer /app/app/.next/standalone ./
+COPY --from=frontend-builder --chown=mailer:mailer /app/app/.next/static ./.next/static
 
 # Copy configurations
-COPY --chown=appuser:appuser prisma/ ./prisma/
-COPY --chown=appuser:appuser docker-entrypoint.sh ./
+COPY --chown=mailer:mailer prisma/ ./prisma/
+COPY --chown=mailer:mailer docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # Install Prisma CLI globally
 RUN npm install -g prisma
 
 # Switch to application user
-USER appuser
+USER mailer
 
 # Expose only public port (Next.js)
 EXPOSE 3000

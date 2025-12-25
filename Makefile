@@ -1,7 +1,7 @@
 # Aether Mailer Makefile
 # Modern mail server foundation with monorepo architecture
 
-.PHONY: help install dev build test lint clean docker-build docker-run docker-compose-up docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log
+.PHONY: help install dev build test lint clean docker-build docker-run docker-compose-up docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log docker-cli docker-exec
 
 # Default target
 .DEFAULT_GOAL := help
@@ -170,9 +170,23 @@ docker-stop: ## Stop and remove Docker container
 	@docker stop aether-mailer 2>/dev/null || true
 	@docker rm aether-mailer 2>/dev/null || true
 
+docker-exec: ## Execute command in container (usage: make docker-exec CMD="command")
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(RED)Error: Please specify CMD='command'$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Executing command in container: $(CMD)$(RESET)"
+	@docker exec -it aether-mailer /bin/sh -c "$(CMD)"
+
 docker-shell: ## Open shell in running container
 	@echo "$(BLUE)Opening shell in container...$(RESET)"
 	@docker exec -it aether-mailer /bin/sh
+
+docker-cli: ## Connect to container and run CLI interface
+	@echo "$(BLUE)Connecting to container CLI...$(RESET)"
+	@echo "$(GREEN)Available commands: mailer [command]$(RESET)"
+	@echo "$(YELLOW)Type 'exit' to return to host$(RESET)"
+	@docker exec -it aether-mailer /bin/sh -c "cd /app && exec /bin/sh"
 
 docker-stop: ## Stop Docker Compose services
 	@echo "$(BLUE)Stopping Docker Compose services...$(RESET)"

@@ -2,26 +2,49 @@ name: Makefile CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-    - name: configure
-      run: ./configure
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
 
-    - name: Install dependencies
-      run: make install
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
 
-    - name: Run check
-      run: make typecheck
+      - name: Install dependencies
+        run: make install
 
-    - name: Run distcheck
-      run: make distcheck
+      - name: Type check
+        run: make typecheck
+
+      - name: Lint
+        run: make lint
+
+      - name: Build all packages
+        run: make build
+
+      - name: Test
+        run: make test
+
+      - name: Build Docker image
+        run: make docker-build
+
+      - name: Test Docker container
+        run: |
+          make docker-run
+          sleep 10
+          make docker-exec CMD="mailer health"
+          make docker-stop

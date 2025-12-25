@@ -29,9 +29,11 @@
   "author": "Sky Genesis Enterprise",
   "license": "MIT",
   "dependencies": {
+    "chalk": "^5.6.2",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
+    "@types/chalk": "^2.2.4",
     "@types/node": "^25.0.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"

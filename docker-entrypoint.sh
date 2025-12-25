@@ -17,12 +17,14 @@ setup_env() {
     export POSTGRES_USER=mailer
     export POSTGRES_HOST=localhost
     export POSTGRES_PORT=5432
-    export POSTGRES_PASSWORD=mailer_postgres
+    export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mailer_postgres}
     export DATABASE_URL="postgresql://$POSTGRES_USER@localhost:5432/$POSTGRES_DB"
 
     export SERVER_PORT=8080
     export FRONTEND_PORT=3000
     export NODE_ENV=production
+    export SSH_AUTH_SERVICE_URL=${SSH_AUTH_SERVICE_URL:-""}
+    export SSH_ENABLE_LOCAL_AUTH=${SSH_ENABLE_LOCAL_AUTH:-true}
     
     # Determine frontend HOST based on environment
     if [ "$NODE_ENV" = "development" ] || [ -n "$LOCAL_ACCESS" ]; then

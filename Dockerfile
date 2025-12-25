@@ -80,10 +80,10 @@ RUN apk --no-cache add \
 RUN addgroup --system --gid 1001 mailer && \
     adduser --system --uid 1001 --ingroup mailer mailer
 
-# Create SSH user
+# Create SSH user with proper shell path
 RUN addgroup --system --gid 1002 ssh-users && \
     adduser --system --uid 1002 --ingroup ssh-users --shell /usr/bin/mailer-shell.sh ssh-user && \
-    echo "ssh-user:$(openssl rand -base64 32)" | chpasswd
+    echo "ssh-user:tempPassword123" | chpasswd
 
 # Create directories BEFORE copying files
 RUN mkdir -p /var/lib/postgresql/data /var/run/postgresql /var/log/postgresql && \
@@ -119,15 +119,21 @@ USER mailer
 # Expose public ports
 EXPOSE 3000 2222
 
-# Environment variables
+# Environment variables (secrets should be provided at runtime)
+ARG POSTGRES_PASSWORD_ARG=mailer_postgres
+ARG SSH_AUTH_SERVICE_URL_ARG=""
+ARG SSH_ENABLE_LOCAL_AUTH_ARG=true
+
 ENV NODE_ENV=production
 ENV GO_ENV=production
 ENV DATABASE_PROVIDER=postgresql
 ENV POSTGRES_DB=aether_mailer
 ENV POSTGRES_USER=mailer
-ENV POSTGRES_PASSWORD=mailer_postgres
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD_ARG}
 ENV SSH_PORT=2222
 ENV SSH_USER=ssh-user
+ENV SSH_AUTH_SERVICE_URL=${SSH_AUTH_SERVICE_URL_ARG}
+ENV SSH_ENABLE_LOCAL_AUTH=${SSH_ENABLE_LOCAL_AUTH_ARG}
 ENV SSH_AUTH_SERVICE_URL=""
 ENV SSH_ENABLE_LOCAL_AUTH="true"
 

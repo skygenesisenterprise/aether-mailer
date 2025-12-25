@@ -54,17 +54,24 @@ echo "📝 Initializing PID files..."
 
 # Setup container networking hints
 echo "🌐 Setting up container networking..."
-if [ -f /etc/hosts ]; then
-    # Add container-specific entries if not present
-    if ! grep -q "aether-mailer" /etc/hosts; then
-        echo "127.0.0.1   aether-mailer mailer" >> /etc/hosts
-    fi
-fi
+# Note: /etc/hosts is often read-only in containers, use alternative approach
+# The DNS settings will be handled by /etc/resolv.conf and Docker's DNS configuration
+echo "✓ Container networking configured (using Docker DNS resolution)"
 
 # Create symlinks for compatibility
 echo "🔗 Creating compatibility symlinks..."
 ln -sf /usr/bin/mailer-shell.sh /usr/local/bin/mailer-cli 2>/dev/null || true
 ln -sf /usr/bin/ssh-auth.sh /usr/local/bin/ssh-auth 2>/dev/null || true
+
+# Add additional entries to hosts if file is writable (fallback)
+if [ -w /etc/hosts ] 2>/dev/null; then
+    if ! grep -q "aether-mailer" /etc/hosts 2>/dev/null; then
+        echo "127.0.0.1   aether-mailer mailer" >> /etc/hosts 2>/dev/null || true
+        echo "✓ Added local hosts entries"
+    fi
+else
+    echo "⚠️ /etc/hosts is read-only, using Docker DNS resolution"
+fi
 
 # Final security hardening
 echo "🛡️ Security hardening..."

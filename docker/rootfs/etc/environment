@@ -1,0 +1,26 @@
+# Container environment variables
+# This file is sourced during container startup
+
+# Aether Mailer specific
+export AETHER_MAILER_VERSION="0.1.0"
+export AETHER_MAILER_HOME="/opt/aether-mailer"
+export AETHER_MAILER_CONFIG="/etc/aether-mailer"
+export AETHER_MAILER_LOGS="/var/log/mailer"
+
+# Container system paths
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/aether-mailer/bin"
+export LD_LIBRARY_PATH="/usr/lib:/usr/local/lib:/opt/aether-mailer/lib"
+
+# Security
+umask 022
+export TZ="UTC"
+
+# Application defaults (can be overridden by Docker env)
+export NODE_ENV="${NODE_ENV:-production}"
+export LOG_LEVEL="${LOG_LEVEL:-info}"
+export SSH_PORT="${SSH_PORT:-2222}"
+
+# Container optimization
+export MALLOC_ARENA_MAX=2
+export LANG="C.UTF-8"
+export LC_ALL="C.UTF-8"

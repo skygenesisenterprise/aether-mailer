@@ -1,0 +1,10 @@
+# PAM common session configuration
+# Common session settings for all services
+
+session     required     pam_limits.so
+session     required     pam_unix.so
+session     optional     pam_lastlog.so
+session     optional     pam_motd.so
+session     optional     pam_mail.so standard noenv
+session     optional     pam_umask.so umask=022
+session     optional     pam_env.so readenv=1 envfile=/etc/environment

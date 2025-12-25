@@ -47,4 +47,6 @@ jobs:
           make docker-run
           sleep 10
           make docker-exec CMD="mailer health"
+          make docker-ssh-setup
+          make docker-ssh-test
           make docker-stop

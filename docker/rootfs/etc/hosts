@@ -1,0 +1,16 @@
+# System hosts file for Aether Mailer container
+# Localhost and container networking
+
+127.0.0.1   localhost localhost.localdomain
+::1           localhost localhost.localdomain
+
+# Container service aliases (internal)
+127.0.0.1   aether-mailer
+127.0.0.1   mailer
+
+# Database service (if using external database)
+# 192.168.1.10   postgres-aether
+
+# Monitoring services (optional)
+# 192.168.1.20   prometheus
+# 192.168.1.21   grafana

@@ -2,7 +2,6 @@
 
 # Aether Mailer Docker Infrastructure
 
-
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes)
 ![Container](https://img.shields.io/badge/Container-Ready-2496ED?style=for-the-badge)
@@ -50,6 +49,7 @@ The `/docker/` directory contains **containerization infrastructure** for Aether
 > **⚠️ Planning Phase**: Docker infrastructure is in early planning with template structure only.
 
 #### ✅ **Currently Implemented**
+
 - **Manifest Templates** - Multi-architecture Docker manifests
 - **Configuration Templates** - Basic app and SSH configuration
 - **Multi-Architecture Support** - AMD64, ARM64, RISC-V builds
@@ -57,6 +57,7 @@ The `/docker/` directory contains **containerization infrastructure** for Aether
 - **Tag Management** - Automated version tagging and releases
 
 #### 🔄 **In Development**
+
 - **Dockerfiles** - Optimized container images
 - **Docker Compose** - Multi-service orchestration
 - **Kubernetes Manifests** - Production deployment configs
@@ -64,6 +65,7 @@ The `/docker/` directory contains **containerization infrastructure** for Aether
 - **Health Checks** - Container health monitoring
 
 #### 📋 **Planned Features**
+
 - **Multi-Stage Builds** - Optimized image sizes
 - **Base Image Optimization** - Minimal and secure base images
 - **CI/CD Integration** - Automated build and deployment
@@ -76,36 +78,45 @@ The `/docker/` directory contains **containerization infrastructure** for Aether
 
 ```
 docker/
-├── root/                     # Root filesystem for containers
-│   └── etc/
-│       ├── templates/
-│       │   ├── app.ini         # Application configuration template
-│       │   └── sshd_config     # SSH daemon configuration
-│       └── nsswitch.conf       # Name service switch configuration
-├── Dockerfile                 # Main container image (planned)
-├── Dockerfile.rootless        # Rootless variant (planned)
-├── docker-compose.yml         # Development orchestration (planned)
-├── docker-compose.prod.yml     # Production orchestration (planned)
-├── kubernetes/               # Kubernetes manifests (planned)
-│   ├── namespace.yaml         # Namespace configuration
-│   ├── configmap.yaml        # Configuration data
-│   ├── secret.yaml           # Sensitive data
-│   ├── deployment.yaml        # Application deployment
-│   ├── service.yaml           # Service exposure
-│   ├── ingress.yaml          # External access
-│   └── persistentvolume.yaml  # Storage configuration
-├── scripts/                  # Build and deployment scripts (planned)
-│   ├── build.sh             # Multi-architecture build
-│   ├── push.sh              # Registry push automation
-│   ├── deploy.sh            # Deployment automation
-│   └── health-check.sh      # Container health monitoring
-├── tests/                    # Container testing (planned)
+├── rootfs/                    # Root filesystem (Linux distro-like)
+│   ├── etc/                   # System configuration
+│   │   ├── ssh/              # SSH configuration
+│   │   │   ├── sshd_config   # SSH daemon configuration
+│   │   │   └── banner       # SSH login banner
+│   │   ├── pam.d/            # PAM authentication modules
+│   │   ├── security/          # Security policies
+│   │   ├── hosts             # Hostname resolution
+│   │   └── environment        # System environment variables
+│   ├── usr/                   # User programs and data
+│   │   ├── bin/             # User binaries and scripts
+│   │   │   ├── mailer-shell.sh    # CLI shell interface
+│   │   │   └── ssh-auth.sh       # Authentication script
+│   │   └── local/           # Local software
+│   ├── var/                   # Variable data
+│   │   └── log/             # System logs
+│   │       ├── sshd/         # SSH daemon logs
+│   │       └── mailer/       # Application logs
+│   ├── opt/                   # Optional add-on software
+│   ├── home/                  # User home directories
+│   └── tmp/                   # Temporary files
+├── config/                     # Build and deployment configs
+│   ├── environment/           # Environment-specific variables
+│   │   ├── dev.env         # Development environment
+│   │   ├── staging.env     # Staging environment
+│   │   └── prod.env        # Production environment
+│   └── features/             # Optional feature configurations
+├── scripts/                    # Build and deployment scripts
+├── manifests/                  # Dockerfile and manifests
+│   ├── Dockerfile           # Main container image
+│   ├── Dockerfile.rootless  # Rootless variant (planned)
+│   ├── manifest.tmpl        # Multi-architecture manifest
+│   └── manifest.rootless.tmpl
+├── tests/                     # Container testing
 │   ├── unit/                # Unit tests for container logic
 │   ├── integration/         # Integration tests
 │   └── security/            # Security scanning
-├── docs/                     # Docker documentation (planned)
-├── manifest.tmpl              # Multi-architecture manifest template
-├── manifest.rootless.tmpl     # Rootless variant manifest
+├── docs/                      # Documentation
+│   └── architecture.md     # System architecture documentation
 ├── CODEOWNERS                # Code ownership rules
 └── README.md                 # This documentation
 ```
@@ -117,6 +128,7 @@ docker/
 ### 🐳 **Docker Deployment**
 
 #### **Single Container Deployment**
+
 ```bash
 # Build image
 docker build -t aether-mailer:latest .
@@ -135,6 +147,7 @@ docker run -d \
 ```
 
 #### **Multi-Container Deployment**
+
 ```bash
 # Using Docker Compose
 docker-compose up -d
@@ -146,6 +159,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ### ☸️ **Kubernetes Deployment**
 
 #### **Namespace Setup**
+
 ```yaml
 # kubernetes/namespace.yaml
 apiVersion: v1
@@ -158,6 +172,7 @@ metadata:
 ```
 
 #### **Configuration Management**
+
 ```yaml
 # kubernetes/configmap.yaml
 apiVersion: v1
@@ -175,6 +190,7 @@ data:
 ```
 
 #### **Application Deployment**
+
 ```yaml
 # kubernetes/deployment.yaml
 apiVersion: apps/v1
@@ -195,40 +211,40 @@ spec:
         app: aether-mailer
     spec:
       containers:
-      - name: aether-mailer
-        image: skygenesisenterprise/aether-mailer:latest
-        ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 25
-          name: smtp
-        - containerPort: 143
-          name: imap
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: aether-mailer-secrets
-              key: database-url
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: aether-mailer
+          image: skygenesisenterprise/aether-mailer:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 25
+              name: smtp
+            - containerPort: 143
+              name: imap
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aether-mailer-secrets
+                  key: database-url
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
 ```
 
 ---
@@ -238,6 +254,7 @@ spec:
 ### 🐳 **Dockerfile Structure**
 
 #### **Multi-Stage Build**
+
 ```dockerfile
 # Build stage
 FROM node:18-alpine AS builder
@@ -276,6 +293,7 @@ CMD ["node", "dist/server.js"]
 ```
 
 #### **Rootless Variant**
+
 ```dockerfile
 FROM alpine:3.18
 RUN apk add --no-cache \
@@ -305,9 +323,10 @@ CMD ["node", "dist/server.js"]
 ### 📋 **Docker Compose Configuration**
 
 #### **Development Environment**
+
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   aether-mailer:
@@ -315,10 +334,10 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
-      - "8080:8080"  # API/Web
-      - "25:25"       # SMTP
-      - "143:143"     # IMAP
-      - "993:993"     # IMAPS
+      - "8080:8080" # API/Web
+      - "25:25" # SMTP
+      - "143:143" # IMAP
+      - "993:993" # IMAPS
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://aether:password@postgres:5432/aether_mailer
@@ -354,9 +373,10 @@ volumes:
 ```
 
 #### **Production Environment**
+
 ```yaml
 # docker-compose.prod.yml
-version: '3.8'
+version: "3.8"
 
 services:
   aether-mailer:
@@ -365,10 +385,10 @@ services:
       replicas: 3
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
     ports:
       - "8080:8080"
@@ -439,6 +459,7 @@ docker build \
 ### 🚀 **Deployment Scripts**
 
 #### **Multi-Architecture Build Script**
+
 ```bash
 #!/bin/bash
 # scripts/build.sh
@@ -476,6 +497,7 @@ echo "Build completed successfully!"
 ```
 
 #### **Kubernetes Deployment Script**
+
 ```bash
 #!/bin/bash
 # scripts/deploy.sh
@@ -505,6 +527,7 @@ echo "Deployment completed! Service available at: $SERVICE_URL"
 ### 🧪 **Testing**
 
 #### **Container Testing**
+
 ```bash
 # Test container locally
 docker run --rm \
@@ -529,6 +552,7 @@ docker run --rm \
 ### 🛡️ **Security Best Practices**
 
 #### **Container Security**
+
 - **Non-Root User** - All containers run as non-root user
 - **Minimal Base Images** - Use Alpine Linux for minimal attack surface
 - **Multi-Stage Builds** - Separate build and runtime environments
@@ -537,6 +561,7 @@ docker run --rm \
 - **Health Checks** - Implement proper health monitoring
 
 #### **Image Security**
+
 - **Vulnerability Scanning** - Regular security scans with Trivy
 - **Base Image Updates** - Keep base images updated
 - **Minimal Dependencies** - Only include necessary packages
@@ -544,6 +569,7 @@ docker run --rm \
 - **Image Signing** - Sign images for verification
 
 #### **Runtime Security**
+
 ```dockerfile
 # Security-focused Dockerfile example
 FROM alpine:3.18 AS security-base
@@ -574,23 +600,24 @@ WORKDIR /app
 
 ## 📊 Current Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Manifest Templates** | ✅ Working | Multi-arch support |
-| **Configuration Templates** | ✅ Working | Basic app/SSH configs |
-| **Dockerfiles** | 📋 Planned | Optimized images |
-| **Docker Compose** | 📋 Planned | Multi-service orchestration |
-| **Kubernetes Manifests** | 📋 Planned | Production deployment |
-| **Build Scripts** | 📋 Planned | Multi-arch builds |
-| **Security Hardening** | 📋 Planned | Non-root, minimal images |
-| **CI/CD Integration** | 📋 Planned | Automated builds |
-| **Health Checks** | 📋 Planned | Container monitoring |
+| Component                   | Status     | Notes                       |
+| --------------------------- | ---------- | --------------------------- |
+| **Manifest Templates**      | ✅ Working | Multi-arch support          |
+| **Configuration Templates** | ✅ Working | Basic app/SSH configs       |
+| **Dockerfiles**             | 📋 Planned | Optimized images            |
+| **Docker Compose**          | 📋 Planned | Multi-service orchestration |
+| **Kubernetes Manifests**    | 📋 Planned | Production deployment       |
+| **Build Scripts**           | 📋 Planned | Multi-arch builds           |
+| **Security Hardening**      | 📋 Planned | Non-root, minimal images    |
+| **CI/CD Integration**       | 📋 Planned | Automated builds            |
+| **Health Checks**           | 📋 Planned | Container monitoring        |
 
 ---
 
 ## 🚀 Roadmap
 
 ### 🎯 **Phase 1: Foundation (Q1 2025)**
+
 - **Dockerfiles** - Optimized multi-stage builds
 - **Docker Compose** - Development and production configs
 - **Build Scripts** - Multi-architecture build automation
@@ -598,6 +625,7 @@ WORKDIR /app
 - **Health Checks** - Container health monitoring
 
 ### 🚀 **Phase 2: Production Ready (Q2 2025)**
+
 - **Kubernetes Manifests** - Complete deployment configs
 - **Security Hardening** - Advanced security practices
 - **Monitoring Integration** - Prometheus metrics and logging
@@ -605,6 +633,7 @@ WORKDIR /app
 - **Backup Solutions** - Container-based backup/restore
 
 ### ⚙️ **Phase 3: Enterprise Features (Q3 2025)**
+
 - **Multi-Environment** - Dev/staging/prod configurations
 - **Auto-Scaling** - Horizontal pod autoscaling
 - **Service Mesh** - Istio/Linkerd integration
@@ -612,6 +641,7 @@ WORKDIR /app
 - **Performance Optimization** - Resource tuning and monitoring
 
 ### 🌟 **Phase 4: Cloud Native (Q4 2025)**
+
 - **Cloud Provider Support** - AWS EKS, GCP GKE, Azure AKS
 - **GitOps** - ArgoCD/Flux integration
 - **Observability** - Full monitoring stack (metrics, logs, traces)
@@ -636,6 +666,7 @@ The Docker infrastructure is perfect for contributors with expertise in:
 ### 📝 **Adding New Features**
 
 1. **Update Dockerfiles**
+
    ```dockerfile
    # Add new security features
    # Optimize layer caching
@@ -643,6 +674,7 @@ The Docker infrastructure is perfect for contributors with expertise in:
    ```
 
 2. **Update Compose Files**
+
    ```yaml
    # Add new services
    # Update environment variables
@@ -650,6 +682,7 @@ The Docker infrastructure is perfect for contributors with expertise in:
    ```
 
 3. **Create Kubernetes Manifests**
+
    ```yaml
    # Define new resources
    # Add security contexts
@@ -708,6 +741,6 @@ This Docker infrastructure is part of the Aether Mailer project, licensed under 
 
 **Made with ❤️ by the [Sky Genesis Enterprise](https://skygenesisenterprise.com) DevOps team**
 
-*Building secure, scalable, and production-ready container infrastructure*
+_Building secure, scalable, and production-ready container infrastructure_
 
 </div>

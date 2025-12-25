@@ -1,5 +1,6 @@
-# Multi-stage build for Aether Mailer - All-in-One Container
-# Architecture: Next.js (3000) + Go Backend (8080) + PostgreSQL (5432) + Redis (6379)
+# Multi-stage build for Aether Mailer - Linux Distro Container
+# Architecture: Next.js (3000) + Go Backend (8080) + PostgreSQL (5432) + SSH Management (2222)
+# FHS-compliant filesystem structure for container compatibility
 
 # Stage 1: Build Go server
 FROM golang:1.23-alpine AS server-builder
@@ -62,11 +63,27 @@ RUN apk --no-cache add \
     su-exec \
     nodejs \
     npm \
-    build-base
+    build-base \
+    openssh \
+    openssh-server \
+    shadow \
+    sudo \
+    caddy \
+    supervisor \
+    openssl \
+    linux-pam \
+    net-tools \
+    procps \
+    findutils
 
 # Create application user
 RUN addgroup --system --gid 1001 mailer && \
     adduser --system --uid 1001 --ingroup mailer mailer
+
+# Create SSH user
+RUN addgroup --system --gid 1002 ssh-users && \
+    adduser --system --uid 1002 --ingroup ssh-users --shell /usr/bin/mailer-shell.sh ssh-user && \
+    echo "ssh-user:$(openssl rand -base64 32)" | chpasswd
 
 # Create directories BEFORE copying files
 RUN mkdir -p /var/lib/postgresql/data /var/run/postgresql /var/log/postgresql && \
@@ -80,23 +97,27 @@ COPY --from=frontend-builder --chown=mailer:mailer /app/app/.next/standalone ./
 COPY --from=frontend-builder --chown=mailer:mailer /app/app/.next/static ./.next/static
 COPY --from=frontend-builder --chown=mailer:mailer /app/cli/dist ./cli/
 
+# Copy Linux distro filesystem structure
+COPY --chown=root:root docker/rootfs/ /
+
 # Copy configurations
 COPY --chown=mailer:mailer prisma/ ./prisma/
 COPY --chown=mailer:mailer docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
-# Install Prisma CLI globally
-RUN npm install -g prisma
-
-# Create symlink for CLI binary
-RUN ln -sf /app/cli/main.js /usr/local/bin/mailer && \
+# Install Prisma CLI globally and setup binaries
+RUN npm install -g prisma && \
+    ln -sf /app/cli/main.js /usr/local/bin/mailer && \
     chmod +x /usr/local/bin/mailer
+
+# Initialize container environment
+RUN /usr/bin/container-init.sh
 
 # Switch to application user
 USER mailer
 
-# Expose only public port (Next.js)
-EXPOSE 3000
+# Expose public ports
+EXPOSE 3000 2222
 
 # Environment variables
 ENV NODE_ENV=production
@@ -105,6 +126,10 @@ ENV DATABASE_PROVIDER=postgresql
 ENV POSTGRES_DB=aether_mailer
 ENV POSTGRES_USER=mailer
 ENV POSTGRES_PASSWORD=mailer_postgres
+ENV SSH_PORT=2222
+ENV SSH_USER=ssh-user
+ENV SSH_AUTH_SERVICE_URL=""
+ENV SSH_ENABLE_LOCAL_AUTH="true"
 
 # Start all services
 CMD ["./docker-entrypoint.sh"]

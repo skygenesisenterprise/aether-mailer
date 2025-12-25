@@ -1,0 +1,21 @@
+# SSH Banner for Aether Mailer
+# Displayed on successful SSH connection
+
+================================================================================
+                      AETHER MAILER - SECURE ACCESS POINT
+================================================================================
+
+Welcome to Aether Mailer CLI interface!
+
+You are accessing a production mail server system.
+All connections are logged and monitored.
+
+IMPORTANT:
+- This system is for authorized users only
+- All activities are recorded for security purposes
+- Unauthorized access attempts will be reported
+
+Type 'mailer help' to see available commands
+Type 'exit' to disconnect
+
+================================================================================

@@ -1,0 +1,7 @@
+# PAM configuration for other services
+# Template for additional service authentication
+
+auth        include      system-auth
+account     include      system-account
+password    include      system-password
+session     include      common-session

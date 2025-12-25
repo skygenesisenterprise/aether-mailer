@@ -1,0 +1,25 @@
+# PAM configuration for SSH service
+# Handles authentication for SSH connections with external service support
+
+# Account management
+account    required     pam_nologin.so
+account    include      system-account
+
+# Authentication (with external service support)
+auth        [success=2 default=ignore]  pam_unix.so nullok try_first_pass
+auth        requisite                   pam_succeed_if.so uid >= 1000 quiet
+auth        sufficient                  pam_exec.so /usr/bin/ssh-auth.sh
+auth        required                    pam_deny.so
+
+# Password management (if local auth is enabled)
+password    include      system-password
+
+# Session management
+session     required     pam_limits.so
+session     required     pam_unix.so
+session     optional     pam_lastlog.so
+session     optional     pam_motd.so
+session     optional     pam_mail.so standard noenv
+
+# Security additions for containers
+session     required     pam_env.so readenv=1 envfile=/etc/environment

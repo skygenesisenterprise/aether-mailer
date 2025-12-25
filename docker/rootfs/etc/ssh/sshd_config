@@ -1,0 +1,52 @@
+# SSH Configuration for Aether Mailer Container
+# Secure configuration with external authentication support
+
+# Basic SSH configuration
+Port 2222
+Protocol 2
+
+# Authentication settings - Support for external authentication
+PasswordAuthentication yes
+PubkeyAuthentication yes
+KbdInteractiveAuthentication yes
+UsePAM yes
+
+# Security settings
+PermitRootLogin no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+
+# User restrictions
+AllowUsers ssh-user mailer
+DenyUsers root
+
+# Connection settings
+MaxAuthTries 3
+MaxSessions 10
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Security hardening
+X11Forwarding no
+AllowTcpForwarding no
+GatewayPorts no
+PermitTunnel no
+
+# Host keys
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Strong ciphers and MACs
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256,hmac-sha2-512
+KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
+
+# Banner
+Banner /etc/ssh/banner
+
+# Subsystem configuration
+Subsystem sftp /usr/lib/openssh/sftp-server

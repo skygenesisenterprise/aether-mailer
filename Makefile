@@ -1,7 +1,7 @@
 # Aether Mailer Makefile
 # Modern mail server foundation with monorepo architecture
 
-.PHONY: help install dev build test lint clean docker-build docker-run docker-compose-up docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log docker-cli docker-exec
+.PHONY: help install dev build test lint clean docker-build docker-run docker-compose-up docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log docker-cli docker-exec docker-ssh docker-ssh-setup docker-ssh-test
 
 # Default target
 .DEFAULT_GOAL := help
@@ -187,6 +187,28 @@ docker-cli: ## Connect to container and run CLI interface
 	@echo "$(GREEN)Available commands: mailer [command]$(RESET)"
 	@echo "$(YELLOW)Type 'exit' to return to host$(RESET)"
 	@docker exec -it aether-mailer /bin/sh -c "cd /app && exec /bin/sh"
+
+docker-ssh: ## SSH into container (usage: make docker-ssh)
+	@echo "$(BLUE)Connecting via SSH to container...$(RESET)"
+	@ssh -p 2222 ssh-user@localhost || echo "$(YELLOW)Container may not be running. Use 'make docker-run' first.$(RESET)"
+
+docker-ssh-setup: ## Setup SSH access with external authentication service
+	@echo "$(BLUE)Setting up SSH access...$(RESET)"
+	@if [ -z "$(SSH_AUTH_SERVICE_URL)" ]; then \
+		echo "$(YELLOW)Setting up local authentication for testing...$(RESET)"; \
+		echo "ssh-user:password123" | docker exec -i aether-mailer chpasswd; \
+	else \
+		echo "$(GREEN)Using external authentication service: $(SSH_AUTH_SERVICE_URL)$(RESET)"; \
+	fi
+	@echo "$(GREEN)SSH access configured. Use 'make docker-ssh' to connect.$(RESET)"
+
+docker-ssh-test: ## Test SSH connection and authentication
+	@echo "$(BLUE)Testing SSH connection...$(RESET)"
+	@echo "Testing local authentication..."
+	@docker exec -it aether-mailer /usr/local/bin/ssh-auth.sh test ssh-user password123 && echo "$(GREEN)✓ Authentication test passed$(RESET)" || echo "$(RED)✗ Authentication test failed$(RESET)"
+	@echo ""
+	@echo "Testing SSH service..."
+	@ssh -o BatchMode=yes -o ConnectTimeout=5 -p 2222 ssh-user@localhost "echo 'SSH connection successful'" 2>/dev/null && echo "$(GREEN)✓ SSH connection test passed$(RESET)" || echo "$(YELLOW)⚠ SSH connection test failed - container may need to be restarted$(RESET)"
 
 docker-stop: ## Stop Docker Compose services
 	@echo "$(BLUE)Stopping Docker Compose services...$(RESET)"

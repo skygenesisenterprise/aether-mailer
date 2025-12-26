@@ -1,8 +1,6 @@
 package protocols
 
 import (
-	"fmt"
-
 	"github.com/skygenesisenterprise/aether-mailer/services/monitoring"
 )
 

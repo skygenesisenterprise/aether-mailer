@@ -2,8 +2,6 @@ module github.com/skygenesisenterprise/aether-mailer/services
 
 go 1.25.5
 
-toolchain go1.24.11
-
 require (
 	github.com/rs/zerolog v1.34.0
 	gorm.io/driver/postgres v1.5.4

@@ -18,7 +18,7 @@ import (
 	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
 	"github.com/skygenesisenterprise/aether-mailer/server/src/routes"
 	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
-	"github.com/skygenesisenterprise/aether-mailer/server/cmd/server"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -336,4 +336,18 @@ func getHostname() string {
 		return hostname
 	}
 	return "unknown"
+}
+
+// main is the entry point for the server application
+func main() {
+	// Create new server instance
+	server, err := NewServer()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create server")
+	}
+
+	// Start the server
+	if err := server.Start(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to start server")
+	}
 }

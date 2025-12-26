@@ -20,10 +20,12 @@
     ],
     "paths": {
       "@/*": ["./*"],
+      "@/assets/*": ["./assets"],
       "@/components/*": ["./components/*"],
       "@/context/*": ["./context/*"],
       "@/lib/*": ["./lib/*"],
-      "@/styles/*": ["./styles/*"]
+      "@/styles/*": ["./styles/*"],
+      "@/hook/*": ["./hook"]
     },
     "baseUrl": ".",
     "types": ["next", "node"],

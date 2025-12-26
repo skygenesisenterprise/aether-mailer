@@ -3,7 +3,7 @@
 # FHS-compliant filesystem structure for container compatibility
 
 # Stage 1: Build Go server
-FROM golang:1.23-alpine AS server-builder
+FROM golang:1.25-alpine AS server-builder
 WORKDIR /server
 
 # Install git (required for some Go modules)

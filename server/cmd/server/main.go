@@ -63,7 +63,12 @@ func NewServer() (*Server, error) {
 	}
 
 	// Initialize services
-	apiKeyService := services.NewApiKeyService(db, &cfg.APIKey)
+	var apiKeyService *services.ApiKeyService
+	if db != nil {
+		apiKeyService = services.NewApiKeyService(db, &cfg.APIKey)
+	} else {
+		log.Info().Msg("🔑 API Key service disabled - no database connection")
+	}
 
 	// Initialize middleware
 	monitoringMiddleware := middleware.NewMonitoringMiddleware()
@@ -74,7 +79,12 @@ func NewServer() (*Server, error) {
 	authController := controllers.NewAuthController(nil)     // authService will be nil for now
 	userController := controllers.NewUserController(nil)     // userService will be nil for now
 	domainController := controllers.NewDomainController(nil) // domainService will be nil for now
-	apiKeyController := controllers.NewApiKeyController(apiKeyService)
+	var apiKeyController *controllers.ApiKeyController
+	if apiKeyService != nil {
+		apiKeyController = controllers.NewApiKeyController(apiKeyService)
+	} else {
+		log.Info().Msg("🔑 API Key controller disabled - no database connection")
+	}
 
 	// Initialize domain middleware
 	domainMiddleware := middleware.NewDomainMiddleware()
@@ -112,6 +122,12 @@ func NewServer() (*Server, error) {
 
 // connectDatabase establishes database connection
 func connectDatabase(cfg *config.Config) (*gorm.DB, error) {
+	// Check if database is disabled
+	if !cfg.Database.Enabled {
+		log.Info().Msg("📊 Database disabled - running in no-database mode")
+		return nil, nil
+	}
+
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
 		cfg.Database.Host,
 		cfg.Database.User,
@@ -146,63 +162,126 @@ func (s *Server) setupRoutes() {
 		log.Error().Err(err).Msg("Failed to initialize system key")
 	}
 
-	// API key management routes
-	apiKeyRoutes := routes.NewApiKeyRoutes(s.apiKeyController, s.apiKeyMiddleware, s.authMiddleware)
-	apiKeyRoutes.SetupRoutes(v1)
+	// API key management routes (only if database is enabled)
+	if s.apiKeyController != nil {
+		apiKeyRoutes := routes.NewApiKeyRoutes(s.apiKeyController, s.apiKeyMiddleware, s.authMiddleware)
+		apiKeyRoutes.SetupRoutes(v1)
+	} else {
+		log.Info().Msg("🔑 API Key routes disabled - no database connection")
+	}
 
 	// Health routes
 	healthRoutes := routes.NewHealthRoutes(s.monitoring)
 	healthRoutes.SetupRoutes(v1)
 
-	// Auth routes
-	authRoutes := routes.NewAuthRoutes(s.authController, s.authMiddleware)
-	authRoutes.SetupRoutes(v1)
+	// Auth routes (limited functionality without database)
+	if s.db != nil {
+		authRoutes := routes.NewAuthRoutes(s.authController, s.authMiddleware)
+		authRoutes.SetupRoutes(v1)
+	} else {
+		// Add basic auth endpoints that work without database
+		v1.GET("/auth/status", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"auth_enabled": false,
+					"message":      "Authentication disabled - no database connection",
+				},
+			})
+		})
+	}
 
-	// User routes
-	userRoutes := routes.NewUserRoutes(s.userController, s.authMiddleware)
-	userRoutes.SetupRoutes(v1)
+	// User routes (limited functionality without database)
+	if s.db != nil {
+		userRoutes := routes.NewUserRoutes(s.userController, s.authMiddleware)
+		userRoutes.SetupRoutes(v1)
+	} else {
+		// Add basic user endpoints that work without database
+		v1.GET("/users/status", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"users_enabled": false,
+					"message":       "User management disabled - no database connection",
+				},
+			})
+		})
+	}
 
-	// Domain routes
-	domainRoutes := routes.NewDomainRoutes(s.domainController, s.authMiddleware, s.domainMiddleware)
-	domainRoutes.SetupRoutes(v1)
+	// Domain routes (limited functionality without database)
+	if s.db != nil {
+		domainRoutes := routes.NewDomainRoutes(s.domainController, s.authMiddleware, s.domainMiddleware)
+		domainRoutes.SetupRoutes(v1)
+	} else {
+		// Add basic domain endpoints that work without database
+		v1.GET("/domains/status", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"domains_enabled": false,
+					"message":         "Domain management disabled - no database connection",
+				},
+			})
+		})
+	}
 
 	// Root health endpoint
 	s.router.GET("/health", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
+		healthStatus := gin.H{
 			"status":    "healthy",
 			"timestamp": time.Now().Format(time.RFC3339),
 			"uptime":    time.Since(time.Now()).Seconds(),
 			"memory":    runtime.MemStats{},
 			"checks": gin.H{
-				"database": "connected",
-				"api":      "running",
+				"api": "running",
 			},
-		})
+		}
+
+		// Add database status
+		if s.db != nil {
+			healthStatus["checks"].(gin.H)["database"] = "connected"
+		} else {
+			healthStatus["checks"].(gin.H)["database"] = "disabled"
+		}
+
+		ctx.JSON(http.StatusOK, healthStatus)
 	})
 
 	// Root status endpoint
 	s.router.GET("/api/v1/status", func(ctx *gin.Context) {
+		statusData := gin.H{
+			"status":      "online",
+			"uptime":      time.Since(time.Now()).Seconds(),
+			"version":     "0.1.0",
+			"environment": s.config.NodeEnv,
+			"services": gin.H{
+				"api":        true,
+				"monitoring": true,
+			},
+			"endpoints": gin.H{
+				"health":  "/api/v1/health",
+				"metrics": "/api/v1/metrics",
+			},
+		}
+
+		// Add database status
+		if s.db != nil {
+			statusData["services"].(gin.H)["database"] = "connected"
+			statusData["services"].(gin.H)["authentication"] = true
+			statusData["endpoints"].(gin.H)["auth"] = "/api/v1/auth"
+			statusData["endpoints"].(gin.H)["users"] = "/api/v1/users"
+			statusData["endpoints"].(gin.H)["domains"] = "/api/v1/domains"
+		} else {
+			statusData["services"].(gin.H)["database"] = "disabled"
+			statusData["services"].(gin.H)["authentication"] = false
+			statusData["endpoints"].(gin.H)["auth"] = "/api/v1/auth/status"
+			statusData["endpoints"].(gin.H)["users"] = "/api/v1/users/status"
+			statusData["endpoints"].(gin.H)["domains"] = "/api/v1/domains/status"
+		}
+
 		ctx.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"data": gin.H{
-				"status":      "online",
-				"uptime":      time.Since(time.Now()).Seconds(),
-				"version":     "0.1.0",
-				"environment": s.config.NodeEnv,
-				"services": gin.H{
-					"api":            true,
-					"database":       "connected",
-					"authentication": true,
-					"monitoring":     true,
-				},
-				"endpoints": gin.H{
-					"health":  "/api/v1/health",
-					"auth":    "/api/v1/auth",
-					"users":   "/api/v1/users",
-					"domains": "/api/v1/domains",
-					"metrics": "/api/v1/metrics",
-				},
-			},
+			"data":    statusData,
 		})
 	})
 

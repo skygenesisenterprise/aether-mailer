@@ -6,11 +6,9 @@
   "type": "module",
   "workspaces": [
     "app",
-    "server",
     "cli",
     "services",
     "tools",
-    "routers",
     "options",
     "package",
     "snap",

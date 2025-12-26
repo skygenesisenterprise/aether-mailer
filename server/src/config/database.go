@@ -30,6 +30,7 @@ type DatabaseConfig struct {
 	Password string `json:"password"`
 	Name     string `json:"name"`
 	SSLMode  string `json:"sslMode"`
+	Enabled  bool   `json:"enabled"`
 }
 
 // JWTConfig represents JWT configuration
@@ -72,6 +73,7 @@ func LoadConfig() (*Config, error) {
 			Password: getEnv("DATABASE_PASSWORD", ""),
 			Name:     getEnv("DATABASE_NAME", "aether_mailer"),
 			SSLMode:  getEnv("DATABASE_SSL_MODE", "disable"),
+			Enabled:  getEnvBool("DATABASE_ENABLED", true),
 		},
 		JWT: JWTConfig{
 			Secret:    getEnv("JWT_SECRET", "your-secret-key"),

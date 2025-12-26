@@ -72,7 +72,32 @@ func (s *DomainService) GetAllDomains(params models.DomainQueryParams) (*models.
 		sortOrder = *params.SortOrder
 	}
 
-	query = query.Order(fmt.Sprintf("%s %s", sortBy, sortOrder))
+	// Sanitize sortBy by allowing only known, safe column names
+	switch sortBy {
+	case "name":
+		sortBy = "name"
+	case "display_name":
+		sortBy = "display_name"
+	case "created_at":
+		sortBy = "created_at"
+	default:
+		// Fallback to default if an unsupported field is requested
+		sortBy = "name"
+	}
+
+	// Sanitize sortOrder by allowing only ASC or DESC
+	switch sortOrder {
+	case "asc", "ASC":
+		sortOrder = "ASC"
+	case "desc", "DESC":
+		sortOrder = "DESC"
+	default:
+		// Fallback to default order
+		sortOrder = "ASC"
+	}
+
+	orderExpr := fmt.Sprintf("%s %s", sortBy, sortOrder)
+	query = query.Order(orderExpr)
 
 	// Apply pagination
 	offset := (page - 1) * limit

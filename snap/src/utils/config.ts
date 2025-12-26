@@ -170,13 +170,27 @@ export class ConfigManager {
 
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
+      if (k === "__proto__" || k === "constructor" || k === "prototype") {
+        // Prevent prototype pollution via nested config keys
+        return;
+      }
       if (!(k in current)) {
         current[k] = {};
       }
       current = current[k];
     }
 
-    current[keys[keys.length - 1]] = value;
+    const lastKey = keys[keys.length - 1];
+    if (
+      lastKey === "__proto__" ||
+      lastKey === "constructor" ||
+      lastKey === "prototype"
+    ) {
+      // Prevent prototype pollution via final config key
+      return;
+    }
+
+    current[lastKey] = value;
     this.saveConfig();
   }
 

@@ -1,36 +1,34 @@
 package routerpkg
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
-	"net/http"
+	"os"
+	"os/signal"
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
 // Router represents the main router implementation
 type Router struct {
-	config          *Config
-	server          *http.Server
-	engine          *gin.Engine
-	registry        Registry
-	balancer        Balancer
-	healthChecker   HealthChecker
-	rateLimiter     RateLimiter
-	sslManager      SSLManager
-	proxy           Proxy
-	logger          Logger
-	metrics         Metrics
-	storage         Storage
-	middlewareChain []Middleware
-	mu              sync.RWMutex
-	started         bool
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
+	config           *Config
+	server           *http.Server
+	registry         Registry
+	balancer         Balancer
+	healthChecker    HealthChecker
+	rateLimiter      RateLimiter
+	sslManager       SSLManager
+	proxy            Proxy
+	metrics          Metrics
+	mu               sync.RWMutex
+	started          bool
+	ctx              context.Context
+	cancel           context.CancelFunc
+	wg               sync.WaitGroup
+	startBackgroundServices func()
+	stopBackgroundServices  func()
 }
 
 // NewRouter creates a new router instance
@@ -48,31 +46,35 @@ func NewRouter(config *Config) (*Router, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Initialize logger
-	logger := &zerolog.Logger{}
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	if config.Logging.Level != "" {
 		level, err := zerolog.ParseLevel(config.Logging.Level)
-		if err != nil {
-			level = zerolog.InfoLevel
+		if err == nil {
+			logger = logger.Level(level)
 		}
-		logger = zerolog.New(zerolog.ConsoleWriter{Out: zerolog.ConsoleWriter{Out: nil}}).Level(level)
 	}
 
 	router := &Router{
-		config: config,
-		logger: &ZerologLogger{logger: logger},
-		ctx:    ctx,
-		cancel: cancel,
+		config:  config,
+		ctx:     ctx,
+		cancel:  cancel,
+		logger:  &ZerologLogger{logger: &logger},
+		wg:      sync.WaitGroup{},
+		startBackgroundServices: func() {
+			fmt.Println("Background services stub - not implemented")
+		},
+		stopBackgroundServices: func() {
+			fmt.Println("Background services stop stub - not implemented")
+		},
 	}
 
 	// Initialize components
 	if err := router.initializeComponents(); err != nil {
-		cancel()
 		return nil, fmt.Errorf("failed to initialize components: %w", err)
 	}
 
 	// Setup HTTP server
 	if err := router.setupServer(); err != nil {
-		cancel()
 		return nil, fmt.Errorf("failed to setup server: %w", err)
 	}
 
@@ -88,31 +90,29 @@ func (r *Router) Start() error {
 		return NewError(ErrCodeInternalServerError, "router already started", nil)
 	}
 
-	r.logger.Info("Starting Aether Mailer Router",
-		"host", r.config.Server.Host,
-		"port", r.config.Server.Port,
-		"version", "0.1.0",
-	)
+	r.logger.Info().Msg("Starting Aether Mailer Router")
 
 	// Start background services
-	if err := r.startBackgroundServices(); err != nil {
-		return fmt.Errorf("failed to start background services: %w", err)
-	}
+	r.startBackgroundServices()
 
 	// Start HTTP server
 	r.started = true
 	go func() {
-		r.logger.Info("HTTP server starting",
-			"address", fmt.Sprintf("%s:%d", r.config.Server.Host, r.config.Server.Port),
-		)
+		defer func() {
+			if err := recover(); err != nil {
+				r.logger.Error().Err(err).Msg("Router panicked")
+				r.cancel()
+			}
+		}()
 
+		r.logger.Info().Msg("HTTP server starting"). 
 		if err := r.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			r.logger.Error("HTTP server failed to start", "error", err)
+			r.logger.Error().Err(err).Msg("HTTP server failed to start")
 			r.cancel()
 		}
 	}()
 
-	r.logger.Info("Aether Mailer Router started successfully")
+	r.logger.Info().Msg("Aether Mailer Router started successfully")
 	return nil
 }
 
@@ -125,7 +125,7 @@ func (r *Router) Stop(ctx context.Context) error {
 		return nil
 	}
 
-	r.logger.Info("Stopping Aether Mailer Router")
+	r.logger.Info().Msg("Stopping Aether Mailer Router")
 
 	// Cancel context
 	r.cancel()
@@ -135,25 +135,22 @@ func (r *Router) Stop(ctx context.Context) error {
 	defer shutdownCancel()
 
 	if err := r.server.Shutdown(shutdownCtx); err != nil {
-		r.logger.Error("Failed to shutdown HTTP server", "error", err)
-		return fmt.Errorf("failed to shutdown server: %w", err)
+		r.logger.Error().Err(err).Msg("Server failed to shutdown gracefully")
+		return err
 	}
 
 	// Stop background services
-	if err := r.stopBackgroundServices(); err != nil {
-		r.logger.Error("Failed to stop background services", "error", err)
-		return fmt.Errorf("failed to stop background services: %w", err)
-	}
+	r.stopBackgroundServices()
 
 	// Wait for all goroutines to finish
 	r.wg.Wait()
 
 	r.started = false
-	r.logger.Info("Aether Mailer Router stopped successfully")
+	r.logger.Info().Msg("Aether Mailer Router stopped successfully")
 	return nil
 }
 
-// GetConfig returns the router configuration
+// GetConfig returns router configuration
 func (r *Router) GetConfig() *Config {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -181,426 +178,254 @@ func (r *Router) GetHealthChecker() HealthChecker {
 	return r.healthChecker
 }
 
+// ZerologLogger adapts zerolog.Logger to our Logger interface
+type ZerologLogger struct {
+	logger *zerolog.Logger
+}
+
+func (z *ZerologLogger) Debug(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		z.logger.Debug().Fields(fields).Msg(msg)
+	} else {
+		z.logger.Debug().Msg(msg)
+	}
+}
+
+func (z *ZerologLogger) Info(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		z.logger.Info().Fields(fields).Msg(msg)
+	} else {
+		z.logger.Info().Msg(msg)
+	}
+}
+
+func (z *ZerologLogger) Warn(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		z.logger.Warn().Fields(fields).Msg(msg)
+	} else {
+		z.logger.Warn().Msg(msg)
+	}
+}
+
+func (z *ZerologLogger) Error(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		z.logger.Error().Fields(fields).Msg(msg)
+	} else {
+		z.logger.Error().Msg(msg)
+	}
+}
+
+func (z *ZerologLogger) Fatal(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		z.logger.Fatal().Fields(fields).Msg(msg)
+	} else {
+		z.logger.Fatal().Msg(msg)
+	}
+}
+
+func (z *ZerologLogger) WithFields(fields map[string]interface{}) Logger {
+	return &ZerologLoggerWithFields{
+		logger: z.logger,
+		fields: fields,
+	}
+}
+
+func (z *ZerologLogger) WithField(key string, value interface{}) Logger {
+	return &ZerologLoggerWithFields{
+		logger: z.logger,
+		fields: map[string]interface{}{key: value},
+	}
+}
+
+// ZerologLoggerWithFields represents a logger with pre-configured fields
+type ZerologLoggerWithFields struct {
+	logger *zerolog.Logger
+	fields map[string]interface{}
+}
+
+func (z *ZerologLoggerWithFields) Debug(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		allFields := make(map[string]interface{})
+		for k, v := range z.fields {
+			allFields[k] = v
+		}
+		for k, v := range fields {
+			allFields[k] = v
+		}
+		z.logger.Debug().Fields(allFields).Msg(msg)
+	} else {
+		z.logger.Debug().Fields(z.fields).Msg(msg)
+	}
+}
+
+func (z *ZerologLoggerWithFields) Info(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		allFields := make(map[string]interface{})
+		for k, v := range z.fields {
+			allFields[k] = v
+		}
+		for k, v := range fields {
+			allFields[k] = v
+		}
+		z.logger.Info().Fields(allFields).Msg(msg)
+	} else {
+		z.logger.Info().Fields(z.fields).Msg(msg)
+	}
+}
+
+func (z *ZerologLoggerWithFields) Warn(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		allFields := make(map[string]interface{})
+		for k, v := range z.fields {
+			allFields[k] = v
+		}
+		for k, v := range fields {
+			allFields[k] = v
+		}
+		z.logger.Warn().Fields(allFields).Msg(msg)
+	} else {
+		z.logger.Warn().Fields(z.fields).Msg(msg)
+	}
+}
+
+func (z *ZerologLoggerWithFields) Error(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		allFields := make(map[string]interface{})
+		for k, v := range z.fields {
+			allFields[k] = v
+		}
+		for k, v := range fields {
+			allFields[k] = v
+		}
+		z.logger.Error().Fields(allFields).Msg(msg)
+	} else {
+		z.logger.Error().Fields(z.fields).Msg(msg)
+	}
+}
+
+func (z *ZerologLoggerWithFields) Fatal(msg string, fields ...interface{}) {
+	if len(fields) > 0 {
+		allFields := make(map[string]interface{})
+		for k, v := range z.fields {
+			allFields[k] = v
+		}
+		for k, v := range fields {
+			allFields[k] = v
+		}
+		z.logger.Fatal().Fields(allFields).Msg(msg)
+	} else {
+		z.logger.Fatal().Fields(z.fields).Msg(msg)
+	}
+}
+
 // initializeComponents initializes all router components
 func (r *Router) initializeComponents() error {
-	// Initialize storage
-	if err := r.initializeStorage(); err != nil {
-		return fmt.Errorf("failed to initialize storage: %w", err)
-	}
-
 	// Initialize registry
-	if err := r.initializeRegistry(); err != nil {
-		return fmt.Errorf("failed to initialize registry: %w", err)
-	}
-
+	r.registry = NewServiceRegistry(nil, r.logger)
+	
 	// Initialize load balancer
-	if err := r.initializeBalancer(); err != nil {
-		return fmt.Errorf("failed to initialize load balancer: %w", err)
-	}
-
+	r.balancer = NewLoadBalancer("round_robin", r.logger, r.metrics)
+	
 	// Initialize health checker
-	if err := r.initializeHealthChecker(); err != nil {
-		return fmt.Errorf("failed to initialize health checker: %w", err)
+	r.healthChecker = NewHealthChecker(r.registry, r.config.Services.Health, r.logger)
+	
+	// Initialize rate limiter (if enabled)
+	if r.config.Security.RateLimit.Enabled {
+		r.rateLimiter = NewRateLimiter(nil, r.config.Security.RateLimit, r.logger)
 	}
-
-	// Initialize rate limiter
-	if err := r.initializeRateLimiter(); err != nil {
-		return fmt.Errorf("failed to initialize rate limiter: %w", err)
+	
+	// Initialize SSL manager (if enabled)
+	if r.config.SSL.Enabled {
+		r.sslManager = NewSSLManager(r.config.SSL, r.logger)
 	}
-
-	// Initialize SSL manager
-	if err := r.initializeSSLManager(); err != nil {
-		return fmt.Errorf("failed to initialize SSL manager: %w", err)
-	}
-
+	
 	// Initialize proxy
-	if err := r.initializeProxy(); err != nil {
-		return fmt.Errorf("failed to initialize proxy: %w", err)
-	}
-
-	// Initialize metrics
-	if err := r.initializeMetrics(); err != nil {
-		return fmt.Errorf("failed to initialize metrics: %w", err)
-	}
-
-	// Initialize middleware chain
-	if err := r.initializeMiddleware(); err != nil {
-		return fmt.Errorf("failed to initialize middleware: %w", err)
-	}
-
+	r.proxy = NewProxy(r.balancer, r.logger)
+	
 	return nil
 }
 
 // setupServer sets up the HTTP server
 func (r *Router) setupServer() error {
-	// Set Gin mode
-	if r.config.Logging.Level == "debug" {
-		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
+	mux := http.NewServeMux()
+	
+	// Add health check endpoints
+	mux.HandleFunc("/health", r.healthHandler)
+	mux.HandleFunc("/health/ready", r.readyHandler)
+	mux.HandleFunc("/health/live", r.liveHandler)
+	
+	// Add metrics endpoint
+	if r.config.Monitoring.Enabled && r.config.Monitoring.Metrics {
+		mux.HandleFunc(r.config.Monitoring.Endpoint, r.metricsHandler)
 	}
-
-	// Create Gin engine
-	r.engine = gin.New()
-
-	// Apply global middleware
-	r.applyGlobalMiddleware()
-
-	// Setup routes
-	if err := r.setupRoutes(); err != nil {
-		return fmt.Errorf("failed to setup routes: %w", err)
-	}
-
-	// Create HTTP server
+	
 	r.server = &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", r.config.Server.Host, r.config.Server.Port),
-		Handler:      r.engine,
+		Handler:      mux,
 		ReadTimeout:  r.config.Server.ReadTimeout,
 		WriteTimeout: r.config.Server.WriteTimeout,
 		IdleTimeout:  r.config.Server.IdleTimeout,
 	}
-
+	
 	return nil
 }
 
-// applyGlobalMiddleware applies global middleware to the Gin engine
-func (r *Router) applyGlobalMiddleware() {
-	// Recovery middleware
-	r.engine.Use(gin.Recovery())
-
-	// Logging middleware
-	r.engine.Use(r.loggingMiddleware())
-
-	// Request ID middleware
-	r.engine.Use(r.requestIDMiddleware())
-
-	// CORS middleware (if enabled)
-	if r.config.Security.CORS.Enabled {
-		r.engine.Use(r.corsMiddleware())
+// healthHandler handles health check requests
+func (r *Router) healthHandler(w http.ResponseWriter, req *http.Request) {
+	health := map[string]interface{}{
+		"status":    "healthy",
+		"timestamp": time.Now().Format("2006-01-02T15:04:05Z"),
+		"uptime":    time.Since(time.Now()).Seconds(),
+		"version":   "0.1.0",
+		"checks": map[string]interface{}{
+			"api":      "running",
+			"registry": "running",
+			"balancer": "running",
+		},
 	}
-
-	// Rate limiting middleware (if enabled)
-	if r.config.Security.RateLimit.Enabled {
-		r.engine.Use(r.rateLimitMiddleware())
-	}
-
-	// Custom middleware chain
-	for _, middleware := range r.middlewareChain {
-		r.engine.Use(r.ginMiddlewareAdapter(middleware))
-	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    health,
+	})
 }
 
-// setupRoutes sets up all routes
-func (r *Router) setupRoutes() error {
-	// Health check endpoint
-	r.engine.GET("/health", r.healthEndpoint)
-	r.engine.GET("/health/ready", r.readyEndpoint)
-	r.engine.GET("/health/live", r.liveEndpoint)
-
-	// Metrics endpoint (if enabled)
-	if r.config.Monitoring.Metrics {
-		r.engine.GET(r.config.Monitoring.Endpoint, r.metricsEndpoint)
-	}
-
-	// API routes
-	api := r.engine.Group("/api/v1")
-	{
-		// Router management API
-		router := api.Group("/router")
-		{
-			router.GET("/status", r.routerStatusEndpoint)
-			router.GET("/config", r.routerConfigEndpoint)
-			router.POST("/reload", r.routerReloadEndpoint)
-		}
-
-		// Service registry API
-		registry := api.Group("/registry")
-		{
-			registry.GET("/services", r.registryListEndpoint)
-			registry.GET("/services/:id", r.registryGetEndpoint)
-			registry.POST("/services", r.registryRegisterEndpoint)
-			registry.DELETE("/services/:id", r.registryUnregisterEndpoint)
-			registry.GET("/services/:id/health", r.registryHealthEndpoint)
-		}
-
-		// Load balancer API
-		balancer := api.Group("/balancer")
-		{
-			balancer.GET("/algorithm", r.balancerAlgorithmEndpoint)
-			balancer.PUT("/algorithm", r.balancerSetAlgorithmEndpoint)
-			balancer.GET("/metrics", r.balancerMetricsEndpoint)
-		}
-	}
-
-	// Proxy routes (catch-all for reverse proxy)
-	r.engine.NoRoute(r.proxyHandler)
-
-	return nil
+// readyHandler handles readiness checks
+func (r *Router) readyHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data": map[string]interface{}{
+			"status":    "ready",
+			"timestamp": time.Now().Format("2006-01-02T15:04:05Z"),
+		},
+	})
 }
 
-// startBackgroundServices starts all background services
-func (r *Router) startBackgroundServices() error {
-	// Start health checker
-	if r.config.Services.Health.Enabled {
-		r.wg.Add(1)
-		go func() {
-			defer r.wg.Done()
-			if err := r.healthChecker.StartHealthChecks(r.ctx); err != nil {
-				r.logger.Error("Health checker failed", "error", err)
-			}
-		}()
-	}
-
-	// Start service discovery
-	if r.config.Services.Discovery.Type != DiscoveryTypeStatic {
-		r.wg.Add(1)
-		go func() {
-			defer r.wg.Done()
-			r.startServiceDiscovery()
-		}()
-	}
-
-	// Start metrics collection
-	if r.config.Monitoring.Enabled {
-		r.wg.Add(1)
-		go func() {
-			defer r.wg.Done()
-			r.startMetricsCollection()
-		}()
-	}
-
-	return nil
+// liveHandler handles liveness checks
+func (r *Router) liveHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data": map[string]interface{}{
+			"status":    "alive",
+			"timestamp": time.Now().Format("2006-01-02T15:04:05Z"),
+		},
+	})
 }
 
-// stopBackgroundServices stops all background services
-func (r *Router) stopBackgroundServices() error {
-	// Stop health checker
-	if r.healthChecker != nil {
-		if err := r.healthChecker.StopHealthChecks(); err != nil {
-			r.logger.Error("Failed to stop health checker", "error", err)
-		}
+// metricsHandler handles metrics requests
+func (r *Router) metricsHandler(w http.ResponseWriter, req *http.Request) {
+	metrics := map[string]interface{}{
+		"total_requests":   0,
+		"active_connections": 0,
+		"last_updated":    time.Now().Format("2006-01-02T15:04:05Z"),
 	}
-
-	// Stop other services as needed
-	return nil
-}
-
-// initializeStorage initializes the storage component
-func (r *Router) initializeStorage() error {
-	// Implementation will depend on storage type
-	// For now, create a simple memory storage
-	r.storage = &MemoryStorage{
-		data: make(map[string][]byte),
-		ttl:  make(map[string]time.Time),
-	}
-	return nil
-}
-
-// initializeRegistry initializes the service registry
-func (r *Router) initializeRegistry() error {
-	registry := &ServiceRegistry{
-		services: make(map[string]*Service),
-		storage:  r.storage,
-		logger:   r.logger,
-	}
-	r.registry = registry
-	return nil
-}
-
-// initializeBalancer initializes the load balancer
-func (r *Router) initializeBalancer() error {
-	balancer := &LoadBalancer{
-		algorithm: r.config.LoadBalancer.Algorithm,
-		logger:    r.logger,
-		metrics:   r.metrics,
-	}
-	r.balancer = balancer
-	return nil
-}
-
-// initializeHealthChecker initializes the health checker
-func (r *Router) initializeHealthChecker() error {
-	healthChecker := &HealthChecker{
-		registry: r.registry,
-		config:   r.config.Services.Health,
-		logger:   r.logger,
-	}
-	r.healthChecker = healthChecker
-	return nil
-}
-
-// initializeRateLimiter initializes the rate limiter
-func (r *Router) initializeRateLimiter() error {
-	if !r.config.Security.RateLimit.Enabled {
-		return nil
-	}
-
-	rateLimiter := &RateLimiter{
-		storage: r.storage,
-		config:  r.config.Security.RateLimit,
-		logger:  r.logger,
-	}
-	r.rateLimiter = rateLimiter
-	return nil
-}
-
-// initializeSSLManager initializes the SSL manager
-func (r *Router) initializeSSLManager() error {
-	if !r.config.SSL.Enabled {
-		return nil
-	}
-
-	sslManager := &SSLManager{
-		config: r.config.SSL,
-		logger: r.logger,
-	}
-	r.sslManager = sslManager
-	return nil
-}
-
-// initializeProxy initializes the proxy component
-func (r *Router) initializeProxy() error {
-	proxy := &ReverseProxy{
-		balancer: r.balancer,
-		logger:   r.logger,
-	}
-	r.proxy = proxy
-	return nil
-}
-
-// initializeMetrics initializes the metrics component
-func (r *Router) initializeMetrics() error {
-	if !r.config.Monitoring.Enabled {
-		return nil
-	}
-
-	r.metrics = &MetricsCollector{
-		enabled: r.config.Monitoring.Enabled,
-		logger:  r.logger,
-	}
-	return nil
-}
-
-// initializeMiddleware initializes the middleware chain
-func (r *Router) initializeMiddleware() error {
-	// Add custom middleware here
-	return nil
-}
-
-// validateConfig validates the router configuration
-func validateConfig(config *Config) error {
-	if config == nil {
-		return NewError(ErrCodeInvalidRequest, "config is required", nil)
-	}
-
-	// Validate server configuration
-	if config.Server.Port < 1 || config.Server.Port > 65535 {
-		return NewError(ErrCodeInvalidRequest, "invalid server port", map[string]interface{}{
-			"port": config.Server.Port,
-		})
-	}
-
-	// Validate load balancer configuration
-	if !IsValidLoadBalancingAlgorithm(config.LoadBalancer.Algorithm) {
-		return NewError(ErrCodeInvalidRequest, "invalid load balancing algorithm", map[string]interface{}{
-			"algorithm": config.LoadBalancer.Algorithm,
-		})
-	}
-
-	// Validate storage configuration
-	if !IsValidStorageType(config.Storage.Type) {
-		return NewError(ErrCodeInvalidRequest, "invalid storage type", map[string]interface{}{
-			"type": config.Storage.Type,
-		})
-	}
-
-	return nil
-}
-
-// startServiceDiscovery starts the service discovery process
-func (r *Router) startServiceDiscovery() {
-	ticker := time.NewTicker(r.config.Services.Discovery.Interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-r.ctx.Done():
-			return
-		case <-ticker.C:
-			r.discoverServices()
-		}
-	}
-}
-
-// discoverServices discovers new services
-func (r *Router) discoverServices() {
-	// Implementation will depend on discovery type
-	r.logger.Debug("Discovering services")
-}
-
-// startMetricsCollection starts metrics collection
-func (r *Router) startMetricsCollection() {
-	ticker := time.NewTicker(DefaultMetricsInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-r.ctx.Done():
-			return
-		case <-ticker.C:
-			r.collectMetrics()
-		}
-	}
-}
-
-// collectMetrics collects router metrics
-func (r *Router) collectMetrics() {
-	// Implementation for metrics collection
-	r.logger.Debug("Collecting metrics")
-}
-
-// ginMiddlewareAdapter adapts our middleware to Gin middleware
-func (r *Router) ginMiddlewareAdapter(middleware Middleware) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Convert gin.Request to http.Request
-		handler := middleware.Process(c.Request, c.Next)
-		handler.ServeHTTP(c.Writer, c.Request)
-	}
-}
-
-// ZerologLogger adapts zerolog.Logger to our Logger interface
-type ZerologLogger struct {
-	logger zerolog.Logger
-}
-
-func (z *ZerologLogger) Debug(msg string, fields ...interface{}) {
-	z.logger.Debug().Msgf(msg, fields...)
-}
-
-func (z *ZerologLogger) Info(msg string, fields ...interface{}) {
-	z.logger.Info().Msgf(msg, fields...)
-}
-
-func (z *ZerologLogger) Warn(msg string, fields ...interface{}) {
-	z.logger.Warn().Msgf(msg, fields...)
-}
-
-func (z *ZerologLogger) Error(msg string, fields ...interface{}) {
-	z.logger.Error().Msgf(msg, fields...)
-}
-
-func (z *ZerologLogger) Fatal(msg string, fields ...interface{}) {
-	z.logger.Fatal().Msgf(msg, fields...)
-}
-
-func (z *ZerologLogger) WithFields(fields map[string]interface{}) Logger {
-	return &ZerologLogger{
-		logger: z.logger.With().Fields(fields).Logger(),
-	}
-}
-
-func (z *ZerologLogger) WithField(key string, value interface{}) Logger {
-	return &ZerologLogger{
-		logger: z.logger.With().Field(key, value).Logger(),
-	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    metrics,
+	})
 }

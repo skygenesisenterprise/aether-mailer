@@ -1,0 +1,113 @@
+# Configuration for testing environments
+server:
+  host: "127.0.0.1"
+  port: 8080
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 30s
+
+services:
+  discovery:
+    type: "static"
+    interval: 5s
+  health:
+    enabled: true
+    interval: 5s
+    timeout: 2s
+    path: "/health"
+  registry:
+    type: "memory"
+
+load_balancer:
+  algorithm: "round_robin"
+  sticky: false
+  weights:
+    backend-1: 1
+    backend-2: 1
+    backend-3: 1
+
+security:
+  rate_limit:
+    enabled: true
+    storage: "memory"
+    rules:
+      - path: "/api/*"
+        method: "*"
+        limit: 1000
+        window: 1m
+      - path: "/api/v1/auth/login"
+        method: "POST"
+        limit: 5
+        window: 1m
+  firewall:
+    enabled: false
+  auth:
+    enabled: false
+    type: "none"
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    allowed_headers:
+      [
+        "Origin",
+        "Content-Type",
+        "Accept",
+        "Authorization",
+        "X-Request-ID",
+        "X-API-Key",
+      ]
+    allow_credentials: false
+    max_age: 86400
+
+ssl:
+  enabled: true
+  cert_file: "/tmp/router-test.crt"
+  key_file: "/tmp/router-test.key"
+  auto_cert: true
+  hosts: ["localhost", "127.0.0.1", "*.test"]
+
+monitoring:
+  enabled: true
+  metrics: true
+  tracing: true
+  endpoint: "/metrics"
+
+logging:
+  level: "debug"
+  format: "text"
+  output: "stdout"
+  correlation_id: true
+
+storage:
+  type: "memory"
+
+cluster:
+  enabled: false
+
+development:
+  debug: true
+  hot_reload: true
+  profile_enabled: true
+  profile_port: 6060
+  mock_services:
+    enabled: true
+    services:
+      - id: "test-backend-1"
+        name: "Test Backend 1"
+        type: "http"
+        address: "127.0.0.1"
+        port: 9001
+        protocol: "http"
+        weight: 1
+        health:
+          path: "/health"
+      - id: "test-backend-2"
+        name: "Test Backend 2"
+        type: "http"
+        address: "127.0.0.1"
+        port: 9002
+        protocol: "http"
+        weight: 1
+        health:
+          path: "/health"

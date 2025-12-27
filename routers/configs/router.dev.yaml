@@ -1,0 +1,88 @@
+# Configuration for development environment
+server:
+  host: "127.0.0.1"
+  port: 8080
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 30s
+
+services:
+  discovery:
+    type: "static"
+    interval: 10s
+  health:
+    enabled: true
+    interval: 10s
+    timeout: 3s
+    path: "/health"
+  registry:
+    type: "memory"
+
+load_balancer:
+  algorithm: "round_robin"
+  sticky: false
+  weights:
+    backend-1: 1
+    frontend-1: 2
+
+security:
+  rate_limit:
+    enabled: true
+    storage: "memory"
+    rules:
+      - path: "/api/*"
+        method: "*"
+        limit: 100
+        window: 1m
+      - path: "/api/v1/auth/login"
+        method: "POST"
+        limit: 10
+        window: 1m
+  firewall:
+    enabled: false
+    auth:
+    enabled: false
+    type: "none"
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    allowed_headers: ["Origin", "Content-Type", "Accept", "Authorization", "X-Request-ID", "X-API-Key"]
+    allow_credentials: false
+    max_age: 86400
+
+ssl:
+  enabled: false
+  cert_file: "/tmp/router-dev.crt"
+  key_file: "/tmp/router-dev.key"
+  auto_cert: true
+  hosts: ["localhost", "*.localhost", "127.0.0.1"]
+
+monitoring:
+  enabled: true
+  metrics: true
+  tracing: true
+  endpoint: "/metrics"
+
+logging:
+  level: "debug"
+  format: "text"
+  output: "stdout"
+  correlation_id: true
+
+storage:
+  type: "memory"
+  options:
+    max_entries: 10000
+    cleanup_interval: "5m"
+
+cluster:
+  enabled: false
+
+development:
+  debug: true
+  hot_reload: true
+  profile_enabled: true
+  profile_port: 6060
+  auto_restart: false
+  mock_services: true

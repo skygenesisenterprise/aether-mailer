@@ -1,0 +1,305 @@
+# Production Configuration for Aether Mailer Router
+# Optimized for high performance and security in production environments
+
+server:
+  host: "0.0.0.0"
+  port: 80
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+
+services:
+  discovery:
+    type: "static"  # In production, consider switching to "dns" or "consul"
+    interval: 30s
+    options:
+      # DNS discovery options
+      resolv_conf: "/etc/resolv.conf"
+      timeout: 5s
+      cache_ttl: 300s
+  health:
+    enabled: true
+    interval: 30s
+    timeout: 10s
+    path: "/health"
+    options:
+      # Health check options
+      retries: 3
+      retry_delay: 5s
+      failure_threshold: 3
+      recovery_threshold: 2
+  registry:
+    type: "redis"  # Use Redis for production cluster
+    options:
+      redis:
+        addr: "redis:6379"
+        password: "${REDIS_PASSWORD}"
+        db: 0
+        max_retries: 3
+        pool_size: 50
+        dial_timeout: 5s
+        read_timeout: 3s
+        write_timeout: 3s
+
+load_balancer:
+  algorithm: "least_connections"  # Better for production workloads
+  sticky: true  # Enable session affinity for better performance
+  weights:
+    backend-1: 3  # Higher weight for powerful servers
+    backend-2: 2
+    backend-3: 1
+  options:
+    connection_timeout: 30s
+    max_connections: 1000
+    health_check_interval: 10s
+    retry_attempts: 3
+    circuit_breaker:
+      threshold: 5
+      timeout: 60s
+      half_open_max_calls: 3
+
+security:
+  rate_limit:
+    enabled: true
+    storage: "redis"  # Use Redis for distributed rate limiting
+    rules:
+      # Global rate limit for all requests
+      - path: "/*"
+        method: "*"
+        limit: 1000
+        window: 1m
+      # API-specific rate limits
+      - path: "/api/v1/auth/login"
+        method: "POST"
+        limit: 5
+        window: 1m
+      - path: "/api/v1/auth/register"
+        method: "POST"
+        limit: 10
+        window: 1m
+      - path: "/api/v1/registry/services"
+        method: "POST"
+        limit: 50
+        window: 1m
+    options:
+      redis:
+        key_prefix: "rate_limit:"
+        ttl: 3600s
+  firewall:
+    enabled: true
+    rules:
+      # Allow trusted networks
+      - action: "allow"
+        source: "10.0.0.0/8"
+        protocol: "*"
+        ports: [80, 443]
+      - action: "allow"
+        source: "192.168.1.0/24"
+        protocol: "*"
+        ports: [80, 443]
+      # Block common attack vectors
+      - action: "deny"
+        source: "0.0.0.0/8"
+        protocol: "tcp"
+        ports: [22, 23, 8080, 8081, 8082, 8083, 8084, 8085]
+      # Rate limit suspicious IPs
+      - action: "deny"
+        source: "blocklisted_ips"
+        protocol: "*"
+        ports: [80, 443]
+    options:
+      blocklist_refresh: "300s"
+      whitelist_enabled: true
+      ddos_protection: true
+  auth:
+    enabled: true
+    type: "jwt"
+    options:
+      jwt:
+        secret: "${JWT_SECRET}"
+        expiry: "24h"
+        refresh_expiry: "168h"
+        issuer: "aether-mailer"
+        algorithm: "HS256"
+        audience: "aether-mailer-api"
+      oauth:
+        provider: "oidc"
+        client_id: "${OAUTH_CLIENT_ID}"
+        client_secret: "${OAUTH_CLIENT_SECRET}"
+        issuer: "${OAUTH_ISSUER}"
+        scopes: ["profile", "email"]
+      basic:
+        users: []
+  cors:
+    enabled: true
+    allowed_origins: 
+      - "https://app.example.com"
+      - "https://admin.example.com"
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    allowed_headers: 
+      - "Origin", "Content-Type", "Accept", "Authorization", "X-Request-ID", "X-API-Key", "X-Forwarded-For"
+    exposed_headers: ["X-Request-ID", "X-Total-Count"]
+    allow_credentials: false
+    max_age: 86400
+
+ssl:
+  enabled: true
+  cert_file: "/etc/ssl/certs/router.crt"
+  key_file: "/etc/ssl/private/router.key"
+  auto_cert: false
+  hosts: 
+    - "api.example.com"
+    - "*.example.com"
+    - "*.api.example.com"
+  options:
+    # SSL/TLS configuration
+    min_version: "1.2"
+    cipher_suites: 
+      - "TLS_AES_128_GCM_SHA256"
+      - "TLS_AES_256_GCM_SHA384"
+      - "TLS_CHACHA20_POLY1305_SHA256"
+      - "TLS_AES_128_CBC_SHA"
+      - "TLS_AES_256_CBC_SHA"
+    protocols: 
+      - "h2"
+      - "http/1.1"
+    prefer_server_cipher: true
+    hsts:
+      enabled: true
+      max_age: 31536000
+      include_subdomains: true
+      preload: true
+    ocsp_staple: true
+
+monitoring:
+  enabled: true
+  metrics: true
+  tracing: true
+  endpoint: "/metrics"
+  options:
+    prometheus:
+      enabled: true
+      path: "/metrics"
+      namespace: "aether_router"
+      labels:
+        env: "production"
+        service: "router"
+      custom_metrics:
+        - name: "http_requests_total"
+          type: "counter"
+          help: "Total number of HTTP requests"
+        - name: "http_request_duration_seconds"
+          type: "histogram"
+          help: "HTTP request duration in seconds"
+        - name: "active_connections"
+          type: "gauge"
+          help: "Number of active connections"
+        - name: "services_healthy"
+          type: "gauge"
+          help: "Number of healthy services"
+    jaeger:
+      enabled: true
+      endpoint: "http://jaeger:14268/api/traces"
+      service_name: "aether-router"
+      sample_rate: 0.1
+    statsd:
+      enabled: false
+      endpoint: "statsd:8125"
+      prefix: "aether.router"
+
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  correlation_id: true
+  options:
+    # JSON logging configuration
+    pretty_print: false
+    timestamp_format: "rfc3339"
+    level_key: "level"
+    message_key: "message"
+    caller_key: "caller"
+    error_stack: true
+    # File logging (backup to stdout)
+    file_enabled: false
+    file_path: "/var/log/router/router.log"
+    file_max_size: "100MB"
+    file_max_backups: 10
+    file_max_age: "30d"
+    file_compress: true
+    # Audit logging
+    audit_enabled: true
+    audit_path: "/var/log/router/audit.log"
+    audit_events: ["auth", "config_change", "service_register", "service_unregister"]
+
+storage:
+  type: "redis"  # Use Redis for production
+  options:
+    redis:
+      addr: "redis:6379"
+      password: "${REDIS_PASSWORD}"
+      db: 0
+      max_retries: 3
+      pool_size: 100
+      dial_timeout: 5s
+      read_timeout: 3s
+      write_timeout: 3s
+      idle_timeout: 300s
+      idle_check_frequency: "60s"
+      read_only: false
+
+cluster:
+  enabled: true
+  node_id: "router-${HOSTNAME}"
+  advertise_address: "127.0.0.1:8080"
+  peers:
+    - "127.0.0.1:8081"
+    - "127.0.0.1:8082"
+    - "127.0.0.1:8083"
+  options:
+    heartbeat_interval: 5s
+    election_timeout: 30s
+    failure_detection: 10s
+    consensus:
+      algorithm: "raft"
+      timeout: 10s
+      log_compaction: true
+    gossip:
+      enabled: true
+      interval: 1s
+      fanout: 3
+
+# Performance tuning options
+performance:
+  # HTTP server tuning
+  http:
+    max_connections: 10000
+    read_buffer_size: 4096
+    write_buffer_size: 4096
+    max_header_size: 8192
+    max_header_bytes: 1048576
+    timeout:
+      read: 30s
+      write: 30s
+      idle: 120s
+    # Keep-alive settings
+    keep_alive:
+      enabled: true
+      timeout: 75s
+      max_requests: 1000
+    # Compression
+    compression:
+      enabled: true
+      min_length: 1024
+      types: ["gzip", "br"]
+      level: 6
+  # Worker pool configuration
+  workers:
+    count: 0  # 0 = auto-detect based on CPU cores
+    queue_size: 1000
+    idle_timeout: 30s
+  # Memory management
+  gc:
+    percent: 50
+    target_heap_size: "256MB"
+    max_heap_size: "1GB"

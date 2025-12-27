@@ -1,0 +1,214 @@
+# Aether Mailer Router Configuration
+# Configuration for infrastructure-level routing and control plane
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 80
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+
+# Services Configuration
+services:
+  # Service discovery configuration
+  discovery:
+    type: "static" # Options: static, dns, consul
+    interval: 30s
+    options:
+      # Static discovery options
+      services:
+        - id: "backend-1"
+          name: "Aether Backend"
+          type: "http"
+          address: "backend"
+          port: 8080
+          protocol: "http"
+          weight: 1
+          health:
+            path: "/health"
+            timeout: 5s
+            interval: 30s
+        - id: "frontend-1"
+          name: "Aether Frontend"
+          type: "http"
+          address: "frontend"
+          port: 3000
+          protocol: "http"
+          weight: 2
+          health:
+            path: "/health"
+            timeout: 5s
+            interval: 30s
+
+  # Health check configuration
+  health:
+    enabled: true
+    interval: 30s
+    timeout: 5s
+    path: "/health"
+
+  # Service registry configuration
+  registry:
+    type: "memory" # Options: memory, redis, etcd
+
+# Load Balancer Configuration
+load_balancer:
+  algorithm: "round_robin" # Options: round_robin, weighted_round_robin, least_connections, ip_hash, random
+  sticky: false
+  weights:
+    backend-1: 1
+    frontend-1: 2
+  options:
+    # Algorithm-specific options
+    connection_timeout: 30s
+    retry_attempts: 3
+
+# Security Configuration
+security:
+  # Rate limiting configuration
+  rate_limit:
+    enabled: true
+    storage: "memory"
+    rules:
+      - path: "/api/*"
+        method: "*"
+        limit: 1000
+        window: 1m
+      - path: "/api/v1/auth/login"
+        method: "POST"
+        limit: 5
+        window: 1m
+      - path: "/api/v1/auth/register"
+        method: "POST"
+        limit: 10
+        window: 5m
+
+  # Firewall configuration
+  firewall:
+    enabled: false
+    rules:
+      - action: "allow"
+        source: "0.0.0.0/0"
+        protocol: "*"
+        ports: [80, 443]
+      - action: "deny"
+        source: "10.0.0.0/8"
+        protocol: "*"
+        ports: [80, 443]
+
+  # Authentication configuration
+  auth:
+    enabled: false
+    type: "none" # Options: none, jwt, oauth, basic
+    options:
+      # Authentication-specific options
+      jwt_secret: ""
+      jwt_expiry: "24h"
+      oauth_provider: ""
+      basic_users: []
+
+  # CORS configuration
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    allowed_headers:
+      [
+        "Origin",
+        "Content-Type",
+        "Accept",
+        "Authorization",
+        "X-Request-ID",
+        "X-API-Key",
+      ]
+    exposed_headers: ["X-Request-ID", "X-Total-Count"]
+    allow_credentials: false
+    max_age: 86400
+
+# SSL/TLS Configuration
+ssl:
+  enabled: false
+  cert_file: "/etc/ssl/certs/router.crt"
+  key_file: "/etc/ssl/private/router.key"
+  auto_cert: false
+  hosts: ["localhost", "api.example.com", "*.example.com"]
+  options:
+    # SSL-specific options
+    min_version: "1.2"
+    cipher_suites: ["TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384"]
+    protocols: ["h2", "http/1.1"]
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  metrics: true
+  tracing: false
+  endpoint: "/metrics"
+  options:
+    # Monitoring-specific options
+    prometheus_enabled: true
+    prometheus_path: "/metrics"
+    jaeger_enabled: false
+    jaeger_endpoint: "http://jaeger:14268/api/traces"
+    statsd_enabled: false
+    statsd_endpoint: "localhost:8125"
+
+# Logging Configuration
+logging:
+  level: "info" # Options: trace, debug, info, warn, error, fatal
+  format: "json" # Options: json, text
+  output: "stdout" # Options: stdout, stderr, file
+  correlation_id: true
+  options:
+    # Logging-specific options
+    file_path: "/var/log/router/router.log"
+    file_max_size: "100MB"
+    file_max_backups: 5
+    file_max_age: "30d"
+    compress: true
+
+# Storage Configuration
+storage:
+  type: "memory" # Options: memory, redis, etcd
+  options:
+    # Storage-specific options
+    redis:
+      addr: "localhost:6379"
+      password: ""
+      db: 0
+      max_retries: 3
+      pool_size: 10
+    etcd:
+      endpoints: ["localhost:2379"]
+      username: ""
+      password: ""
+      timeout: 5s
+      dial_timeout: 5s
+    memory:
+      max_entries: 10000
+      cleanup_interval: "10m"
+
+# Cluster Configuration (for multi-node deployments)
+cluster:
+  enabled: false
+  node_id: "router-1"
+  advertise_address: "127.0.0.1:8080"
+  peers:
+    - "127.0.0.1:8081"
+    - "127.0.0.1:8082"
+  options:
+    # Cluster-specific options
+    heartbeat_interval: 5s
+    election_timeout: 30s
+    failure_detection: 10s
+    consensus_algorithm: "raft"
+
+# Development Configuration
+development:
+  debug: false
+  hot_reload: true
+  profile_enabled: false
+  profile_port: 6060
+  auto_restart: false
+  mock_services: true

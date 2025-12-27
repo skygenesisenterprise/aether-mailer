@@ -4,9 +4,9 @@ packages:
   - 'tools'
   - 'tests'
   - 'options'
-  - 'package'
   - 'snap'
   - 'prisma'
+  - 'package/node'
 
 ignoredBuiltDependencies:
   - sharp

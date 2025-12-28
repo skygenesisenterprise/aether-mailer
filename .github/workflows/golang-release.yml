@@ -87,19 +87,19 @@ jobs:
       - name: Run tests
         working-directory: ./package/golang
         run: |
-          # Run tests with coverage
-          go test -v -race -coverprofile=coverage.out ./...
+          # Run tests with coverage (use module context instead of workspace)
+          go test -v -race -coverprofile=coverage.out .
 
       - name: Run go vet
         working-directory: ./package/golang
-        run: go vet ./...
+        run: go vet .
 
       - name: Run golint (if available)
         working-directory: ./package/golang
         continue-on-error: true
         run: |
           if command -v golint &> /dev/null; then
-            golint ./...
+            golint .
           else
             echo "golint not available, skipping"
           fi

@@ -119,22 +119,57 @@ jobs:
           done
           cd ..
 
-          # Build CLI binary
+          # Build CLI binary (TypeScript)
           echo "Building CLI..."
           cd cli
+
+          # Install CLI dependencies
+          npm install
+
+          # Build CLI for all platforms
+          npm run build
+
+          # Get the built binary and create platform-specific versions
+          BINARY_NAME="mailer"
+
           for platform in "${platforms[@]}"; do
             IFS='/' read -r GOOS GOARCH <<< "$platform"
             
-            output_name="mailer"
+            # Determine platform-specific extension
             if [ "$GOOS" = "windows" ]; then
-              output_name+=".exe"
+              OUTPUT_NAME="${GOOS}-${GOARCH}-${BINARY_NAME}.exe"
+            else
+              OUTPUT_NAME="${GOOS}-${GOARCH}-${BINARY_NAME}"
             fi
             
-            echo "Building CLI for $GOOS/$GOARCH..."
-            GOOS=$GOOS GOARCH=$GOARCH go build \
-              -ldflags="-s -w -X main.version=${{ steps.version.outputs.package_version }}" \
-              -o "../dist/${GOOS}-${GOARCH}-${output_name}" \
-              .
+            echo "Creating CLI package for $GOOS/$GOARCH..."
+            
+            # Create platform directory
+            mkdir -p "../dist/${GOOS}-${GOARCH}-cli"
+            
+            # Copy built CLI (Node.js executable)
+            if [ -f "dist/main.js" ]; then
+              cp dist/main.js "../dist/${GOOS}-${GOARCH}-cli/${BINARY_NAME}.js"
+              chmod +x "../dist/${GOOS}-${GOARCH}-cli/${BINARY_NAME}.js"
+            fi
+            
+            # Copy package.json for dependencies
+            cp package.json "../dist/${GOOS}-${GOARCH}-cli/"
+            
+            # Create platform-specific launcher script
+            if [ "$GOOS" = "windows" ]; then
+              cat > "../dist/${GOOS}-${GOARCH}-cli/${BINARY_NAME}.bat" << 'EOF'
+          @echo off
+          node "%~dp0${BINARY_NAME}.js" %*
+          EOF
+            else
+              cat > "../dist/${GOOS}-${GOARCH}-cli/${BINARY_NAME}" << 'EOF'
+          #!/usr/bin/env node
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          node "$DIR/${BINARY_NAME}.js" "$@"
+          EOF
+              chmod +x "../dist/${GOOS}-${GOARCH}-cli/${BINARY_NAME}"
+            fi
           done
           cd ..
 
@@ -173,10 +208,10 @@ jobs:
             # Copy binaries
             if [ "$GOOS" = "windows" ]; then
               cp "dist/${GOOS}-${GOARCH}-aether-mailer-server.exe" "dist/${archive_dir}/"
-              cp "dist/${GOOS}-${GOARCH}-mailer.exe" "dist/${archive_dir}/"
+              cp -r "dist/${GOOS}-${GOARCH}-cli" "dist/${archive_dir}/"
             else
               cp "dist/${GOOS}-${GOARCH}-aether-mailer-server" "dist/${archive_dir}/"
-              cp "dist/${GOOS}-${GOARCH}-mailer" "dist/${archive_dir}/"
+              cp -r "dist/${GOOS}-${GOARCH}-cli" "dist/${archive_dir}/"
             fi
             
             # Copy frontend
@@ -186,26 +221,32 @@ jobs:
             cp docker-compose.yml docker-entrypoint.sh "dist/${archive_dir}/" 2>/dev/null || true
             cp -r prisma/ "dist/${archive_dir}/" 2>/dev/null || true
             
-            # Create README for the archive
+          # Create README for the archive
             cat > "dist/${archive_dir}/README.md" << EOF
           # Aether Mailer v${VERSION}
-
+          
           Platform: ${GOOS}/${GOARCH}
-
+          
           ## Installation
-
+          
           1. Extract the archive
           2. Run the server: \`\`\`./aether-mailer-server\`\`\`
-          3. Run the CLI: \`\`\`./mailer --help\`\`\`
-
+          3. Run the CLI: 
+             - Linux/macOS: \`\`\`./mailer --help\`\`\`
+             - Windows: \`\`\`mailer.bat --help\`\`\` or double-click \`mailer.bat\`
+          
           ## Components
-
-          - **aether-mailer-server**: Main backend server
-          - **mailer**: Command-line interface
+          
+          - **aether-mailer-server**: Main backend server (Go)
+          - **mailer/**: Command-line interface (TypeScript/Node.js)
           - **frontend/**: Next.js web application
-
+          
+          ## CLI Requirements
+          
+          The CLI requires Node.js to be installed on your system.
+          
           ## Configuration
-
+          
           See \`prisma/\` directory for database configuration.
           EOF
 

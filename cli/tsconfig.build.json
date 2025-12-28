@@ -1,11 +1,10 @@
 {
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-      "noEmit": false,
-      "module": "ESNext",
-      "moduleResolution": "bundler",
-      "outDir": "./dist"
-    },
-    "include": ["src/**/*"]
-  }
-  
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*"]
+}

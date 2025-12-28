@@ -127,15 +127,22 @@ jobs:
       - name: Create release artifacts
         working-directory: ./package/golang
         run: |
-          # Create source archive first (exclude temp files)
+          # Create a temporary directory for source files
+          mkdir -p ../temp_source
+
+          # Copy source files to temp directory (excluding unwanted files)
+          rsync -av --exclude=.git \
+                     --exclude=dist \
+                     --exclude=coverage.out \
+                     --exclude=docs.html \
+                     --exclude='*.tar.gz' \
+                     --exclude='*.zip' \
+                     --exclude=temp_source \
+                     . ../temp_source/
+
+          # Create source archive from temp directory
           tar -czf aether-mailer-sdk-${{ steps.version.outputs.package_version }}.src.tar.gz \
-            --exclude=.git \
-            --exclude=dist \
-            --exclude=coverage.out \
-            --exclude=docs.html \
-            --exclude='*.tar.gz' \
-            --exclude='*.zip' \
-            .
+            -C ../temp_source .
 
           # Create platform-specific archives
           platforms=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64")
@@ -143,22 +150,37 @@ jobs:
             IFS='/' read -r GOOS GOARCH <<< "$platform"
             output_dir="dist/${GOOS}-${GOARCH}"
             
+            # Create temp archive directory
+            archive_dir="archive_${GOOS}_${GOARCH}"
+            mkdir -p "$archive_dir"
+            
             if [ "$GOOS" = "windows" ] && [ -f "$output_dir/aether-mailer-sdk.exe" ]; then
-              # Copy README to dist directory first
-              cp README.md "$output_dir/"
-              cd dist
-              zip -r "aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.zip" \
-                -C "$output_dir" aether-mailer-sdk.exe README.md
+              # Copy binary and README to temp archive directory
+              cp "$output_dir/aether-mailer-sdk.exe" "$archive_dir/"
+              cp README.md "$archive_dir/"
+              
+              # Create zip from temp directory
+              cd "$archive_dir"
+              zip -r "../aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.zip" .
               cd ..
+              
             elif [ -f "$output_dir/aether-mailer-sdk" ]; then
-              # Copy README to dist directory first  
-              cp README.md "$output_dir/"
-              cd dist
-              tar -czf "aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.tar.gz" \
-                -C "$output_dir" aether-mailer-sdk README.md
+              # Copy binary and README to temp archive directory
+              cp "$output_dir/aether-mailer-sdk" "$archive_dir/"
+              cp README.md "$archive_dir/"
+              
+              # Create tar.gz from temp directory
+              cd "$archive_dir"
+              tar -czf "../aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.tar.gz" .
               cd ..
             fi
+            
+            # Clean up temp archive directory
+            rm -rf "$archive_dir"
           done
+
+          # Clean up temp source directory
+          rm -rf ../temp_source
 
       - name: Create GitHub Release
         id: create_release

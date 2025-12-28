@@ -7,13 +7,13 @@ RUN apk add --no-cache git ca-certificates tzdata
 WORKDIR /app
 
 # Copy go mod and sum files
-COPY package/golang/go.mod package/golang/go.sum ./
+COPY go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download
 
 # Copy source code
-COPY package/golang/ ./
+COPY ./ ./
 
 # Build the SDK for multiple architectures
 ARG TARGETARCH
@@ -26,11 +26,11 @@ ARG BUILD_DATE
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-s -w \
-    -X github.com/skygenesisenterprise/aether-mailer/package/golang/cmd.Version=${VERSION} \
-    -X github.com/skygenesisenterprise/aether-mailer/package/golang/cmd.CommitSHA=${COMMIT_SHA} \
-    -X github.com/skygenesisenterprise/aether-mailer/package/golang/cmd.BuildDate=${BUILD_DATE}" \
+    -X main.Version=${VERSION} \
+    -X main.CommitSHA=${COMMIT_SHA} \
+    -X main.BuildDate=${BUILD_DATE}" \
     -a -installsuffix cgo \
-    -o aether-mailer-sdk ./...
+    -o aether-mailer-sdk .
 
 # Runtime image
 FROM alpine:3.19
@@ -48,8 +48,8 @@ WORKDIR /app
 COPY --from=builder /app/aether-mailer-sdk /usr/local/bin/aether-mailer-sdk
 
 # Copy documentation and examples
-COPY package/golang/README.md /usr/local/share/doc/aether-mailer-sdk/README.md
-COPY package/golang/examples/ /usr/local/share/doc/aether-mailer-sdk/examples/
+COPY README.md /usr/local/share/doc/aether-mailer-sdk/README.md
+COPY examples/ /usr/local/share/doc/aether-mailer-sdk/examples/
 
 # Set ownership
 RUN chown -R aether:aether /app /usr/local/share/doc/aether-mailer-sdk

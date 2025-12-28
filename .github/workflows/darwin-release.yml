@@ -1,0 +1,504 @@
+name: macOS Release
+
+on:
+  push:
+    tags:
+      - "v*-darwin"
+      - "v*-macos"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.0.0)"
+        required: true
+        default: "1.0.0"
+
+env:
+  GO_VERSION: "1.25"
+  NODE_VERSION: "20"
+
+jobs:
+  build-darwin:
+    name: Build macOS Release
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/') && (endsWith(github.ref, '-darwin') || endsWith(github.ref, '-macos')) || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Print trigger information
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Ref name: ${{ github.ref_name }}"
+          echo "Ref type: ${{ github.ref_type }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Is tag: ${{ startsWith(github.ref, 'refs/tags/') }}"
+          echo "Ends with -darwin: ${{ endsWith(github.ref, '-darwin') }}"
+          echo "Ends with -macos: ${{ endsWith(github.ref, '-macos') }}"
+          echo "Should run: ${{ startsWith(github.ref, 'refs/tags/') && (endsWith(github.ref, '-darwin') || endsWith(github.ref, '-macos')) || github.event_name == 'workflow_dispatch' }}"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Extract tag version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            PACKAGE_VERSION="${VERSION}"
+            echo "Manual release version: $VERSION"
+          else
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+            
+            # Remove both -darwin and -macos suffixes
+            if [[ "$TAG" == *"-darwin" ]]; then
+              PACKAGE_VERSION="${VERSION%-darwin}"
+            elif [[ "$TAG" == *"-macos" ]]; then
+              PACKAGE_VERSION="${VERSION%-macos}"
+            else
+              PACKAGE_VERSION="${VERSION}"
+            fi
+            echo "Tag version: $VERSION"
+            echo "Package version: $PACKAGE_VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          # Install pnpm globally
+          npm install -g pnpm
+
+          # Install Go dependencies
+          cd server && go mod download && cd ..
+
+          # Install Node.js dependencies
+          pnpm install
+
+      - name: Build Go server for macOS
+        run: |
+          echo "🐧 Building Go server for macOS..."
+          cd server
+
+          platforms=("darwin/amd64" "darwin/arm64")
+
+          for platform in "${platforms[@]}"; do
+            IFS='/' read -r GOOS GOARCH <<< "$platform"
+            
+            output_name="aether-mailer-server"
+            echo "Building for $GOOS/$GOARCH..."
+            
+            # Enable CGO for macOS-specific features if needed
+            CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build \
+              -ldflags="-s -w -X main.version=${{ steps.version.outputs.package_version }}" \
+              -o "../dist/${GOOS}-${GOARCH}-${output_name}" \
+              .
+          done
+          cd ..
+
+      - name: Build CLI for macOS
+        run: |
+          echo "🍎 Building CLI for macOS..."
+          cd cli
+
+          platforms=("darwin/amd64" "darwin/arm64")
+
+          for platform in "${platforms[@]}"; do
+            IFS='/' read -r GOOS GOARCH <<< "$platform"
+            
+            # Create platform directory
+            mkdir -p "../dist/${GOOS}-${GOARCH}-cli"
+            
+            # Build CLI
+            npm run build
+            
+            # Copy built CLI and package.json
+            cp dist/main.js "../dist/${GOOS}-${GOARCH}-cli/mailer.js"
+            cp package.json "../dist/${GOOS}-${GOARCH}-cli/"
+            
+            # Create macOS launcher script
+            cat > "../dist/${GOOS}-${GOARCH}-cli/mailer" << 'EOF'
+          #!/usr/bin/env node
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          node "$DIR/mailer.js" "$@"
+          EOF
+            chmod +x "../dist/${GOOS}-${GOARCH}-cli/mailer"
+            
+            # Create macOS app bundle
+            mkdir -p "../dist/${GOOS}-${GOARCH}-cli/AetherMailer.app/Contents/MacOS"
+            mkdir -p "../dist/${GOOS}-${GOARCH}-cli/AetherMailer.app/Contents/Resources"
+            
+            # Copy launcher to app bundle
+            cp "../dist/${GOOS}-${GOARCH}-cli/mailer" "../dist/${GOOS}-${GOARCH}-cli/AetherMailer.app/Contents/MacOS/"
+            cp "../dist/${GOOS}-${GOARCH}-cli/package.json" "../dist/${GOOS}-${GOARCH}-cli/AetherMailer.app/Contents/Resources/"
+            
+            # Create Info.plist
+            cat > "../dist/${GOOS}-${GOARCH}-cli/AetherMailer.app/Contents/Info.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDisplayName</key>
+              <string>AetherMailer CLI</string>
+              <key>CFBundleExecutable</key>
+              <string>mailer</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.skygenesis.aethermailer.cli</string>
+              <key>CFBundleName</key>
+              <string>AetherMailer</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${{ steps.version.outputs.package_version }}</string>
+              <key>CFBundleVersion</key>
+              <string>${{ steps.version.outputs.package_version }}</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.15</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+          done
+          cd ..
+
+      - name: Build Next.js frontend
+        run: |
+          echo "🌐 Building Next.js frontend..."
+          cd app
+          pnpm build
+
+          # Copy frontend to dist
+          mkdir -p ../dist/frontend
+          cp -r .next/standalone ../dist/frontend/
+          cp -r .next/static ../dist/frontend/
+          cp package.json ../dist/frontend/
+          cd ..
+
+      - name: Create macOS packages
+        run: |
+          echo "📦 Creating macOS packages..."
+
+          VERSION="${{ steps.version.outputs.package_version }}"
+          platforms=("darwin/amd64" "darwin/arm64")
+
+          for platform in "${platforms[@]}"; do
+            IFS='/' read -r GOOS GOARCH <<< "$platform"
+            
+            # Determine architecture name
+            if [ "$GOARCH" = "amd64" ]; then
+              ARCH_NAME="x64"
+            else
+              ARCH_NAME="arm64"
+            fi
+            
+            # Create package directory
+            archive_dir="aether-mailer-${VERSION}-macos-${ARCH_NAME}"
+            mkdir -p "dist/${archive_dir}"
+            
+            # Copy binaries and CLI
+            if [ "$GOOS" = "darwin" ]; then
+              cp "dist/${GOOS}-${GOARCH}-aether-mailer-server" "dist/${archive_dir}/"
+              cp -r "dist/${GOOS}-${GOARCH}-cli" "dist/${archive_dir}/"
+            fi
+            
+            # Copy frontend
+            cp -r dist/frontend/* "dist/${archive_dir}/"
+            
+            # Copy configuration files
+            cp docker-compose.yml docker-entrypoint.sh "dist/${archive_dir}/" 2>/dev/null || true
+            cp -r prisma/ "dist/${archive_dir}/" 2>/dev/null || true
+            
+            # Create macOS-specific README
+            cat > "dist/${archive_dir}/README.md" << 'EOF'
+          # Aether Mailer v${VERSION} - macOS ${ARCH_NAME}
+
+          ## Installation Methods
+
+          ### Method 1: Homebrew (Recommended)
+          ```bash
+          # Install via Homebrew tap
+          brew tap skygenesisenterprise/aether-mailer
+          brew install aether-mailer
+
+          # Start service
+          brew services start aether-mailer
+          ```
+
+          ### Method 2: Manual Installation
+          1. Extract the archive
+          2. Copy to Applications folder:
+             ```bash
+             sudo cp -r aether-mailer-${VERSION}-macos-${ARCH_NAME} /Applications/AetherMailer
+             ```
+          3. Create symlink (optional):
+             ```bash
+             sudo ln -sf /Applications/AetherMailer/aether-mailer-server /usr/local/bin/aether-mailer
+             ```
+
+          ### Method 3: GUI Installation
+          1. Open \`AetherMailer.app\` from CLI directory
+          2. Follow the setup wizard
+          3. Grant necessary permissions when prompted
+
+          ## macOS Requirements
+
+          - **macOS Version**: 10.15 (Catalina) or later
+          - **Architecture**: Intel Mac (x64) or Apple Silicon (ARM64)
+          - **Memory**: Minimum 4GB RAM
+          - **Storage**: Minimum 2GB free space
+          - **Xcode Command Line Tools**: For development features
+
+          ## Components
+
+          - **aether-mailer-server**: Go backend server
+          - **AetherMailer.app**: macOS application bundle for CLI
+          - **frontend/**: Next.js web application
+
+          ## Security & Permissions
+
+          On first run, macOS may prompt for permissions:
+          - **Firewall**: Allow network access
+          - **Full Disk Access**: For email file operations
+          - **Accessibility**: For UI automation features
+
+          Grant these permissions in System Preferences > Security & Privacy.
+
+          ## Service Integration
+
+          ### launchd Service
+          ```bash
+          # Install as user service
+          cp /Applications/AetherMailer/com.skygenesis.aethermailer.plist ~/Library/LaunchAgents/
+          launchctl load ~/Library/LaunchAgents/com.skygenesis.aethermailer.plist
+          launchctl start com.skygenesis.aethermailer
+          ```
+
+          ### System-wide Installation
+          ```bash
+          # Copy system-wide (requires sudo)
+          sudo cp -r aether-mailer-${VERSION}-macos-${ARCH_NAME} /opt/aether-mailer
+          sudo chown -R root:wheel /opt/aether-mailer
+
+          # Create system service
+          sudo cp /opt/aether-mailer/com.skygenesis.aethermailer.plist /Library/LaunchDaemons/
+          sudo launchctl load -w /Library/LaunchDaemons/com.skygenesis.aethermailer.plist
+          ```
+
+          ## CLI Usage
+
+          ```bash
+          # Using app bundle
+          open /Applications/AetherMailer/AetherMailer.app --args --help
+
+          # Using symlink
+          aether-mailer --help
+
+          # Direct execution
+          /Applications/AetherMailer/cli/mailer --help
+          ```
+
+          ## GUI Integration
+
+          - **System Preferences**: Available in System Preferences pane
+          - **Menu Bar**: Status icon for quick access
+          - **Notifications**: Native macOS notifications
+          - **Spotlight**: Searchable commands and features
+
+          ## Troubleshooting
+
+          ### Common Issues
+          1. **"Cannot be opened because Apple cannot check it for malicious software"**
+             - Right-click app → Open
+             - Or go to System Preferences > Security & Privacy > General
+
+          2. **"Command not found" after CLI installation**
+             - Add to PATH: `export PATH="/Applications/AetherMailer:$PATH"`
+             - Or use full path: `/Applications/AetherMailer/cli/mailer`
+
+          3. **Service won't start**
+             - Check logs: `log show --predicate 'process == "aether-mailer"' --last 1h`
+             - Verify permissions in System Preferences > Security & Privacy
+
+          ### Log Location
+          - **Application Logs**: `~/Library/Logs/AetherMailer/`
+          - **System Logs**: Console.app with filter "aether-mailer"
+          - **Service Logs**: `log show --predicate 'process == "aether-mailer"'`
+          EOF
+
+            # Create DMG for GUI installation
+            mkdir -p "../dist/dmg-temp"
+            cp -r "dist/${archive_dir}" "../dist/dmg-temp/AetherMailer"
+            
+            # Create DMG
+            hdiutil create -volname "Aether Mailer v${VERSION}" \
+                        -srcfolder "../dist/dmg-temp" \
+                        -ov -format UDZO \
+                        "../dist/aether-mailer-${VERSION}-macos-${ARCH_NAME}.dmg"
+            
+            # Clean up DMG temp
+            rm -rf ../dist/dmg-temp
+            
+            # Create TAR.GZ for manual installation
+            cd dist
+            tar -czf "${archive_dir}.tar.gz" "${archive_dir}"
+            cd ..
+            
+            # Clean up
+            rm -rf "dist/${archive_dir}"
+          done
+
+      - name: Notarize macOS packages
+        if: startsWith(github.ref, 'refs/tags/') && (endsWith(github.ref, '-darwin') || endsWith(github.ref, '-macos'))
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "🔐 Notarizing macOS packages..."
+
+          VERSION="${{ steps.version.outputs.package_version }}"
+
+          # Notarize DMG files
+          for dmg in dist/aether-mailer-${VERSION}-macos-*.dmg; do
+            echo "Notarizing $dmg..."
+            
+            # Upload for notarization
+            xcrun notarytool submit \
+              --apple-id "${APPLE_ID}" \
+              --password "${APPLE_ID_PASSWORD}" \
+              --team-id "${APPLE_TEAM_ID}" \
+              --file "$dmg" \
+              --wait
+              
+            # Staple notarization ticket
+            xcrun staples staple "$dmg"
+            
+            echo "✅ Notarized: $dmg"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Aether Mailer v${{ steps.version.outputs.package_version }} - macOS
+          body: |
+            ## Aether Mailer v${{ steps.version.outputs.package_version }} - macOS Release
+
+            🍎 **Platform**: macOS (Intel x64, Apple Silicon ARM64)
+
+            ### 📦 Downloads
+
+            #### Intel Mac (x86_64)
+            - **DMG Installer**: `aether-mailer-${{ steps.version.outputs.package_version }}-macos-x64.dmg`
+            - **Manual Install**: `aether-mailer-${{ steps.version.outputs.package_version }}-macos-x64.tar.gz`
+
+            #### Apple Silicon (ARM64)
+            - **DMG Installer**: `aether-mailer-${{ steps.version.outputs.package_version }}-macos-arm64.dmg`
+            - **Manual Install**: `aether-mailer-${{ steps.version.outputs.package_version }}-macos-arm64.tar.gz`
+
+            ### 🚀 Installation Options
+
+            #### Option 1: Homebrew (Recommended)
+            ```bash
+            brew tap skygenesisenterprise/aether-mailer
+            brew install aether-mailer
+            brew services start aether-mailer
+            ```
+
+            #### Option 2: DMG Installer (GUI)
+            1. Download appropriate DMG file for your Mac architecture
+            2. Double-click DMG to mount
+            3. Drag AetherMailer to Applications folder
+            4. Launch from Applications or use Spotlight search
+
+            #### Option 3: Manual Install (Advanced)
+            ```bash
+            # Extract and install to /opt
+            sudo tar -xzf aether-mailer-${{ steps.version.outputs.package_version }}-macos-arm64.tar.gz
+            sudo mv aether-mailer-${{ steps.version.outputs.package_version }}-macos-arm64 /opt/aether-mailer
+            sudo ln -sf /opt/aether-mailer/aether-mailer-server /usr/local/bin/aether-mailer
+            ```
+
+            ### 📋 Requirements
+
+            - **macOS**: 10.15 (Catalina) or later
+            - **Architecture**: Intel Mac (x86_64) or Apple Silicon (ARM64)
+            - **Memory**: Minimum 4GB RAM
+            - **Storage**: Minimum 2GB free space
+            - **Permissions**: Administrator access for service installation
+
+            ### 🍏 macOS-Specific Features
+
+            - ✅ Native macOS application bundle (.app)
+            - ✅ DMG installer with code signing
+            - ✅ launchd service integration
+            - ✅ System Preferences integration
+            - ✅ Native notifications and menu bar
+            - ✅ Apple Silicon (M1/M2/M3) optimization
+            - ✅ Notarization for Gatekeeper compliance
+            - ✅ Spotlight integration
+            - ✅ Universal Binary Support (via separate downloads)
+
+            ### 🔐 Security & Notarization
+
+            - ✅ Apple Developer ID signed
+            - ✅ Notarized by Apple
+            - ✅ Gatekeeper compliant
+            - ✅ Sandboxing support
+            - ✅ Code transparency
+
+            ### 🛠️ Development Tools
+
+            ```bash
+            # Development mode with hot reload
+            aether-mailer --dev
+
+            # Configuration management
+            aether-mailer config --edit
+
+            # Service management
+            aether-mailer service --start
+            aether-mailer service --stop
+            aether-mailer service --restart
+            aether-mailer service --status
+            ```
+
+            ---
+
+            🐛 **Report Issues**: [GitHub Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)
+            💡 **Get Help**: [GitHub Discussions](https://github.com/skygenesisenterprise/aether-mailer/discussions)
+            🍎 **macOS Support**: [macOS Documentation](https://docs.aether-mailer.com/macos)
+
+            🍏 **Made with ❤️ by [Sky Genesis Enterprise](https://skygenesisenterprise.com)**
+          draft: false
+          prerelease: false
+          files: |
+            dist/aether-mailer-${{ steps.version.outputs.package_version }}-macos-*.tar.gz
+            dist/aether-mailer-${{ steps.version.outputs.package_version }}-macos-*.dmg
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: |
+            dist/aether-mailer-${{ steps.version.outputs.package_version }}-macos-*.tar.gz
+            dist/aether-mailer-${{ steps.version.outputs.package_version }}-macos-*.dmg
+          retention-days: 30

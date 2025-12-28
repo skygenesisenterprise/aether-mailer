@@ -1,0 +1,352 @@
+name: Multi-Platform Release Orchestrator
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.0.0)"
+        required: true
+        default: "1.0.0"
+      platforms:
+        description: "Platforms to release (comma-separated: linux,windows,macos,all)"
+        required: true
+        default: "all"
+
+jobs:
+  determine-platforms:
+    name: Determine Release Platforms
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '-linux') && !endsWith(github.ref, '-windows') && !endsWith(github.ref, '-darwin') && !endsWith(github.ref, '-macos') && !endsWith(github.ref, '-docker') || github.event_name == 'workflow_dispatch'
+
+    outputs:
+      trigger_linux: ${{ steps.platforms.outputs.trigger_linux }}
+      trigger_windows: ${{ steps.platforms.outputs.trigger_windows }}
+      trigger_macos: ${{ steps.platforms.outputs.trigger_macos }}
+      trigger_docker: ${{ steps.platforms.outputs.trigger_docker }}
+      version: ${{ steps.version.outputs.version }}
+      base_tag: ${{ steps.version.outputs.base_tag }}
+
+    steps:
+      - name: Extract version and determine platforms
+        id: platforms
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            INPUT_PLATFORMS="${{ github.event.inputs.platforms }}"
+            BASE_TAG="v${VERSION}"
+            echo "Manual release version: $VERSION"
+            echo "Platforms requested: $INPUT_PLATFORMS"
+          else
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+            BASE_TAG="${TAG}"
+            INPUT_PLATFORMS="all"
+            echo "Tag version: $VERSION"
+            echo "Base tag: $BASE_TAG"
+          fi
+
+          # Determine which platforms to trigger
+          TRIGGER_LINUX="false"
+          TRIGGER_WINDOWS="false"
+          TRIGGER_MACOS="false"
+          TRIGGER_DOCKER="false"
+
+          if [ "$INPUT_PLATFORMS" = "all" ]; then
+            TRIGGER_LINUX="true"
+            TRIGGER_WINDOWS="true"
+            TRIGGER_MACOS="true"
+            TRIGGER_DOCKER="true"
+          else
+            IFS=',' read -ra PLATFORMS <<< "$INPUT_PLATFORMS"
+            for platform in "${PLATFORMS[@]}"; do
+              case "${platform// /}" in
+                "linux") TRIGGER_LINUX="true" ;;
+                "windows") TRIGGER_WINDOWS="true" ;;
+                "macos"|"darwin") TRIGGER_MACOS="true" ;;
+                "docker") TRIGGER_DOCKER="true" ;;
+              esac
+            done
+          fi
+
+          echo "trigger_linux=$TRIGGER_LINUX" >> $GITHUB_OUTPUT
+          echo "trigger_windows=$TRIGGER_WINDOWS" >> $GITHUB_OUTPUT
+          echo "trigger_macos=$TRIGGER_MACOS" >> $GITHUB_OUTPUT
+          echo "trigger_docker=$TRIGGER_DOCKER" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "base_tag=$BASE_TAG" >> $GITHUB_OUTPUT
+
+          echo "=== Release Configuration ==="
+          echo "Version: $VERSION"
+          echo "Base Tag: $BASE_TAG"
+          echo "Linux: $TRIGGER_LINUX"
+          echo "Windows: $TRIGGER_WINDOWS"
+          echo "macOS: $TRIGGER_MACOS"
+          echo "Docker: $TRIGGER_DOCKER"
+
+  trigger-linux:
+    name: Trigger Linux Release
+    needs: determine-platforms
+    if: needs.determine-platforms.outputs.trigger_linux == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create and push Linux tag
+        run: |
+          # Create platform-specific tag
+          LINUX_TAG="v${{ needs.determine-platforms.outputs.version }}-linux"
+          echo "Creating Linux tag: $LINUX_TAG"
+
+          # Configure git
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          # Fetch all tags
+          git fetch --tags
+
+          # Create and push Linux tag
+          if ! git rev-parse "$LINUX_TAG" >/dev/null 2>&1; then
+            git tag -a "$LINUX_TAG" -m "Linux Release v${{ needs.determine-platforms.outputs.version }}"
+            git push origin "$LINUX_TAG"
+            echo "✅ Linux tag pushed: $LINUX_TAG"
+          else
+            echo "⚠️ Linux tag already exists: $LINUX_TAG"
+          fi
+
+  trigger-windows:
+    name: Trigger Windows Release
+    needs: determine-platforms
+    if: needs.determine-platforms.outputs.trigger_windows == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create and push Windows tag
+        run: |
+          # Create platform-specific tag
+          WINDOWS_TAG="v${{ needs.determine-platforms.outputs.version }}-windows"
+          echo "Creating Windows tag: $WINDOWS_TAG"
+
+          # Configure git
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          # Fetch all tags
+          git fetch --tags
+
+          # Create and push Windows tag
+          if ! git rev-parse "$WINDOWS_TAG" >/dev/null 2>&1; then
+            git tag -a "$WINDOWS_TAG" -m "Windows Release v${{ needs.determine-platforms.outputs.version }}"
+            git push origin "$WINDOWS_TAG"
+            echo "✅ Windows tag pushed: $WINDOWS_TAG"
+          else
+            echo "⚠️ Windows tag already exists: $WINDOWS_TAG"
+          fi
+
+  trigger-macos:
+    name: Trigger macOS Release
+    needs: determine-platforms
+    if: needs.determine-platforms.outputs.trigger_macos == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create and push macOS tag
+        run: |
+          # Create platform-specific tag
+          MACOS_TAG="v${{ needs.determine-platforms.outputs.version }}-macos"
+          echo "Creating macOS tag: $MACOS_TAG"
+
+          # Configure git
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          # Fetch all tags
+          git fetch --tags
+
+          # Create and push macOS tag
+          if ! git rev-parse "$MACOS_TAG" >/dev/null 2>&1; then
+            git tag -a "$MACOS_TAG" -m "macOS Release v${{ needs.determine-platforms.outputs.version }}"
+            git push origin "$MACOS_TAG"
+            echo "✅ macOS tag pushed: $MACOS_TAG"
+          else
+            echo "⚠️ macOS tag already exists: $MACOS_TAG"
+          fi
+
+  trigger-docker:
+    name: Trigger Docker Release
+    needs: determine-platforms
+    if: needs.determine-platforms.outputs.trigger_docker == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create and push Docker tag
+        run: |
+          # Create platform-specific tag
+          DOCKER_TAG="v${{ needs.determine-platforms.outputs.version }}-docker"
+          echo "Creating Docker tag: $DOCKER_TAG"
+
+          # Configure git
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          # Fetch all tags
+          git fetch --tags
+
+          # Create and push Docker tag
+          if ! git rev-parse "$DOCKER_TAG" >/dev/null 2>&1; then
+            git tag -a "$DOCKER_TAG" -m "Docker Release v${{ needs.determine-platforms.outputs.version }}"
+            git push origin "$DOCKER_TAG"
+            echo "✅ Docker tag pushed: $DOCKER_TAG"
+          else
+            echo "⚠️ Docker tag already exists: $DOCKER_TAG"
+          fi
+
+  create-comprehensive-release:
+    name: Create Comprehensive Release
+    needs:
+      [
+        determine-platforms,
+        trigger-linux,
+        trigger-windows,
+        trigger-macos,
+        trigger-docker,
+      ]
+    if: startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '-linux') && !endsWith(github.ref, '-windows') && !endsWith(github.ref, '-darwin') && !endsWith(github.ref, '-macos') && !endsWith(github.ref, '-docker') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Create comprehensive GitHub release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.determine-platforms.outputs.base_tag }}
+          name: Aether Mailer v${{ needs.determine-platforms.outputs.version }} - Multi-Platform Release
+          body: |
+            ## Aether Mailer v${{ needs.determine-platforms.outputs.version }} - Multi-Platform Release
+
+            🚀 This is a comprehensive multi-platform release that includes builds for all major platforms.
+
+            ### 📦 Platform Downloads
+
+            This release has been automatically split into platform-specific releases:
+
+            #### 🐧 Linux
+            - **Release**: [v${{ needs.determine-platforms.outputs.version }}-linux](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.determine-platforms.outputs.version }}-linux)
+            - **Binaries**: linux-amd64, linux-arm64
+            - **Package**: tar.gz with systemd integration
+
+            #### 🪟 Windows
+            - **Release**: [v${{ needs.determine-platforms.outputs.version }}-windows](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.determine-platforms.outputs.version }}-windows)
+            - **Binaries**: windows-amd64, windows-arm64
+            - **Package**: ZIP with Windows Service installer
+
+            #### 🍎 macOS
+            - **Release**: [v${{ needs.determine-platforms.outputs.version }}-macos](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.determine-platforms.outputs.version }}-macos)
+            - **Binaries**: macos-amd64 (Intel), macos-arm64 (Apple Silicon)
+            - **Package**: DMG and tar.gz with app bundles
+
+            #### 🐳 Docker
+            - **Release**: [v${{ needs.determine-platforms.outputs.version }}-docker](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.determine-platforms.outputs.version }}-docker)
+            - **Image**: Multi-architecture Docker image
+            - **Platforms**: linux/amd64, linux/arm64
+
+            ### 🚀 Quick Installation
+
+            #### Linux (Ubuntu/Debian)
+            ```bash
+            # Download using curl
+            curl -L https://github.com/${{ github.repository }}/releases/download/v${{ needs.determine-platforms.outputs.version }}-linux/aether-mailer-${{ needs.determine-platforms.outputs.version }}-linux-amd64.tar.gz | tar -xz
+
+            # Install as system service
+            sudo cp aether-mailer-${{ needs.determine-platforms.outputs.version }}-linux-amd64/aether-mailer-server /usr/local/bin/
+            sudo systemctl enable aether-mailer
+            sudo systemctl start aether-mailer
+            ```
+
+            #### Windows
+            ```powershell
+            # Download and extract
+            Invoke-WebRequest -Uri "https://github.com/${{ github.repository }}/releases/download/v${{ needs.determine-platforms.outputs.version }}-windows/aether-mailer-${{ needs.determine-platforms.outputs.version }}-windows-amd64.zip" -OutFile "aether-mailer.zip"
+            Expand-Archive aether-mailer.zip
+
+            # Install as Windows Service
+            .\aether-mailer-${{ needs.determine-platforms.outputs.version }}-windows-amd64\install-service.ps1
+            ```
+
+            #### macOS
+            ```bash
+            # Install using Homebrew
+            brew tap skygenesisenterprise/aether-mailer
+            brew install aether-mailer
+
+            # Or download DMG
+            curl -L https://github.com/${{ github.repository }}/releases/download/v${{ needs.determine-platforms.outputs.version }}-macos/aether-mailer-${{ needs.determine-platforms.outputs.version }}-macos-x64.dmg -o aether-mailer.dmg
+            open aether-mailer.dmg
+            ```
+
+            #### Docker
+            ```bash
+            # Pull and run
+            docker run -p 3000:3000 ghcr.io/${{ github.repository }}/aether-mailer:v${{ needs.determine-platforms.outputs.version }}
+
+            # Or with docker-compose
+            docker-compose up -d
+            ```
+
+            ### 📋 System Requirements
+
+            #### Minimum Requirements
+            - **CPU**: x86_64 or ARM64
+            - **Memory**: 2GB RAM (minimum), 4GB RAM (recommended)
+            - **Storage**: 1GB free space
+            - **Network**: Internet connection for email delivery
+
+            #### Platform-Specific
+
+            **Linux**: Ubuntu 20.04+, Debian 11+, CentOS 8+
+            **Windows**: Windows 10/11 or Windows Server 2019+
+            **macOS**: 10.15 (Catalina) or later
+            **Docker**: Docker 20.10+
+
+            ### 🛠️ Features
+
+            - ✅ **Multi-platform support**: Linux, Windows, macOS, Docker
+            - ✅ **Web interface**: Modern Next.js dashboard
+            - ✅ **REST API**: Complete API for integration
+            - ✅ **CLI tools**: Command-line management interface
+            - ✅ **Service integration**: systemd, Windows Service, launchd
+            - ✅ **Email protocols**: SMTP, IMAP, POP3
+            - ✅ **Security**: TLS encryption, authentication
+            - ✅ **Scalability**: Multi-node deployment support
+            - ✅ **Monitoring**: Built-in metrics and logging
+
+            ### 🔗 Links
+
+            - **Documentation**: [docs.aether-mailer.com](https://docs.aether-mailer.com)
+            - **API Reference**: [api.aether-mailer.com](https://api.aether-mailer.com)
+            - **Docker Hub**: [ghcr.io/${{ github.repository }}](https://ghcr.io/${{ github.repository }})
+
+            ---
+
+            🎯 **Choose your platform above** and follow the specific installation instructions.
+
+            🐛 **Report Issues**: [GitHub Issues](https://github.com/${{ github.repository }}/issues)
+            💡 **Get Help**: [GitHub Discussions](https://github.com/${{ github.repository }}/discussions)
+
+            📦 **Made with ❤️ by [Sky Genesis Enterprise](https://skygenesisenterprise.com)**
+          draft: false
+          prerelease: false
+          discussion_category_name: announcements

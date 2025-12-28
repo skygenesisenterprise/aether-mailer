@@ -1,0 +1,418 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - "v*-windows"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.0.0)"
+        required: true
+        default: "1.0.0"
+
+env:
+  GO_VERSION: "1.25"
+  NODE_VERSION: "20"
+
+jobs:
+  build-windows:
+    name: Build Windows Release
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/') && endsWith(github.ref, '-windows') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Print trigger information
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Ref name: ${{ github.ref_name }}"
+          echo "Ref type: ${{ github.ref_type }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Is tag: ${{ startsWith(github.ref, 'refs/tags/') }}"
+          echo "Ends with -windows: ${{ endsWith(github.ref, '-windows') }}"
+          echo "Should run: ${{ startsWith(github.ref, 'refs/tags/') && endsWith(github.ref, '-windows') || github.event_name == 'workflow_dispatch' }}"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Extract tag version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            PACKAGE_VERSION="${VERSION}"
+            echo "Manual release version: $VERSION"
+          else
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+            PACKAGE_VERSION="${VERSION%-windows}"
+            echo "Tag version: $VERSION"
+            echo "Package version: $PACKAGE_VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          # Install pnpm globally
+          npm install -g pnpm
+
+          # Install Go dependencies
+          Set-Location server
+          go mod download
+          Set-Location ..
+
+          # Install Node.js dependencies
+          pnpm install
+
+      - name: Build Go server for Windows
+        shell: powershell
+        run: |
+          echo "🐧 Building Go server for Windows..."
+
+          Set-Location server
+
+          $platforms = @("windows/amd64", "windows/arm64")
+
+          foreach ($platform in $platforms) {
+            $parts = $platform -split "/"
+            $GOOS = $parts[0]
+            $GOARCH = $parts[1]
+            
+            $outputName = "aether-mailer-server.exe"
+            
+            echo "Building for $GOOS/$GOARCH..."
+            
+            $env:GOOS = $GOOS
+            $env:GOARCH = $GOARCH
+            go build -ldflags "-s -w -X main.version=${{ steps.version.outputs.package_version }}" -o "../dist/$GOOS-$GOARCH-$outputName" .
+          }
+
+          Set-Location ..
+
+      - name: Build CLI for Windows
+        shell: powershell
+        run: |
+          echo "🔧 Building CLI for Windows..."
+
+          Set-Location cli
+
+          $platforms = @("windows/amd64", "windows/arm64")
+
+          foreach ($platform in $platforms) {
+            $parts = $platform -split "/"
+            $GOOS = $parts[0]
+            $GOARCH = $parts[1]
+            
+            # Create platform directory
+            New-Item -ItemType Directory -Force -Path "../dist/$GOOS-$GOARCH-cli"
+            
+            # Build CLI
+            npm run build
+            
+            # Copy built CLI and package.json
+            Copy-Item "dist/main.js" "../dist/$GOOS-$GOARCH-cli/mailer.js"
+            Copy-Item "package.json" "../dist/$GOOS-$GOARCH-cli/"
+            
+            # Create Windows batch launcher
+            @"
+            @echo off
+            node "%~dp0mailer.js" %*
+            "@ | Out-File -FilePath "../dist/$GOOS-$GOARCH-cli/mailer.bat" -Encoding ASCII
+            
+            # Create PowerShell launcher
+            @"
+            #!/usr/bin/env pwsh
+            $scriptDir = Split-Path -Parent $PSCommandPath
+            & node "$scriptDir/mailer.js" $args
+            "@ | Out-File -FilePath "../dist/$GOOS-$GOARCH-cli/mailer.ps1" -Encoding UTF8
+          }
+
+          Set-Location ..
+
+      - name: Build Next.js frontend
+        shell: powershell
+        run: |
+          echo "🌐 Building Next.js frontend..."
+
+          Set-Location app
+          pnpm build
+
+          # Copy frontend to dist
+          New-Item -ItemType Directory -Force -Path "../dist/frontend"
+          Copy-Item ".next/standalone/*" "../dist/frontend/"
+          Copy-Item ".next/static/*" "../dist/frontend/" -Recurse
+          Copy-Item "package.json" "../dist/frontend/"
+          Set-Location ..
+
+      - name: Create Windows Service Installer
+        shell: powershell
+        run: |
+          echo "🛠️ Creating Windows Service Installer..."
+
+          VERSION = "${{ steps.version.outputs.package_version }}"
+          $platforms = @("windows/amd64", "windows/arm64")
+
+          foreach ($platform in $platforms) {
+            $parts = $platform -split "/"
+            $GOOS = $parts[0]
+            $GOARCH = $parts[1]
+            
+            # Create installer directory
+            $archiveDir = "aether-mailer-$VERSION-windows-$GOARCH"
+            New-Item -ItemType Directory -Force -Path "dist/$archiveDir"
+            
+            # Copy binaries
+            Copy-Item "dist/$GOOS-$GOARCH-aether-mailer-server.exe" "dist/$archiveDir/"
+            Copy-Item -Path "dist/$GOOS-$GOARCH-cli" -Destination "dist/$archiveDir/cli" -Recurse
+            
+            # Copy frontend
+            Copy-Item -Path "dist/frontend/*" -Destination "dist/$archiveDir/" -Recurse
+            
+            # Copy configuration files
+            Copy-Item "docker-compose.yml" "dist/$archiveDir/" -ErrorAction SilentlyContinue
+            Copy-Item "prisma" "dist/$archiveDir/" -Recurse -ErrorAction SilentlyContinue
+            
+            # Create Windows Service script
+            @"
+            # Windows Service Installation Script for Aether Mailer v$VERSION
+            
+            $serviceName = "AetherMailer"
+            $executablePath = "$PSScriptRoot\aether-mailer-server.exe"
+            $displayName = "Aether Mailer Email Server"
+            $description = "Complete email server solution with web interface"
+            
+            # Check if running as Administrator
+            if (-NOT ([Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsBuiltInRole]::Administrator)).IsInRole) {
+              Write-Host "❌ This script must be run as Administrator!" -ForegroundColor Red
+              Write-Host "Right-click the script and select 'Run as Administrator'" -ForegroundColor Yellow
+              Read-Host "Press Enter to exit..."
+              exit 1
+            }
+            
+            Write-Host "🔧 Installing Windows Service: $serviceName" -ForegroundColor Green
+            
+            try {
+              # Stop existing service if it exists
+              if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+                Write-Host "⏹️ Stopping existing service..." -ForegroundColor Yellow
+                Stop-Service -Name $serviceName -Force
+                Write-Host "🗑️ Removing existing service..." -ForegroundColor Yellow
+                Remove-Service -Name $serviceName
+              }
+              
+              # Install the service
+              Write-Host "📦 Installing new service..." -ForegroundColor Green
+              New-Service -Name $serviceName -BinaryPathName $executablePath -DisplayName $displayName -Description $description -StartupType Automatic
+              
+              # Start the service
+              Write-Host "▶️ Starting service..." -ForegroundColor Green
+              Start-Service -Name $serviceName
+              
+              # Configure service recovery
+              Write-Host "🛡️ Configuring service recovery..." -ForegroundColor Green
+              $service = Get-WmiObject -Class Win32_Service -Filter "Name='$serviceName'"
+              $service.Change($null, $null, $null, $null, $null, $null, $null, $null, $null, $null, $null, $null, 1, 30000, 1, 60000, 1, 120000)
+              
+              Write-Host "✅ Service installed and started successfully!" -ForegroundColor Green
+              Write-Host "🌐 Web interface: http://localhost:3000" -ForegroundColor Cyan
+              Write-Host "📧 SMTP server: localhost:587" -ForegroundColor Cyan
+              
+            } catch {
+              Write-Host "❌ Failed to install service: $($_.Exception.Message)" -ForegroundColor Red
+              exit 1
+            }
+            
+            Write-Host "Press Enter to exit..." -ForegroundColor Gray
+            Read-Host
+            "@ | Out-File -FilePath "dist/$archiveDir/install-service.ps1" -Encoding UTF8
+            
+            # Create uninstall script
+            @"
+            # Windows Service Uninstallation Script for Aether Mailer v$VERSION
+            
+            $serviceName = "AetherMailer"
+            
+            if (-NOT ([Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsBuiltInRole]::Administrator)).IsInRole) {
+              Write-Host "❌ This script must be run as Administrator!" -ForegroundColor Red
+              Read-Host "Press Enter to exit..."
+              exit 1
+            }
+            
+            Write-Host "🗑️ Uninstalling Windows Service: $serviceName" -ForegroundColor Red
+            
+            try {
+              if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+                Write-Host "⏹️ Stopping service..." -ForegroundColor Yellow
+                Stop-Service -Name $serviceName -Force
+                Write-Host "🗑️ Removing service..." -ForegroundColor Yellow
+                Remove-Service -Name $serviceName
+                Write-Host "✅ Service uninstalled successfully!" -ForegroundColor Green
+              } else {
+                Write-Host "ℹ️ Service not found" -ForegroundColor Yellow
+              }
+            } catch {
+              Write-Host "❌ Failed to uninstall service: $($_.Exception.Message)" -ForegroundColor Red
+              exit 1
+            }
+            
+            Write-Host "Press Enter to exit..." -ForegroundColor Gray
+            Read-Host
+            "@ | Out-File -FilePath "dist/$archiveDir/uninstall-service.ps1" -Encoding UTF8
+            
+            # Create Windows-specific README
+            @"
+            # Aether Mailer v$VERSION - Windows $GOARCH
+            
+            ## Installation Methods
+            
+            ### Method 1: Windows Service (Recommended)
+            1. Right-click \`install-service.ps1\` and select "Run as Administrator"
+            2. Follow the prompts to install the Windows service
+            3. Access web interface at http://localhost:3000
+            
+            ### Method 2: Manual Execution
+            1. Run \`aether-mailer-server.exe\` directly
+            2. Use CLI with \`mailer.bat --help\`
+            
+            ## Windows Requirements
+            
+            - Windows 10/11 or Windows Server 2019+
+            - Administrator privileges for service installation
+            - Node.js >= 18.0.0 (for CLI tools)
+            - PowerShell 5.1+
+            
+            ## Features
+            
+            - ✅ Windows Service integration
+            - ✅ Automatic startup
+            - ✅ Service recovery configuration
+            - ✅ Web-based administration
+            - ✅ Command-line tools
+            - ✅ Email server capabilities
+            
+            ## Firewall Configuration
+            
+            Configure Windows Firewall to allow:
+            - Port 3000 (HTTP) for web interface
+            - Port 587 (SMTP) for email submission
+            - Port 993 (IMAP) for email retrieval
+            
+            ## CLI Usage
+            
+            ```powershell
+            # Basic usage
+            .\mailer.bat --help
+            
+            # With PowerShell
+            .\mailer.ps1 --help
+            ```
+            
+            ## Service Management
+            
+            Using Windows Services:
+            1. Press Win+R, type \`services.msc\`
+            2. Find "AetherMailer" in the list
+            3. Right-click for start/stop/restart options
+            ```
+            "@ | Out-File -FilePath "dist/$archiveDir/README.md" -Encoding UTF8
+            
+            # Create ZIP archive
+            Compress-Archive -Path "dist/$archiveDir" -DestinationPath "dist/$archiveDir.zip" -Force
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Aether Mailer v${{ steps.version.outputs.package_version }} - Windows
+          body: |
+            ## Aether Mailer v${{ steps.version.outputs.package_version }} - Windows Release
+
+            🖥️ **Platform**: Windows (amd64, arm64)
+
+            ### 📦 Downloads
+            - **Windows amd64**: `aether-mailer-${{ steps.version.outputs.package_version }}-windows-amd64.zip`
+            - **Windows arm64**: `aether-mailer-${{ steps.version.outputs.package_version }}-windows-arm64.zip`
+
+            ### 🚀 Installation
+
+            #### Option 1: Windows Service (Recommended)
+            1. Download the appropriate ZIP archive
+            2. Extract the archive
+            3. Right-click `install-service.ps1` → "Run as Administrator"
+            4. Follow the installation prompts
+
+            The service will auto-start with Windows and be available at:
+            - **Web Interface**: http://localhost:3000
+
+            #### Option 2: Manual Execution
+            1. Extract the archive
+            2. Run `aether-mailer-server.exe`
+            3. Access http://localhost:3000
+
+            ### 📋 Requirements
+
+            - **OS**: Windows 10/11 or Windows Server 2019+
+            - **Architecture**: x86_64 (amd64) or ARM64 (arm64)
+            - **Privileges**: Administrator for service installation
+            - **Memory**: Minimum 4GB RAM
+            - **Storage**: Minimum 2GB free space
+
+            ### 🛠️ Features
+
+            - ✅ Windows Service integration
+            - ✅ Automatic startup with Windows
+            - ✅ Service recovery configuration
+            - ✅ Web-based administration panel
+            - ✅ Command-line management tools
+            - ✅ PowerShell and batch script support
+            - ✅ Windows Firewall configuration guidance
+            - ✅ Service management via Windows Services
+
+            ### 🔧 Service Management
+
+            Use Windows Services (`services.msc`) to:
+            - Start/stop/restart the service
+            - Configure startup type
+            - View service logs
+            - Set recovery options
+
+            ---
+
+            🐛 **Report Issues**: [GitHub Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)
+            💡 **Get Help**: [GitHub Discussions](https://github.com/skygenesisenterprise/aether-mailer/discussions)
+
+            🪟 **Made with ❤️ by [Sky Genesis Enterprise](https://skygenesisenterprise.com)**
+          draft: false
+          prerelease: false
+          files: |
+            dist/aether-mailer-${{ steps.version.outputs.package_version }}-windows-*.zip
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: |
+            dist/aether-mailer-${{ steps.version.outputs.package_version }}-windows-*.zip
+          retention-days: 30

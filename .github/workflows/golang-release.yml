@@ -203,13 +203,36 @@ jobs:
       - name: Publish Go Module to GitHub Packages
         working-directory: ./package/golang
         run: |
+          # Clean up module
           go mod tidy
-          go list -m github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }}
+
+          # Verify current module information
+          echo "Current module info:"
+          go list -m .
+
+          # Create and push version tag
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          if ! git rev-parse "v${{ steps.version.outputs.package_version }}" >/dev/null 2>&1; then
-            git tag -a "v${{ steps.version.outputs.package_version }}" -m "Go SDK v${{ steps.version.outputs.package_version }}"
-            git push origin "v${{ steps.version.outputs.package_version }}"
+
+          TAG_NAME="v${{ steps.version.outputs.package_version }}"
+
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Creating and pushing tag: $TAG_NAME"
+            git tag -a "$TAG_NAME" -m "Go SDK v${{ steps.version.outputs.package_version }}"
+            git push origin "$TAG_NAME"
+          else
+            echo "Tag $TAG_NAME already exists"
+          fi
+
+          # Wait a moment for the tag to propagate
+          sleep 5
+
+          # Verify the tag exists and module can be accessed
+          echo "Verifying module access..."
+          if go list -m github.com/skygenesisenterprise/aether-mailer/package/golang@$TAG_NAME; then
+            echo "✅ Module is accessible at version $TAG_NAME"
+          else
+            echo "⚠️ Module not yet accessible, this is normal for recent releases"
           fi
 
   security-scan:

@@ -208,7 +208,7 @@ jobs:
 
           # Verify current module information
           echo "Current module info:"
-          go list -m .
+          go list -m github.com/skygenesisenterprise/aether-mailer/package/golang
 
           # Create and push version tag
           git config --global user.name "github-actions"
@@ -222,6 +222,17 @@ jobs:
             git push origin "$TAG_NAME"
           else
             echo "Tag $TAG_NAME already exists"
+          fi
+
+          # Wait a moment for tag to propagate
+          sleep 5
+
+          # Verify the tag exists and module can be accessed
+          echo "Verifying module access..."
+          if go list -m github.com/skygenesisenterprise/aether-mailer/package/golang@$TAG_NAME; then
+            echo "✅ Module is accessible at version $TAG_NAME"
+          else
+            echo "⚠️ Module not yet accessible, this is normal for recent releases"
           fi
 
           # Wait a moment for the tag to propagate

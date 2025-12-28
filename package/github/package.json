@@ -1,0 +1,50 @@
+{
+  "name": "aether-mailer",
+  "version": "1.0.0",
+  "description": "Aether Mailer GitHub App for release orchestration and notifications",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "keywords": [
+    "github",
+    "app",
+    "release",
+    "aether",
+    "mailer",
+    "webhook",
+    "orchestration"
+  ],
+  "author": "Sky Genesis Enterprise",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/webhooks": "^12.0.0",
+    "@octokit/auth-app": "^6.0.0",
+    "@octokit/rest": "^20.0.0",
+    "fastify": "^4.24.0",
+    "pino": "^8.17.0",
+    "pino-pretty": "^10.3.0",
+    "dotenv": "^16.3.0",
+    "zod": "^3.22.0",
+    "node-cron": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/node-cron": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

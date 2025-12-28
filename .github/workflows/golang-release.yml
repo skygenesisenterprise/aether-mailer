@@ -1,0 +1,322 @@
+name: Release Go SDK
+
+on:
+  push:
+    tags:
+      - "v*+golang-sdk"
+
+env:
+  GO_VERSION: "1.25"
+
+jobs:
+  release:
+    name: Release Go SDK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Extract tag version
+        id: version
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${tag#v}"
+          # Remove the +golang-sdk suffix for package version
+          PACKAGE_VERSION="${VERSION%+golang-sdk}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          echo "Tag version: $VERSION"
+          echo "Package version: $PACKAGE_VERSION"
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        working-directory: ./package/golang
+        run: go mod download
+
+      - name: Run tests
+        working-directory: ./package/golang
+        run: |
+          # Run tests with coverage
+          go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Run go vet
+        working-directory: ./package/golang
+        run: go vet ./...
+
+      - name: Run golint (if available)
+        working-directory: ./package/golang
+        continue-on-error: true
+        run: |
+          if command -v golint &> /dev/null; then
+            golint ./...
+          else
+            echo "golint not available, skipping"
+          fi
+
+      - name: Generate documentation
+        working-directory: ./package/golang
+        run: |
+          # Install godoc
+          go install golang.org/x/tools/cmd/godoc@latest
+
+          # Generate docs
+          godoc -html github.com/skygenesisenterprise/aether-mailer/package/golang > docs.html || true
+
+      - name: Build SDK
+        working-directory: ./package/golang
+        run: |
+          # Build module for multiple platforms
+          platforms=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64")
+
+          for platform in "${platforms[@]}"; do
+            IFS='/' read -r GOOS GOARCH <<< "$platform"
+            
+            output_dir="dist/${GOOS}-${GOARCH}"
+            mkdir -p "$output_dir"
+            
+            echo "Building for $GOOS/$GOARCH..."
+            
+            if [ "$GOOS" = "windows" ]; then
+              # Build Windows binary
+              GOOS=$GOOS GOARCH=$GOARCH go build -o "$output_dir/aether-mailer-sdk.exe" -ldflags="-s -w -X main.version=${{ steps.version.outputs.package_version }}" .
+            else
+              # Build Unix binary
+              GOOS=$GOOS GOARCH=$GOARCH go build -o "$output_dir/aether-mailer-sdk" -ldflags="-s -w -X main.version=${{ steps.version.outputs.package_version }}" .
+            fi
+          done
+
+      - name: Create release artifacts
+        working-directory: ./package/golang
+        run: |
+          # Create a source archive
+          tar -czf aether-mailer-sdk-${{ steps.version.outputs.package_version }}.src.tar.gz \
+            --exclude=.git \
+            --exclude=dist \
+            --exclude=coverage.out \
+            --exclude=docs.html \
+            .
+
+          # Create platform-specific archives
+          platforms=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64")
+
+          for platform in "${platforms[@]}"; do
+            IFS='/' read -r GOOS GOARCH <<< "$platform"
+            
+            output_dir="dist/${GOOS}-${GOARCH}"
+            
+            if [ "$GOOS" = "windows" ]; then
+              zip -r "aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.zip" \
+                -C "$output_dir" aether-mailer-sdk.exe README.md
+            else
+              tar -czf "aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.tar.gz" \
+                -C "$output_dir" aether-mailer-sdk ../README.md
+            fi
+          done
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Go SDK v${{ steps.version.outputs.package_version }}
+          body: |
+            ## Aether Mailer Go SDK v${{ steps.version.outputs.package_version }}
+
+            ### 🚀 What's New
+            This release includes the complete Go SDK for Aether Mailer with:
+
+            - **Domain-Driven Design**: Clean architecture with separation of concerns
+            - **Comprehensive Services**: User, Domain, Message, Quota, and Routing services
+            - **Framework Agnostic**: Can be used with any HTTP/gRPC framework
+            - **Multi-Node Support**: Built for distributed deployments
+            - **Type Safety**: Full TypeScript-like type safety in Go
+            - **Event System**: Domain events for loose coupling
+            - **Configuration Management**: Comprehensive config system with validation
+
+            ### 📦 Installation
+
+            ```bash
+            go get github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }}
+            ```
+
+            ### 🔗 Quick Start
+
+            ```go
+            import "github.com/skygenesisenterprise/aether-mailer/package/golang"
+
+            // Load configuration
+            cfg := config.DefaultConfig()
+
+            // Initialize SDK (provide your repository implementations)
+            sdk, err := golang.NewSDK(cfg)
+
+            // Use services
+            user, err := sdk.Services.User.CreateUser(ctx, CreateUserRequest{
+                Email:    "user@example.com",
+                Username: "john_doe",
+                Role:     domain.UserRoleUser,
+            })
+            ```
+
+            ### 📚 Documentation
+            - [Go Documentation](https://pkg.go.dev/github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }})
+            - [Full README](https://github.com/skygenesisenterprise/aether-mailer/blob/main/package/golang/README.md)
+
+            ### 🔄 Supported Platforms
+            - Linux (x86_64, ARM64)
+            - macOS (x86_64, ARM64)
+            - Windows (x86_64)
+
+            ---
+
+            🐛 **Report Issues**: [GitHub Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)
+            💡 **Get Help**: [GitHub Discussions](https://github.com/skygenesisenterprise/aether-mailer/discussions)
+
+            📦 **Made with ❤️ by [Sky Genesis Enterprise](https://skygenesisenterprise.com)**
+          draft: false
+          prerelease: false
+          files: |
+            ./package/golang/aether-mailer-sdk-${{ steps.version.outputs.package_version }}.src.tar.gz
+            ./package/golang/aether-mailer-sdk-${{ steps.version.outputs.package_version }}-*.tar.gz
+            ./package/golang/aether-mailer-sdk-${{ steps.version.outputs.package_version }}-*.zip
+
+      - name: Publish Go Module to GitHub Packages
+        run: |
+          cd package/golang
+
+          # Prepare module for publishing
+          go mod tidy
+
+          # Create a temporary directory for publishing
+          mkdir -p publish-package
+
+          # Copy all source files
+          cp -r config domain errors repository service examples README.md LICENSE go.mod go.sum publish-package/
+
+          # Create the package module path
+          cd publish-package
+
+          # Update go.mod for GitHub Packages
+          sed -i 's|module github.com/skygenesisenterprise/aether-mailer/package/golang|module github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }}|' go.mod
+
+          echo "📦 Publishing Go module to GitHub Packages..."
+          echo "Module: github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }}"
+
+      - name: Generate Go Module Proxy Info
+        working-directory: ./package/golang
+        run: |
+          # Generate go.sum for release verification
+          go mod tidy
+          go mod verify
+
+          # Display module info
+          echo "Module info:"
+          go list -m github.com/skygenesisenterprise/aether-mailer/package/golang
+
+      - name: Notify Aether Mailer App (optional)
+        env:
+          WEBHOOK_URL: ${{ secrets.AETHER_MAILER_WEBHOOK_URL }}
+        if: env.WEBHOOK_URL != ''
+        run: |
+          # Send notification to Aether Mailer app
+          curl -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "sdk_release",
+              "package": "golang",
+              "version": "${{ steps.version.outputs.package_version }}",
+              "repository": "${{ github.repository }}",
+              "release_url": "${{ steps.create_release.outputs.html_url }}",
+              "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+            }' || true
+
+      - name: Update GoDoc Registry
+        run: |
+          # Trigger GoDoc update (optional)
+          curl -X POST https://proxy.golang.org/github.com/skygenesisenterprise/aether-mailer/package/golang/@v/${{ steps.version.outputs.package_version }}.info \
+            -H "User-Agent: GitHub Actions" \
+            -H "Content-Length: 0" \
+            -s -o /dev/null || true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results.sarif
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+          exit-code: "0"
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-results.sarif"
+
+  publish-docs:
+    name: Update Documentation
+    runs-on: ubuntu-latest
+    needs: release
+    if: success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Generate documentation
+        working-directory: ./package/golang
+        run: |
+          # Install tools
+          go install golang.org/x/tools/cmd/godoc@latest
+
+          # Generate package documentation
+          godoc -html github.com/skygenesisenterprise/aether-mailer/package/golang > documentation.html
+
+      - name: Update GoDoc website info
+        run: |
+          # Trigger GoDoc update for the new version
+          curl -s "https://godoc.org/github.com/skygenesisenterprise/aether-mailer/package/golang?status=yes" || true

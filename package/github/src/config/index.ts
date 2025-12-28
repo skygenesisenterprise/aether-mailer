@@ -6,24 +6,24 @@ dotenv.config();
 
 export const config: AppConfig = {
   // GitHub App configuration
-  appId: parseInt(process.env.GITHUB_APP_ID || "0", 10),
-  privateKey: process.env.GITHUB_APP_PRIVATE_KEY || "",
-  webhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",
+  appId: parseInt(process.env["GITHUB_APP_ID"] || "0", 10),
+  privateKey: process.env["GITHUB_APP_PRIVATE_KEY"] || "",
+  webhookSecret: process.env["GITHUB_WEBHOOK_SECRET"] || "",
 
   // Server configuration
-  port: parseInt(process.env.PORT || "3000", 10),
-  host: process.env.HOST || "0.0.0.0",
-  baseUrl: process.env.BASE_URL || "http://localhost:3000",
+  port: parseInt(process.env["PORT"] || "3000", 10),
+  host: process.env["HOST"] || "0.0.0.0",
+  baseUrl: process.env["BASE_URL"] || "http://localhost:3000",
   logLevel:
-    (process.env.LOG_LEVEL as "debug" | "info" | "warn" | "error") || "info",
+    (process.env["LOG_LEVEL"] as "debug" | "info" | "warn" | "error") || "info",
 
   // Aether Mailer configuration
   aetherMailer: {
     apiUrl:
-      process.env.AETHER_MAILER_API_URL || "http://localhost:8080/api/send",
-    apiKey: process.env.AETHER_MAILER_API_KEY || "",
-    fromAddress: process.env.AETHER_MAILER_FROM || "noreply@aether.com",
-    recipients: process.env.AETHER_MAILER_RECIPIENTS?.split(",") || [
+      process.env["AETHER_MAILER_API_URL"] || "http://localhost:8080/api/send",
+    apiKey: process.env["AETHER_MAILER_API_KEY"] || "",
+    fromAddress: process.env["AETHER_MAILER_FROM"] || "noreply@aether.com",
+    recipients: process.env["AETHER_MAILER_RECIPIENTS"]?.split(",") || [
       "team@aether.com",
     ],
   },

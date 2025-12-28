@@ -186,33 +186,4 @@ export class ReleaseHandler {
       // Don't throw - annotation is optional
     }
   }
-
-  private generateReleaseComment(metadata: ReleaseMetadata): string {
-    const targets = metadata.targets
-      .map((target) => `\`${target}\``)
-      .join(", ");
-    const typeEmoji = this.getTypeEmoji(metadata.type);
-
-    return `${typeEmoji} **Aether Release Analysis**
-
-**Type:** \`${metadata.type}\`
-**Targets:** ${targets}
-**Version:** \`${metadata.version}\`
-**Prerelease:** ${metadata.prerelease ? "Yes" : "No"}
-
----
-
-*Detected by Aether GitHub App*`;
-  }
-
-  private getTypeEmoji(type: string): string {
-    const emojis: Record<string, string> = {
-      general: "🚀",
-      mobile: "📱",
-      desktop: "🖥️",
-      cloud: "☁️",
-      sdk: "📦",
-    };
-    return emojis[type] || "🚀";
-  }
 }

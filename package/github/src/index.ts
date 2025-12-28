@@ -15,7 +15,7 @@ export class AetherGitHubApp {
   private logger: PinoLogger;
   private signatureValidator: WebhookSignatureValidator;
   private rateLimiter: RateLimiter;
-  private releaseHandler: ReleaseHandler;
+  private releaseHandler!: ReleaseHandler;
 
   constructor() {
     this.logger = PinoLogger.create(config.logLevel);
@@ -52,7 +52,7 @@ export class AetherGitHubApp {
   private setupSecurity(): void {
     this.app.addHook(
       "onSend",
-      async (request: any, reply: any, payload: any) => {
+      async (_request: any, reply: any, payload: any) => {
         SecurityHeaders.addSecurityHeaders(reply.headers);
         return payload;
       },
@@ -69,7 +69,7 @@ export class AetherGitHubApp {
   }
 
   private setupRoutes(): void {
-    this.app.get("/health", async (request: any, reply: any) => {
+    this.app.get("/health", async (_request: any, _reply: any) => {
       return {
         status: "healthy",
         timestamp: new Date().toISOString(),
@@ -115,7 +115,7 @@ export class AetherGitHubApp {
       }
     });
 
-    this.app.get("/webhook/config", async (request: any, reply: any) => {
+    this.app.get("/webhook/config", async (_request: any, _reply: any) => {
       return {
         url: `${config.baseUrl}/webhook`,
         content_type: "json",
@@ -124,7 +124,7 @@ export class AetherGitHubApp {
       };
     });
 
-    this.app.get("/app/info", async (request: any, reply: any) => {
+    this.app.get("/app/info", async (_request: any, _reply: any) => {
       return {
         name: "Aether GitHub App",
         version: "1.0.0",

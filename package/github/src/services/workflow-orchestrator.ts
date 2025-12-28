@@ -1,13 +1,6 @@
 import type { ReleaseMetadata } from "../types/index.js";
 import { Logger } from "../utils/logger.js";
 
-interface WorkflowPayload {
-  repository: string;
-  release: ReleaseMetadata;
-  actor: string;
-  timestamp: Date;
-}
-
 export class WorkflowOrchestrator {
   constructor(private readonly logger: Logger) {}
 
@@ -148,17 +141,17 @@ export class WorkflowOrchestrator {
 
   private async triggerWorkflow(
     workflow: Workflow,
-    metadata: ReleaseMetadata,
+    _metadata: ReleaseMetadata,
     payload: any,
   ): Promise<void> {
-    const [owner, repo] = payload.repository.full_name.split("/");
+    // const [owner, repo] = payload.repository.full_name.split("/");
 
-    const workflowPayload: WorkflowPayload = {
-      repository: payload.repository.full_name,
-      release: metadata,
-      actor: payload.sender.login,
-      timestamp: new Date(),
-    };
+    // const workflowPayload: WorkflowPayload = {
+    //   repository: payload.repository.full_name,
+    //   release: metadata,
+    //   actor: payload.sender.login,
+    //   timestamp: new Date(),
+    // };
 
     // This would use GitHub API to trigger workflow dispatch
     // For now, we'll simulate the call

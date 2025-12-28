@@ -276,16 +276,16 @@ jobs:
               "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
             }' || true
 
-- name: Build and Push Docker Image
+      - name: Build and Push Docker Image
         working-directory: ./package/golang
         run: |
           # Set up Docker Buildx
           docker buildx create --use --name multiarch --driver docker-container
           docker buildx inspect --bootstrap
-          
+
           # Build and push for multiple platforms
           echo "🐳 Building and pushing Docker image for multiple platforms..."
-          
+
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --build-arg VERSION=${{ steps.version.outputs.package_version }} \
@@ -303,10 +303,10 @@ jobs:
       - name: Update Go Module Proxy
         run: |
           cd package/golang
-          
+
           # Ensure the module is properly versioned for go get
           echo "🔄 Updating Go module proxy..."
-          
+
           # Create and push version tag if it doesn't exist
           if ! git rev-parse "v${{ steps.version.outputs.package_version }}" >/dev/null 2>&1; then
             git config --global user.name "github-actions"
@@ -314,7 +314,7 @@ jobs:
             git tag -a "v${{ steps.version.outputs.package_version }}" -m "Go SDK v${{ steps.version.outputs.package_version }}"
             git push origin "v${{ steps.version.outputs.package_version }}"
           fi
-          
+
           # Trigger Go module proxy update
           echo "📡 Triggering Go module proxy for v${{ steps.version.outputs.package_version }}..."
           curl -X GET "https://proxy.golang.org/github.com/skygenesisenterprise/aether-mailer/package/golang/@v/${{ steps.version.outputs.package_version }}.info" \
@@ -324,35 +324,35 @@ jobs:
           # Verify module is available
           echo "✅ Verifying module availability..."
           timeout 30s bash -c 'until go list -m github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }} >/dev/null 2>&1; do sleep 5; done' || true
-          
+
           echo "🎉 Go module is now available via: go get github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }}"
 
       - name: Test Go Module Installation
         run: |
           # Test that the module can be installed via go get
           echo "🧪 Testing Go module installation..."
-          
+
           # Create a temporary test directory
           mkdir -p /tmp/test-go-module
           cd /tmp/test-go-module
-          
+
           # Initialize a test module
           go mod init test-module
-          
+
           # Try to get the module
           echo "📦 Installing: github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }}"
           go get github.com/skygenesisenterprise/aether-mailer/package/golang@v${{ steps.version.outputs.package_version }}
-          
+
           # Verify it can be imported
           cat > test.go << 'EOF'
           package main
-          
+
           import (
               "fmt"
               "github.com/skygenesisenterprise/aether-mailer/package/golang/config"
               "github.com/skygenesisenterprise/aether-mailer/package/golang/domain"
           )
-          
+
           func main() {
               cfg := config.DefaultConfig()
               user := &domain.User{
@@ -362,10 +362,10 @@ jobs:
               fmt.Printf("✅ Module imported successfully! Config host: %s, User email: %s\n", cfg.Database.Host, user.Email)
           }
           EOF
-          
+
           # Run the test
           go run test.go
-          
+
           echo "✅ Go module installation test passed!"
 
   security-scan:

@@ -127,18 +127,36 @@ jobs:
       - name: Create release artifacts
         working-directory: ./package/golang
         run: |
+          # Create source archive first (exclude temp files)
           tar -czf aether-mailer-sdk-${{ steps.version.outputs.package_version }}.src.tar.gz \
-            --exclude=.git --exclude=dist --exclude=coverage.out --exclude=docs.html .
+            --exclude=.git \
+            --exclude=dist \
+            --exclude=coverage.out \
+            --exclude=docs.html \
+            --exclude='*.tar.gz' \
+            --exclude='*.zip' \
+            .
+
+          # Create platform-specific archives
           platforms=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64")
           for platform in "${platforms[@]}"; do
             IFS='/' read -r GOOS GOARCH <<< "$platform"
             output_dir="dist/${GOOS}-${GOARCH}"
-            if [ "$GOOS" = "windows" ]; then
+            
+            if [ "$GOOS" = "windows" ] && [ -f "$output_dir/aether-mailer-sdk.exe" ]; then
+              # Copy README to dist directory first
+              cp README.md "$output_dir/"
+              cd dist
               zip -r "aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.zip" \
                 -C "$output_dir" aether-mailer-sdk.exe README.md
-            else
+              cd ..
+            elif [ -f "$output_dir/aether-mailer-sdk" ]; then
+              # Copy README to dist directory first  
+              cp README.md "$output_dir/"
+              cd dist
               tar -czf "aether-mailer-sdk-${{ steps.version.outputs.package_version }}-${GOOS}-${GOARCH}.tar.gz" \
-                -C "$output_dir" aether-mailer-sdk ../README.md
+                -C "$output_dir" aether-mailer-sdk README.md
+              cd ..
             fi
           done
 

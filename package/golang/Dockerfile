@@ -49,7 +49,7 @@ COPY --from=builder /app/aether-mailer-sdk /usr/local/bin/aether-mailer-sdk
 
 # Copy documentation and examples
 COPY package/golang/README.md /usr/local/share/doc/aether-mailer-sdk/README.md
-COPY package/golang/examples/ /usr/local/share/doc/aether-mailer-sdk/examples/ 2>/dev/null || true
+COPY package/golang/examples/ /usr/local/share/doc/aether-mailer-sdk/examples/
 
 # Set ownership
 RUN chown -R aether:aether /app /usr/local/share/doc/aether-mailer-sdk

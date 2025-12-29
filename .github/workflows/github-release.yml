@@ -206,7 +206,9 @@ jobs:
           generate_release_notes: true
 
       - name: Update Docker Hub README (if configured)
-        if: github.repository_owner == 'skygenesisenterprise' && secrets.DOCKER_HUB_TOKEN != ''
+        env:
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+        if: github.repository_owner == 'skygenesisenterprise' && env.DOCKER_TOKEN != ''
         run: |
           cd package/github
           # Create Docker Hub README from main README
@@ -215,13 +217,15 @@ jobs:
           # Update Docker Hub README using token
           curl -f \
             -X POST \
-            -H "Authorization: Bearer ${{ secrets.DOCKER_HUB_TOKEN }}" \
+            -H "Authorization: Bearer $DOCKER_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"readme":"'"$(base64 -w 0 docker-hub-readme.md)"'"}' \
             https://hub.docker.com/v2/repositories/skygenesisenterprise/github-app/ || echo "Docker Hub update failed (may not have permission)"
 
       - name: Notify Slack (optional)
-        if: secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: env.SLACK_WEBHOOK_URL != ''
         run: |
           curl -X POST -H 'Content-type: application/json' \
             --data '{
@@ -249,7 +253,7 @@ jobs:
                 }
               ]
             }' \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+            $SLACK_WEBHOOK_URL
 
       - name: Create GitHub App Manifest (for Marketplace)
         run: |

@@ -11,6 +11,12 @@ on:
     tags: ["v*.*.*-docker"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (e.g., 1.0.0)"
+        required: true
+        type: string
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -224,29 +230,29 @@ jobs:
           # Create README for the archive
             cat > "dist/${archive_dir}/README.md" << EOF
           # Aether Mailer v${VERSION}
-          
+
           Platform: ${GOOS}/${GOARCH}
-          
+
           ## Installation
-          
+
           1. Extract the archive
           2. Run the server: \`\`\`./aether-mailer-server\`\`\`
           3. Run the CLI: 
              - Linux/macOS: \`\`\`./mailer --help\`\`\`
              - Windows: \`\`\`mailer.bat --help\`\`\` or double-click \`mailer.bat\`
-          
+
           ## Components
-          
+
           - **aether-mailer-server**: Main backend server (Go)
           - **mailer/**: Command-line interface (TypeScript/Node.js)
           - **frontend/**: Next.js web application
-          
+
           ## CLI Requirements
-          
+
           The CLI requires Node.js to be installed on your system.
-          
+
           ## Configuration
-          
+
           See \`prisma/\` directory for database configuration.
           EOF
 

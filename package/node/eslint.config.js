@@ -1,10 +1,8 @@
-import js from "@eslint/js";
 import globals from "globals";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
 
 export default [
-  js.configs.recommended,
   {
     files: ["src/**/*.ts"],
     languageOptions: {
@@ -16,6 +14,15 @@ export default [
       globals: {
         ...globals.node,
         ...globals.browser,
+        describe: "readonly",
+        it: "readonly",
+        test: "readonly",
+        expect: "readonly",
+        jest: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly",
       },
     },
     plugins: {

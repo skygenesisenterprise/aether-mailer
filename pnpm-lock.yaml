@@ -218,7 +218,7 @@ importers:
         version: 5.10.0
     devDependencies:
       '@types/jest':
-        specifier: ^29.5.0
+        specifier: ^29.5.14
         version: 29.5.14
       '@types/node':
         specifier: ^20.0.0

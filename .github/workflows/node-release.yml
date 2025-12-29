@@ -27,18 +27,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
 
@@ -81,6 +78,16 @@ jobs:
           cd package/node
           pnpm run lint
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-dist
+          path: |
+            package/node/dist
+            package/node/package.json
+            package/node/README.md
+            package/node/LICENSE
+
   publish-github-packages:
     name: Publish to GitHub Packages
     needs: build-and-test
@@ -92,15 +99,19 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js (GitHub Packages)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com
           always-auth: true
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: node-dist
+          path: package/node
 
       - name: Publish to GitHub Packages
         run: |
@@ -119,15 +130,19 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js (npmjs)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://registry.npmjs.org
           always-auth: true
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: node-dist
+          path: package/node
 
       - name: Publish to npmjs.org
         run: |

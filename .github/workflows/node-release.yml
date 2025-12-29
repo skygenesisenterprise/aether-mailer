@@ -1,24 +1,18 @@
-# Node.js Package Release Workflow for @aether-mailer/node
-# This workflow builds, tests, and publishes the Node.js SDK to GitHub Packages and npm
-
 name: Node.js Package Release
 
 on:
   push:
-    # Trigger on tags ending with -node for Node.js releases
-    tags: ["v*.*.*-node"]
-  pull_request:
-    # Run tests on PRs targeting the node package
-    paths:
-      - "package/node/**"
+    tags:
+      - "v*.*.*-node"
+
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (e.g., 1.0.0)"
+        description: "Version to release (e.g. 1.0.0)"
         required: true
         type: string
       publish_npm:
-        description: "Publish to npm registry"
+        description: "Publish to npmjs.org"
         required: false
         type: boolean
         default: false
@@ -28,21 +22,12 @@ env:
   PNPM_VERSION: "9"
 
 jobs:
-  # Build, test and publish job
-  build-test-publish:
-    name: Build, Test & Publish
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      packages: write
-
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      package_version: ${{ steps.version.outputs.package_version }}
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -51,17 +36,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          registry-url: https://registry.npmjs.org/
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - name: Get version from tag
+      - name: Resolve version
         id: version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
             TAG="${{ github.ref_name }}"
@@ -69,283 +53,85 @@ jobs:
             VERSION="${VERSION%-node}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "package_version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Validate version consistency
+      - name: Validate package.json version
         run: |
           cd package/node
           PKG_VERSION=$(node -p "require('./package.json').version")
-          VERSION_WITHOUT_SUFFIX="${{ steps.version.outputs.package_version }}"
-
-          if [ "$VERSION_WITHOUT_SUFFIX" != "$PKG_VERSION" ]; then
-            echo "❌ Version mismatch:"
-            echo "   Tag version: $VERSION_WITHOUT_SUFFIX"
-            echo "   Package version: $PKG_VERSION"
+          if [ "$PKG_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "❌ Version mismatch"
+            echo "Tag/Input: ${{ steps.version.outputs.version }}"
+            echo "package.json: $PKG_VERSION"
             exit 1
           fi
-
-          echo "✅ Version validation passed: $PKG_VERSION"
 
       - name: Install dependencies
         run: |
           cd package/node
           pnpm install --frozen-lockfile
 
-      - name: Type check
-        run: |
-          cd package/node
-          pnpm run build
-
-      - name: Lint code
-        run: |
-          cd package/node
-          pnpm run lint
-
-      - name: Generate coverage report
-        if: github.event_name != 'pull_request'
-        run: |
-          cd package/node
-          echo "Coverage temporarily disabled - implementing comprehensive test suite"
-
-      - name: Upload coverage to Codecov
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "Coverage upload temporarily disabled"
-
-      - name: Build package for publishing
+      - name: Build
         run: |
           cd package/node
           pnpm run clean
           pnpm run build
 
-      - name: Setup Node.js for GitHub Packages
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: https://npm.pkg.github.com/
-
-      - name: Publish to GitHub Packages
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+      - name: Lint
         run: |
           cd package/node
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          pnpm run lint
 
-      - name: Setup Node.js for npm
-        if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && (github.event.inputs.publish_npm == 'true' || github.repository_owner == 'skygenesisenterprise')
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: https://registry.npmjs.org/
-
-      - name: Publish to npm
-        if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && github.event.inputs.publish_npm == 'true'
-        run: |
-          cd package/node
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
-
-  # Create GitHub Release
-  create-release:
-    name: Create GitHub Release
-    needs: build-test-publish
+  publish-github-packages:
+    name: Publish to GitHub Packages
+    needs: build-and-test
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/')
 
     permissions:
-      contents: write
+      contents: read
       packages: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get version info
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            TAG="${{ github.ref_name }}"
-            VERSION="${TAG#v}"
-            VERSION="${VERSION%-node}"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Setup Node.js (GitHub Packages)
+        uses: actions/setup-node@v4
         with:
-          tag_name: ${{ steps.version.outputs.tag_name }}
-          name: Aether Mailer Node.js SDK v${{ steps.version.outputs.version }}
-          body: |
-            ## 🚀 Aether Mailer Node.js SDK v${{ steps.version.outputs.version }}
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com
+          always-auth: true
 
-            ### ✨ What's New
-            - Production-ready Node.js SDK for Aether Mailer
-            - Full TypeScript support with comprehensive type definitions
-            - Complete API coverage for authentication, user management, domains, and emails
-            - Robust error handling and retry mechanisms
-            - Modern ES modules with CommonJS compatibility
+      - name: Publish to GitHub Packages
+        run: |
+          cd package/node
+          npm publish --registry=https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            ### 🔧 Features
-            - 🏗️ **TypeScript-First**: Full type safety with comprehensive definitions
-            - 🔐 **Authentication**: JWT-based authentication with automatic token refresh
-            - 📧 **Email Operations**: Complete email sending, receiving, and management
-            - 👤 **User Management**: CRUD operations for user accounts
-            - 🌐 **Domain Management**: Multi-domain configuration and verification
-            - 🛠️ **Admin API**: Server administration and monitoring capabilities
-            - 🔄 **Retry Logic**: Automatic retry for transient failures
-            - 📝 **Error Handling**: Comprehensive error types and handling
-
-            ### 📦 Installation
-            ```bash
-            # Using pnpm (recommended)
-            pnpm add @aether-mailer/node
-
-            # Using npm
-            npm install @aether-mailer/node
-
-            # Using yarn
-            yarn add @aether-mailer/node
-            ```
-
-            ### 🚀 Quick Start
-            ```typescript
-            import { AetherMailerClient } from "@aether-mailer/node";
-
-            const client = new AetherMailerClient({
-              baseURL: "https://api.aether-mailer.com",
-            });
-
-            // Authenticate
-            await client.auth.login({
-              email: "user@example.com",
-              password: "password",
-            });
-
-            // Send email
-            await client.emails.send({
-              to: "recipient@example.com",
-              subject: "Hello from Aether Mailer",
-              body: "This is a test email",
-            });
-            ```
-
-            ### 🔗 Links
-            - [Documentation](https://github.com/skygenesisenterprise/aether-mailer/blob/main/package/node/README.md)
-            - [GitHub Package](https://github.com/skygenesisenterprise/aether-mailer/pkgs/npm/@aether-mailer-node)
-            - [npm Package](https://www.npmjs.com/package/@aether-mailer-node)
-            - [Report Issues](https://github.com/skygenesisenterprise/aether-mailer/issues)
-
-            ### 📋 Package Information
-            - **Version**: ${{ steps.version.outputs.version }}
-            - **Node.js**: 18+
-            - **TypeScript**: 5.x (Strict Mode)
-            - **License**: MIT
-
-            ### 🔐 Security
-            - ✅ JWT token management
-            - ✅ Secure HTTP client with Axios
-            - ✅ Input validation and sanitization
-            - ✅ No hardcoded secrets or credentials
-
-            ### 📊 Testing
-            - ⏸️ Jest test suite (temporarily disabled - implementing comprehensive coverage)
-            - ✅ TypeScript strict mode compliance
-            - ✅ ESLint code quality checks
-            - ✅ Automated CI/CD pipeline
-
-            ---
-            **🔧 Built with ❤️ by [Sky Genesis Enterprise](https://skygenesisenterprise.com)**
-
-            *This release is production-ready and fully compatible with Node.js 18+ and TypeScript 5.x.*
-          files: |
-            package/node/dist-artifacts/*.tgz
-            package/node/README.md
-            package/node/LICENSE
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-
-  # Update documentation (optional)
-  update-docs:
-    name: Update Documentation
-    needs: create-release
+  publish-npm:
+    name: Publish to npmjs.org
+    needs: build-and-test
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && github.repository_owner == 'skygenesisenterprise'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_npm == 'true'
 
     permissions:
-      contents: write
+      contents: read
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node.js (npmjs)
+        uses: actions/setup-node@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://registry.npmjs.org
+          always-auth: true
 
-      - name: Update package version in docs
+      - name: Publish to npmjs.org
         run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-          VERSION="${VERSION%-node}"
-
-          # Update version in main README if it references the node package
-          if grep -q "@aether-mailer/node" README.md; then
-            sed -i "s/@aether-mailer\/node@.*/@aether-mailer\/node@$VERSION/g" README.md
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
-            git add README.md
-            git diff --staged --quiet || git commit -m "docs: update node package version to $VERSION"
-            git push
-          fi
-
-  # Summary
-  summary:
-    name: Release Summary
-    needs: [build-test-publish, create-release]
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-      - name: Get version info
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            TAG="${{ github.ref_name }}"
-            VERSION="${TAG#v}"
-            VERSION="${VERSION%-node}"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Release Summary
-        run: |
-          echo "## 🎉 Node.js SDK Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ✅ Completed Tasks" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ TypeScript build completed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Code linting passed" >> $GITHUB_STEP_SUMMARY
-          echo "- ⏸️ Jest tests temporarily disabled" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Package built and validated" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Published to GitHub Packages" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Published to npm registry" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ GitHub release created" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Package Information" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: \`@aether-mailer/node\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **GitHub Package**: [View Package](https://github.com/${{ github.repository }}/pkgs/npm/@aether-mailer-node)" >> $GITHUB_STEP_SUMMARY
-          echo "- **npm Package**: [View on npm](https://www.npmjs.com/package/@aether-mailer/node)" >> $GITHUB_STEP_SUMMARY
-          echo "- **GitHub Release**: [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🚀 Usage" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo 'npm install @aether-mailer/node@${{ steps.version.outputs.version }}' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**🎯 Your Aether Mailer Node.js SDK is ready for production!**" >> $GITHUB_STEP_SUMMARY
+          cd package/node
+          npm publish --access public --registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

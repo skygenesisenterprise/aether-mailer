@@ -24,7 +24,7 @@
   "author": "Sky Genesis Enterprise",
   "license": "MIT",
   "dependencies": {
-    "@octokit/webhooks": "^12.0.0",
+    "@octokit/webhooks": "^14.2.0",
     "@octokit/auth-app": "^6.0.0",
     "@octokit/rest": "^20.0.0",
     "fastify": "^4.24.0",

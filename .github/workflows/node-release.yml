@@ -132,13 +132,13 @@ jobs:
           mkdir -p dist-artifacts
 
           # Create tarball for npm publishing
-          npm pack --pack-destination ../dist-artifacts/
+          pnpm pack --pack-destination ./dist-artifacts/
 
           # Copy source for debugging
-          cp -r src ../dist-artifacts/
-          cp package.json ../dist-artifacts/
-          cp README.md ../dist-artifacts/
-          cp tsconfig.json ../dist-artifacts/
+          cp -r src ./dist-artifacts/
+          cp package.json ./dist-artifacts/
+          cp README.md ./dist-artifacts/
+          cp tsconfig.json ./dist-artifacts/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

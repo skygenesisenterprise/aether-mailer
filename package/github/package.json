@@ -28,7 +28,7 @@
     "@octokit/auth-app": "^6.0.0",
     "@octokit/rest": "^20.0.0",
     "fastify": "^4.24.0",
-    "pino": "^8.17.0",
+    "pino": "^10.1.0",
     "pino-pretty": "^10.3.0",
     "dotenv": "^16.3.0",
     "zod": "^3.22.0",

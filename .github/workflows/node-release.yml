@@ -97,12 +97,6 @@ jobs:
           cd package/node
           pnpm run lint
 
-      - name: Run tests
-        run: |
-          cd package/node
-          echo "Tests temporarily disabled - implementing comprehensive test suite"
-          # pnpm test
-
       - name: Generate coverage report
         if: github.event_name != 'pull_request'
         run: |

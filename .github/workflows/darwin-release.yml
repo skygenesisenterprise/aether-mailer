@@ -495,7 +495,7 @@ jobs:
             dist/aether-mailer-${{ steps.version.outputs.package_version }}-macos-*.dmg
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: macos-binaries
           path: |

@@ -1,5 +1,4 @@
-import { REGEX, ERROR_CODES } from "../types/index.js";
-import { ValidationError, InvalidEmailError } from "../errors/index.js";
+import { REGEX } from "../types/index.js";
 import { ValidationResult, EmailValidationResult } from "../types/index.js";
 
 // Email validation utilities
@@ -357,6 +356,11 @@ export class ValidationUtils {
       warnings,
       suggestions,
     };
+  }
+
+  // Validate domain name (delegate to EmailValidator)
+  public static validateDomain(domain: string): ValidationResult {
+    return EmailValidator.validateDomain(domain);
   }
 
   // Validate string length

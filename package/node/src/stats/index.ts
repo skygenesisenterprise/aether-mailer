@@ -3,7 +3,6 @@ import {
   StatsOptions,
   EmailStats,
   DomainUsageStats,
-  StatsPoint,
   QueueStatus,
   SmtpSession,
   SmtpConnectionTest,

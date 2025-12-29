@@ -1,10 +1,7 @@
-import {
-  ApiError,
-  ERROR_CODES,
-  HTTP_STATUS,
-  ErrorCode,
-  HttpStatus,
-} from "../types/index.js";
+import { ApiError, ERROR_CODES, HTTP_STATUS } from "../types/index.js";
+
+// Re-export validation utilities from utils
+export { ValidationUtils, EmailValidator } from "../utils/validation.js";
 
 // Base error class
 export class MailerError extends Error {

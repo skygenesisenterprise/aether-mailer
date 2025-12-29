@@ -3,7 +3,6 @@ import {
   SendEmailOptions,
   BulkEmailOptions,
   BulkEmailResult,
-  EmailSendResult,
   QueuedMessage,
   QueueStatus,
   Pagination,
@@ -15,7 +14,6 @@ import {
   InvalidEmailError,
   EmailTooLargeError,
   MissingFieldError,
-  SendFailedError,
   EmailValidator,
 } from "../errors/index.js";
 
@@ -211,8 +209,8 @@ export class EmailService {
       data: {
         results,
         total: emails.length,
-        valid: results.filter((r) => r.isValid).length,
-        invalid: results.filter((r) => !r.isValid).length,
+        valid: results.filter((r: any) => r.isValid).length,
+        invalid: results.filter((r: any) => !r.isValid).length,
       },
     };
   }

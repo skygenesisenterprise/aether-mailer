@@ -1,11 +1,11 @@
-import { MailerConfig, ApiResponse } from "../types/index.js";
-import { HttpClient } from "../client/index.js";
+import { MailerConfig, ApiResponse } from "./types/index.js";
+import { HttpClient } from "./client/index.js";
 import { EmailService } from "./email/index.js";
 import { DomainService } from "./domain/index.js";
 import { AuthService } from "./auth/index.js";
 import { StatsService } from "./stats/index.js";
-import { ValidationUtils } from "../utils/validation.js";
-import { AuthenticationError, ValidationError } from "../errors/index.js";
+import { ValidationUtils } from "./utils/validation.js";
+import { ValidationError } from "./errors/index.js";
 
 export class Mailer {
   private client: HttpClient;
@@ -192,11 +192,15 @@ export class Mailer {
 
   // Static factory methods
   public static withApiKey(apiKey: string, baseURL?: string): Mailer {
-    return new Mailer({ apiKey, baseURL });
+    const config: MailerConfig = { apiKey };
+    if (baseURL) config.baseURL = baseURL;
+    return new Mailer(config);
   }
 
   public static withJwt(jwt: string, baseURL?: string): Mailer {
-    return new Mailer({ jwt, baseURL });
+    const config: MailerConfig = { jwt };
+    if (baseURL) config.baseURL = baseURL;
+    return new Mailer(config);
   }
 
   public static withConfig(config: MailerConfig): Mailer {
@@ -218,10 +222,10 @@ export class Mailer {
 }
 
 // Import EmailValidator for static methods
-import { EmailValidator } from "../utils/validation.js";
+import { EmailValidator } from "./utils/validation.js";
 
-// Export the main class and utilities
+// Export main class and utilities
 export default Mailer;
 export { EmailValidator, ValidationUtils };
-export * from "../types/index.js";
-export * from "../errors/index.js";
+export * from "./types/index.js";
+export * from "./errors/index.js";

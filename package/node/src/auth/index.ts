@@ -6,7 +6,6 @@ import {
   CreateApiKeyRequest,
   ApiKeyUsageStats,
   API_ENDPOINTS,
-  API_KEY_PREFIXES,
 } from "../types/index.js";
 import { HttpClient } from "../client/index.js";
 import {
@@ -18,8 +17,8 @@ import {
 import { SignJWT, jwtVerify, importPKCS8, importSPKI } from "jose";
 
 export class AuthService {
-  private cachedJwt?: string;
-  private jwtExpiry?: number;
+  private cachedJwt?: string | undefined;
+  private jwtExpiry?: number | undefined;
 
   constructor(private client: HttpClient) {}
 
@@ -83,8 +82,10 @@ export class AuthService {
         data: { token: jwt },
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new AuthenticationError(
-        `Failed to generate token: ${error.message}`,
+        `Failed to generate token: ${errorMessage}`,
       );
     }
   }
@@ -128,8 +129,10 @@ export class AuthService {
         },
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new AuthenticationError(
-        `Token verification failed: ${error.message}`,
+        `Token verification failed: ${errorMessage}`,
       );
     }
   }
@@ -225,15 +228,15 @@ export class AuthService {
       const response = await this.client.post(API_ENDPOINTS.AUTH_LOGOUT);
 
       // Clear cached JWT
-      this.cachedJwt = undefined;
-      this.jwtExpiry = undefined;
+      delete this.cachedJwt;
+      delete this.jwtExpiry;
       this.client.clearAuth();
 
       return response;
     } catch (error) {
       // Clear auth anyway
-      this.cachedJwt = undefined;
-      this.jwtExpiry = undefined;
+      delete this.cachedJwt;
+      delete this.jwtExpiry;
       this.client.clearAuth();
       throw error;
     }
@@ -443,8 +446,8 @@ export class AuthService {
   // Get cached JWT
   public getCachedJwt(): string | undefined {
     if (this.isJwtExpired()) {
-      this.cachedJwt = undefined;
-      this.jwtExpiry = undefined;
+      delete this.cachedJwt;
+      delete this.jwtExpiry;
     }
     return this.cachedJwt;
   }

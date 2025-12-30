@@ -42,7 +42,7 @@ jobs:
           echo "Should run: ${{ startsWith(github.ref, 'refs/tags/') && (endsWith(github.ref, '-darwin') || endsWith(github.ref, '-macos')) || github.event_name == 'workflow_dispatch' }}"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v5

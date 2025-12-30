@@ -1,0 +1,169 @@
+# Development Dockerfile for Aether Mailer
+# Reproduces production environment locally with hot reload capabilities
+# Architecture: Next.js (3000) + Go Backend (8080) + PostgreSQL (5432) + Redis (6379)
+
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat git curl
+WORKDIR /app
+
+# Install pnpm globally
+RUN npm install -g pnpm
+
+# Copy workspace configuration first for better caching
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+
+# Stage 1: Go Backend Development
+FROM golang:1.25-alpine AS backend-dev
+WORKDIR /server
+
+# Install required tools
+RUN apk add --no-cache git curl
+
+# Copy Go mod files
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+
+# Copy server source
+COPY server/ ./
+
+# Install air for hot reload
+RUN go install github.com/cosmtrek/air@latest
+
+# Stage 2: Frontend Development
+FROM base AS frontend-dev
+
+# Copy all workspace packages for development
+COPY cli/ ./cli/
+COPY services/ ./services/
+COPY tools/ ./tools/
+COPY options/ ./options/
+COPY package/ ./package/
+COPY snap/ ./snap/
+COPY tests/ ./tests/
+COPY messages/ ./messages/
+COPY prisma/ ./prisma/
+COPY monitoring/ ./monitoring/
+
+# Copy app configuration and source
+COPY app/ ./app/
+
+# Install all dependencies with dev tools
+RUN pnpm install --no-frozen-lockfile
+
+# Stage 3: Combined Development Environment
+FROM node:20-alpine AS development
+
+# Install system dependencies
+RUN apk --no-cache add \
+    ca-certificates \
+    tzdata \
+    curl \
+    git \
+    bash \
+    postgresql-client \
+    redis \
+    build-base \
+    go \
+    nodejs \
+    npm \
+    supervisor
+
+# Install pnpm and air
+RUN npm install -g pnpm && \
+    go install github.com/cosmtrek/air@latest
+
+# Create application user
+RUN addgroup --system --gid 1001 mailer && \
+    adduser --system --uid 1001 --ingroup mailer mailer
+
+# Create necessary directories
+RUN mkdir -p /app /var/log/app /tmp && \
+    chown -R mailer:mailer /app /var/log/app /tmp
+
+WORKDIR /app
+
+# Copy from build stages
+COPY --from=backend-dev --chown=mailer:mailer /server/ ./server/
+COPY --from=frontend-dev --chown=mailer:mailer /app/ ./
+
+# Copy development configurations
+COPY --chown=mailer:mailer docker-compose.dev.yml ./docker-compose.dev.yml
+COPY --chown=mailer:mailer .env.example ./.env.example
+
+# Create development entrypoint
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Start PostgreSQL if not running\n\
+if ! pg_isready -h postgres -p 5432; then\n\
+    echo "Starting PostgreSQL..."\n\
+    docker-compose up -d postgres\n\
+    sleep 5\n\
+fi\n\
+\n\
+# Start Redis if not running\n\
+if ! redis-cli -h redis -p 6379 ping; then\n\
+    echo "Starting Redis..."\n\
+    docker-compose up -d redis\n\
+    sleep 2\n\
+fi\n\
+\n\
+# Run database migrations\n\
+echo "Running database migrations..."\n\
+cd /app && pnpm db:migrate || true\n\
+\n\
+# Start development services with supervisor\n\
+echo "Starting development services..."\n\
+exec supervisord -c /etc/supervisor/conf.d/dev.conf' > /app/docker-entrypoint-dev.sh && \
+    chmod +x /app/docker-entrypoint-dev.sh
+
+# Create supervisor configuration for development
+RUN mkdir -p /etc/supervisor/conf.d && \
+    echo '[supervisord]\n\
+nodaemon=true\n\
+user=mailer\n\
+\n\
+[program:frontend]\n\
+command=pnpm --filter app dev\n\
+directory=/app\n\
+user=mailer\n\
+autorestart=true\n\
+stdout_logfile=/var/log/app/frontend.log\n\
+stderr_logfile=/var/log/app/frontend.error.log\n\
+environment=NODE_ENV=development\n\
+\n\
+[program:backend]\n\
+command=air -c .air.toml\n\
+directory=/server\n\
+user=mailer\n\
+autorestart=true\n\
+stdout_logfile=/var/log/app/backend.log\n\
+stderr_logfile=/var/log/app/backend.error.log\n\
+environment=GO_ENV=development\n\
+\n\
+[program:cli]\n\
+command=pnpm --filter cli dev\n\
+directory=/app\n\
+user=mailer\n\
+autorestart=true\n\
+stdout_logfile=/var/log/app/cli.log\n\
+stderr_logfile=/var/log/app/cli.error.log' > /etc/supervisor/conf.d/dev.conf
+
+# Switch to application user
+USER mailer
+
+# Expose development ports
+EXPOSE 3000 8080
+
+# Environment variables for development
+ENV NODE_ENV=development
+ENV GO_ENV=development
+ENV DATABASE_PROVIDER=postgresql
+ENV POSTGRES_DB=aether_mailer_dev
+ENV POSTGRES_USER=mailer
+ENV POSTGRES_PASSWORD=dev_password
+ENV REDIS_URL=redis://redis:6379
+ENV REDIS_PASSWORD=dev_redis_password
+
+# Start development environment
+CMD ["./docker-entrypoint-dev.sh"]

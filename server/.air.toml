@@ -1,0 +1,82 @@
+# Air configuration for Go hot reload in development
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
+
+[build]
+  # Command to build the application
+  cmd = "go build -o ./tmp/main ."
+  
+  # Binary file path
+  bin = "tmp/main"
+  
+  # List of file extensions to watch
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  
+  # List of file extensions or directories to ignore
+  exclude_ext = ["_test.go"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+  
+  # Include specific directories
+  include_dir = []
+  
+  # Exclude specific files
+  exclude_file = []
+  
+  # Watch these directories for changes
+  watch_dir = ["src", "pkg", "cmd", "configs"]
+  
+  # Files to ignore
+  ignore_file = []
+  
+  # Arguments to pass to the binary
+  args = []
+  
+  # Environment variables
+  env = {
+    "GO_ENV" = "development",
+    "DATABASE_URL" = "postgresql://mailer:dev_password@postgres:5432/aether_mailer_dev",
+    "REDIS_URL" = "redis://redis:6379"
+  }
+  
+  # Delay before restarting
+  delay = 1000
+  
+  # Stop old binary before starting new one
+  stop_on_root = false
+  
+  # Send interrupt signal before killing
+  send_interrupt = false
+  
+  # Delay before sending interrupt
+  kill_delay = "0s"
+  
+  # Run binary after building
+  run_on_restart = true
+  
+  # Log file
+  log = "air-errors.log"
+  
+  # Enable logging
+  log_file_name = "air.log"
+  
+  # Enable color output
+  color = true
+
+[log]
+  # Show log time
+  time = true
+  
+  # Show log file name
+  main_only = false
+
+[misc]
+  # Clean up on exit
+  clean_on_exit = false
+
+[screen]
+  # Clear screen on restart
+  clear_on_rebuild = true
+  
+  # Keep scroll
+  keep_scroll = true

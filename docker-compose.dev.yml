@@ -1,0 +1,128 @@
+version: "3.8"
+
+services:
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-dev
+    ports:
+      - "3000:3000"  # Next.js frontend
+      - "8080:8080"  # Go backend
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app/app
+      - ./server:/server
+      - ./cli:/app/cli
+      - ./services:/app/services
+      - ./prisma:/app/prisma
+      - ./package.json:/app/package.json
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      # Mount logs
+      - ./logs:/var/log/app
+    environment:
+      NODE_ENV: development
+      GO_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mailer}:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/${POSTGRES_DB:-aether_mailer_dev}
+      REDIS_URL: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-dev_redis_password}
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+      # Development-specific variables
+      POSTGRES_DB: aether_mailer_dev
+      POSTGRES_USER: mailer
+      POSTGRES_PASSWORD: dev_password
+      REDIS_PASSWORD: dev_redis_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aether-dev-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-postgres-dev
+    ports:
+      - "5432:5432"  # Expose for local debugging
+    environment:
+      POSTGRES_DB: aether_mailer_dev
+      POSTGRES_USER: mailer
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailer -d aether_mailer_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - aether-dev-network
+    restart: unless-stisted
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-redis-dev
+    ports:
+      - "6379:6379"  # Expose for local debugging
+    command: redis-server --appendonly yes --requirepass dev_redis_password
+    volumes:
+      - redis_dev_data:/data
+      - ./redis/redis-dev.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - aether-dev-network
+    restart: unless-stopped
+
+  # Optional: Redis Commander for Redis GUI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-redis-gui
+    ports:
+      - "8081:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379:0:dev_redis_password
+    depends_on:
+      - redis
+    networks:
+      - aether-dev-network
+    restart: unless-stopped
+    profiles: ["gui"]
+
+  # Optional: pgAdmin for PostgreSQL GUI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-aether}-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@aether-mailer.com
+      PGADMIN_DEFAULT_PASSWORD: dev_admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - aether-dev-network
+    restart: unless-stopped
+    profiles: ["gui"]
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  pgadmin_dev_data:
+
+networks:
+  aether-dev-network:
+    driver: bridge

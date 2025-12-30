@@ -79,7 +79,7 @@ jobs:
           pnpm run lint
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: node-dist
           path: |

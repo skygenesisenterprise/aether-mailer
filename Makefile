@@ -1,7 +1,7 @@
 # Aether Mailer Makefile
 # Modern mail server foundation with monorepo architecture
 
-.PHONY: help install dev build test lint clean docker-build docker-run docker-compose-up docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log docker-cli docker-exec docker-ssh docker-ssh-setup docker-ssh-test
+.PHONY: help install dev build test lint clean docker-build docker-run docker-compose-up docker db cli release pkg-install pkg-update pkg-add pkg-add-dev pkg-remove pkg-outdated pkg-audit pkg-audit-fix pkg-list pkg-clean pkg-why sys-install sys-clean sys-dev-frontend sys-dev-backend sys-build-frontend sys-lint sys-format sys-typecheck sys-status sys-logs sys-ports sys-processes sys-env sys-docker-build sys-docker-run sys-docker-stop sys-git-status sys-git-log docker-cli docker-exec docker-ssh docker-ssh-setup docker-ssh-test docker-dev docker-dev-build docker-dev-up docker-dev-down docker-dev-logs docker-dev-shell docker-dev-clean docker-dev-restart docker-dev-status docker-dev-db docker-dev-gui
 
 # Default target
 .DEFAULT_GOAL := help
@@ -209,6 +209,62 @@ docker-ssh-test: ## Test SSH connection and authentication
 	@echo ""
 	@echo "Testing SSH service..."
 	@ssh -o BatchMode=yes -o ConnectTimeout=5 -p 2222 ssh-user@localhost "echo 'SSH connection successful'" 2>/dev/null && echo "$(GREEN)✓ SSH connection test passed$(RESET)" || echo "$(YELLOW)⚠ SSH connection test failed - container may need to be restarted$(RESET)"
+
+# Docker Development Environment
+docker-dev: ## Start development environment with hot reload
+	@echo "$(BLUE)Starting Docker development environment...$(RESET)"
+	@echo "$(GREEN)Services will be available at:$(RESET)"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  Backend:  http://localhost:8080"
+	@echo "  PostgreSQL: localhost:5432"
+	@echo "  Redis: localhost:6379"
+	@docker-compose -f docker-compose.dev.yml up --build
+
+docker-dev-build: ## Build development Docker image only
+	@echo "$(BLUE)Building development Docker image...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml build
+
+docker-dev-up: ## Start development environment (detached)
+	@echo "$(BLUE)Starting development environment in background...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml up -d
+	@echo "$(GREEN)Environment started. Use 'make docker-dev-logs' to view logs.$(RESET)"
+
+docker-dev-down: ## Stop development environment
+	@echo "$(BLUE)Stopping development environment...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml down
+
+docker-dev-logs: ## Show development environment logs
+	@echo "$(BLUE)Showing development logs...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml logs -f
+
+docker-dev-shell: ## Open shell in development container
+	@echo "$(BLUE)Opening shell in development container...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml exec app-dev /bin/sh
+
+docker-dev-clean: ## Clean development environment (remove containers and volumes)
+	@echo "$(BLUE)Cleaning development environment...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml down -v --remove-orphans
+	@docker system prune -f
+
+docker-dev-restart: ## Restart development environment
+	@echo "$(BLUE)Restarting development environment...$(RESET)"
+	@make docker-dev-down
+	@make docker-dev-up
+
+docker-dev-status: ## Show development environment status
+	@echo "$(BLUE)Development Environment Status:$(RESET)"
+	@docker-compose -f docker-compose.dev.yml ps
+
+docker-dev-db: ## Connect to development database
+	@echo "$(BLUE)Connecting to development database...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml exec postgres psql -U mailer -d aether_mailer_dev
+
+docker-dev-gui: ## Start development environment with GUI tools
+	@echo "$(BLUE)Starting development environment with GUI tools...$(RESET)"
+	@echo "$(GREEN)GUI tools will be available at:$(RESET)"
+	@echo "  pgAdmin: http://localhost:5050"
+	@echo "  Redis Commander: http://localhost:8081"
+	@docker-compose -f docker-compose.dev.yml --profile gui up --build
 
 docker-stop: ## Stop Docker Compose services
 	@echo "$(BLUE)Stopping Docker Compose services...$(RESET)"
@@ -607,8 +663,17 @@ welcome: ## Show welcome message
 	@echo "$(GREEN)Quick start:$(RESET)"
 	@echo "  make quick-start    # Install and start development"
 	@echo "  make dev            # Start development servers"
+	@echo "  make docker-dev     # Start Docker development environment"
 	@echo "  make build          # Build all packages"
 	@echo "  make test           # Run tests"
+	@echo ""
+	@echo "$(YELLOW)Docker Development:$(RESET)"
+	@echo "  make docker-dev     # Start dev environment with hot reload"
+	@echo "  make docker-dev-up  # Start in background"
+	@echo "  make docker-dev-gui # Start with GUI tools (pgAdmin, Redis)"
+	@echo "  make docker-dev-db  # Connect to dev database"
+	@echo "  make docker-dev-logs # View logs"
+	@echo "  make docker-dev-down # Stop environment"
 	@echo ""
 	@echo "$(YELLOW)Package management (auto-detects pnpm/npm):$(RESET)"
 	@echo "  make pkg-install    # Install dependencies"

@@ -1,0 +1,59 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@/types/*": ["../types/*"],
+      "@/utils/*": ["../utils/*"],
+      "@/lib/*": ["../lib/*"],
+      "@aether-mailer/app": ["../app/*"],
+      "@aether-mailer/server": ["../server/*"],
+      "@aether-mailer/cli": ["../cli/*"],
+      "@aether-mailer/services": ["../services/*"],
+      "@aether-mailer/tools": ["../tools/*"],
+      "@aether-mailer/prisma": ["../prisma/*"]
+    },
+    "types": ["vitepress/client", "node"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "resolveJsonModule": true
+  },
+  "include": [
+    "**/*.md",
+    "**/*.vue",
+    "**/*.ts",
+    "**/*.tsx",
+    ".vitepress/**/*",
+    "components/**/*",
+    "lib/**/*",
+    "types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".vitepress/dist",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "vueCompilerOptions": {
+    "vitePressExtensions": [".md"]
+  },
+  "ts-node": {
+    "esm": true,
+    "compilerOptions": {
+      "module": "ESNext"
+    }
+  }
+}

@@ -108,7 +108,7 @@ jobs:
           always-auth: true
 
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: node-dist
           path: package/node
@@ -139,7 +139,7 @@ jobs:
           always-auth: true
 
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: node-dist
           path: package/node

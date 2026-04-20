@@ -1,10 +1,10 @@
 services:
-  aetheridentity:
+  aethermailer:
     build:
       context: .
       dockerfile: Dockerfile.cloud
-    image: aetheridentity:latest
-    container_name: aetheridentity
+    image: aethermailer:latest
+    container_name: aethermailer
     restart: unless-stopped
     expose:
       - "3000"

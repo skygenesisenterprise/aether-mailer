@@ -17,10 +17,10 @@ const fontMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: {
     template: "%s | Sky Genesis Enterprise",
-    default: "Aether Identity | Sky Genesis Enterprise",
+    default: "Aether Mailer | Sky Genesis Enterprise",
   },
   description:
-    "An Enterprise OAuth2/OIDC support, multi-factor authentication, and secure account management for applications and services.",
+    "All-in-one Enterprise Mail & Collaboration server. Secure, scalable and fluent in every protocol (IMAP, JMAP, SMTP, CalDAV, CardDAV, WebDAV).",
   icons: {
     icon: [
       {

@@ -282,7 +282,7 @@ export async function Footer({ locale: initialLocale }: FooterProps) {
                 </svg>
               </div>
               <span className="text-base font-semibold text-footer-heading tracking-tight group-hover:text-footer-link-hover transition-colors">
-                Aether Identity
+                Aether Mailer
               </span>
             </Link>
             <p className="mt-4 text-sm text-footer-link leading-relaxed">{t("brandDescription")}</p>

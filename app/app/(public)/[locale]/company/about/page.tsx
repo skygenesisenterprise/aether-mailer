@@ -7,15 +7,12 @@ import { GitHubIcon } from "@/components/ui/icons/GitHubIcon";
 import {
   ArrowRight,
   Clock,
-  CheckCircle2,
   Target,
   Shield,
   Users,
   Zap,
   Globe,
   Award,
-  Heart,
-  Lightbulb,
 } from "lucide-react";
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {

@@ -1,11 +1,10 @@
 import { getRequestConfig } from "next-intl/server";
 import { routing } from "./routing";
 import fr from "../messages/fr.json";
-import en from "../messages/en.json";
+// import en from "../messages/en.json";
 
 const messages = {
   fr,
-  en,
 };
 
 export default getRequestConfig(async ({ requestLocale }) => {

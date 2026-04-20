@@ -15,6 +15,13 @@ import {
   Globe,
   Users,
   Lock,
+  Clock,
+  Building2,
+  Stethoscope,
+  Landmark,
+  FlaskConical,
+  Calendar,
+  FileCheck,
 } from "lucide-react";
 
 export default async function PrivateCloudPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -54,12 +61,65 @@ export default async function PrivateCloudPage({ params }: { params: Promise<{ l
     },
   ];
 
+  const targetItems = [
+    {
+      icon: Landmark,
+      title: t("privateCloud.targetFinance"),
+      description: t("privateCloud.targetFinanceDesc"),
+    },
+    {
+      icon: Stethoscope,
+      title: t("privateCloud.targetHealth"),
+      description: t("privateCloud.targetHealthDesc"),
+    },
+    {
+      icon: Building2,
+      title: t("privateCloud.targetGovernment"),
+      description: t("privateCloud.targetGovernmentDesc"),
+    },
+    {
+      icon: FlaskConical,
+      title: t("privateCloud.targetRnD"),
+      description: t("privateCloud.targetRnDDesc"),
+    },
+  ];
+
+  const stats = [
+    { value: "200+", label: t("privateCloud.statsDeployments"), icon: Server },
+    { value: "99.99%", label: t("privateCloud.statsUptime"), icon: Clock },
+    { value: "ISO 27001", label: t("privateCloud.statsCertification"), icon: FileCheck },
+    { value: "48h", label: t("privateCloud.statsDeployment"), icon: Clock },
+  ];
+
   const providers = [
     { name: t("privateCloud.providerAws"), color: "bg-orange-500" },
     { name: t("privateCloud.providerAzure"), color: "bg-blue-500" },
     { name: t("privateCloud.providerGcp"), color: "bg-green-500" },
     { name: t("privateCloud.providerOvh"), color: "bg-purple-500" },
     { name: t("privateCloud.providerCustom"), color: "bg-gray-500" },
+  ];
+
+  const comparison = [
+    {
+      feature: t("privateCloud.comparisonControl"),
+      aether: t("privateCloud.comparisonYes"),
+      other: t("privateCloud.comparisonNo"),
+    },
+    {
+      feature: t("privateCloud.comparisonApi"),
+      aether: t("privateCloud.comparisonYes"),
+      other: t("privateCloud.comparisonPartial"),
+    },
+    {
+      feature: t("privateCloud.comparisonSupport"),
+      aether: t("privateCloud.comparisonYes"),
+      other: t("privateCloud.comparisonPartial"),
+    },
+    {
+      feature: t("privateCloud.comparisonMigration"),
+      aether: t("privateCloud.comparisonYes"),
+      other: t("privateCloud.comparisonNo"),
+    },
   ];
 
   const configurations = [
@@ -85,6 +145,21 @@ export default async function PrivateCloudPage({ params }: { params: Promise<{ l
     },
   ];
 
+  const timeline = [
+    {
+      step: t("privateCloud.timelinePoc"),
+      description: t("privateCloud.timelinePocDesc"),
+    },
+    {
+      step: t("privateCloud.timelineStaging"),
+      description: t("privateCloud.timelineStagingDesc"),
+    },
+    {
+      step: t("privateCloud.timelineProduction"),
+      description: t("privateCloud.timelineProductionDesc"),
+    },
+  ];
+
   const faqs = [
     {
       question: t("privateCloud.faqTimeTitle"),
@@ -97,6 +172,22 @@ export default async function PrivateCloudPage({ params }: { params: Promise<{ l
     {
       question: t("privateCloud.faqCostTitle"),
       answer: t("privateCloud.faqCostAnswer"),
+    },
+    {
+      question: t("privateCloud.faqDatacenterTitle"),
+      answer: t("privateCloud.faqDatacenterAnswer"),
+    },
+    {
+      question: t("privateCloud.faqMaintenanceTitle"),
+      answer: t("privateCloud.faqMaintenanceAnswer"),
+    },
+    {
+      question: t("privateCloud.faqSupportTitle"),
+      answer: t("privateCloud.faqSupportAnswer"),
+    },
+    {
+      question: t("privateCloud.faqTestTitle"),
+      answer: t("privateCloud.faqTestAnswer"),
     },
   ];
 
@@ -137,6 +228,23 @@ export default async function PrivateCloudPage({ params }: { params: Promise<{ l
           </div>
         </section>
 
+        {/* Stats Section */}
+        <section className="py-16 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {stats.map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <stat.icon className="h-5 w-5 text-emerald-500" />
+                    <span className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
         <section className="py-20 lg:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -166,8 +274,33 @@ export default async function PrivateCloudPage({ params }: { params: Promise<{ l
           </div>
         </section>
 
-        {/* Providers Section */}
+        {/* Target Audience Section */}
         <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("privateCloud.targetTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("privateCloud.targetDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {targetItems.map((item) => (
+                <div key={item.title} className="bg-card p-6 rounded-lg border border-border">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-emerald-500/10 mb-4">
+                    <item.icon className="h-6 w-6 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Providers Section */}
+        <section className="py-20 lg:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
@@ -191,8 +324,42 @@ export default async function PrivateCloudPage({ params }: { params: Promise<{ l
           </div>
         </section>
 
+        {/* Comparison Section */}
+        <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("privateCloud.comparisonTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("privateCloud.comparisonDescription")}
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-4 px-6 text-muted-foreground font-medium">{t("privateCloud.comparisonFeature")}</th>
+                    <th className="text-center py-4 px-6 text-foreground font-semibold">{t("privateCloud.comparisonAether")}</th>
+                    <th className="text-center py-4 px-6 text-muted-foreground font-medium">{t("privateCloud.comparisonCloudPublic")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparison.map((row) => (
+                    <tr key={row.feature} className="border-b border-border">
+                      <td className="py-4 px-6 text-foreground">{row.feature}</td>
+                      <td className="py-4 px-6 text-center text-emerald-500 font-medium">{row.aether}</td>
+                      <td className="py-4 px-6 text-center text-muted-foreground">{row.other}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         {/* Configuration Section */}
-        <section className="py-20 lg:py-28 border-b border-border">
+        <section className="py-20 lg:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
@@ -213,6 +380,31 @@ export default async function PrivateCloudPage({ params }: { params: Promise<{ l
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {config.description}
                   </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Timeline Section */}
+        <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("privateCloud.timelineTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("privateCloud.timelineDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              {timeline.map((item, index) => (
+                <div key={item.step} className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500 text-white font-bold text-xl mb-4">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{item.step}</h3>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
                 </div>
               ))}
             </div>

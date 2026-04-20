@@ -22,6 +22,12 @@ import {
   Database,
   Clock,
   Mail,
+  FileCheck,
+  Award,
+  User,
+  Wrench,
+  LifeBuoy,
+  Calendar,
 } from "lucide-react";
 
 export default async function EnterprisePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -58,6 +64,75 @@ export default async function EnterprisePage({ params }: { params: Promise<{ loc
       icon: Zap,
       title: t("enterprise.featureCustom"),
       description: t("enterprise.featureCustomDesc"),
+    },
+  ];
+
+  const certifications = [
+    {
+      icon: FileCheck,
+      title: t("enterprise.certIso"),
+      description: t("enterprise.certIsoDesc"),
+    },
+    {
+      icon: Award,
+      title: t("enterprise.certSoc2"),
+      description: t("enterprise.certSoc2Desc"),
+    },
+    {
+      icon: HeartPulse,
+      title: t("enterprise.certHipaa"),
+      description: t("enterprise.certHipaaDesc"),
+    },
+    {
+      icon: Shield,
+      title: t("enterprise.certFedramp"),
+      description: t("enterprise.certFedrampDesc"),
+    },
+    {
+      icon: Lock,
+      title: t("enterprise.certPci"),
+      description: t("enterprise.certPciDesc"),
+    },
+  ];
+
+  const testimonials = [
+    {
+      quote: t("enterprise.testimonial1"),
+      author: t("enterprise.testimonial1Author"),
+      role: t("enterprise.testimonial1Role"),
+    },
+    {
+      quote: t("enterprise.testimonial2"),
+      author: t("enterprise.testimonial2Author"),
+      role: t("enterprise.testimonial2Role"),
+    },
+    {
+      quote: t("enterprise.testimonial3"),
+      author: t("enterprise.testimonial3Author"),
+      role: t("enterprise.testimonial3Role"),
+    },
+  ];
+
+  const dedicatedTeam = [
+    {
+      icon: User,
+      title: t("enterprise.dedicatedAccount"),
+      description: t("enterprise.dedicatedAccountDesc"),
+    },
+    {
+      icon: Wrench,
+      title: t("enterprise.dedicatedEngineer"),
+      description: t("enterprise.dedicatedEngineerDesc"),
+    },
+    {
+      icon: LifeBuoy,
+      title: t("enterprise.dedicatedSupport"),
+      description: t("enterprise.dedicatedSupportDesc"),
+    },
+    {
+      icon: Calendar,
+      title: t("enterprise.dedicatedOncall"),
+      description: t("enterprise.dedicatedOncallDesc"),
     },
   ];
 
@@ -107,6 +182,25 @@ export default async function EnterprisePage({ params }: { params: Promise<{ loc
     },
   ];
 
+  const migration = [
+    {
+      step: t("enterprise.migrationWeek1"),
+      description: t("enterprise.migrationWeek1Desc"),
+    },
+    {
+      step: t("enterprise.migrationWeek2"),
+      description: t("enterprise.migrationWeek2Desc"),
+    },
+    {
+      step: t("enterprise.migrationWeek3"),
+      description: t("enterprise.migrationWeek3Desc"),
+    },
+    {
+      step: t("enterprise.migrationWeek4"),
+      description: t("enterprise.migrationWeek4Desc"),
+    },
+  ];
+
   const faqs = [
     {
       question: t("enterprise.faqSlaTitle"),
@@ -119,6 +213,18 @@ export default async function EnterprisePage({ params }: { params: Promise<{ loc
     {
       question: t("enterprise.faqSupportTitle"),
       answer: t("enterprise.faqSupportAnswer"),
+    },
+    {
+      question: t("enterprise.faqFailoverTitle"),
+      answer: t("enterprise.faqFailoverAnswer"),
+    },
+    {
+      question: t("enterprise.faqTestTitle"),
+      answer: t("enterprise.faqTestAnswer"),
+    },
+    {
+      question: t("enterprise.faqContractTitle"),
+      answer: t("enterprise.faqContractAnswer"),
     },
   ];
 
@@ -188,8 +294,90 @@ export default async function EnterprisePage({ params }: { params: Promise<{ loc
           </div>
         </section>
 
+        {/* Certifications Section */}
+        <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("enterprise.certificationsTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("enterprise.certificationsDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
+              {certifications.map((cert) => (
+                <div key={cert.title} className="p-6 rounded-lg border border-border bg-card">
+                  <cert.icon className="h-8 w-8 text-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{cert.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{cert.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonials Section */}
+        <section className="py-20 lg:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("enterprise.testimonialsTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("enterprise.testimonialsDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              {testimonials.map((testimonial, index) => (
+                <div key={index} className="p-6 rounded-lg border border-border bg-card">
+                  <div className="flex items-center gap-1 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <svg
+                        key={star}
+                        className="h-4 w-4 text-yellow-500 fill-current"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l.807 2.422a1 1 0 00.95.69h2.62c.969 0 1.371 1.24.588 1.81l-2.122 1.533a1 1 0 00-.364 1.118l.807 2.422c.3.921-.755 1.688-1.54 1.118l-2.122-1.533a1 1 0 00-1.176 0l-2.122 1.533c-.784.57-1.84-.197-1.539-1.118l.807-2.422a1 1 0 00-.363-1.118l-2.122-1.533c-.783-.57-.38-1.81.588-1.81h2.62a1 1 0 00.951-.69l.807-2.422z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed mb-4">"{testimonial.quote}"</p>
+                  <p className="text-sm font-semibold text-foreground">{testimonial.author}</p>
+                  <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Dedicated Team Section */}
+        <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("enterprise.dedicatedTeamTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("enterprise.dedicatedTeamDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {dedicatedTeam.map((member) => (
+                <div key={member.title} className="p-6 rounded-lg border border-border bg-card text-center">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-foreground/10 mx-auto mb-4">
+                    <member.icon className="h-6 w-6 text-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{member.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{member.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Scaling Section */}
-        <section className="py-20 lg:py-28 border-b border-border">
+        <section className="py-20 lg:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
@@ -208,6 +396,31 @@ export default async function EnterprisePage({ params }: { params: Promise<{ loc
                   <BarChart3 className="h-8 w-8 text-foreground mx-auto mb-4" />
                   <p className="text-3xl font-bold text-foreground mb-2">{item.statistic}</p>
                   <p className="text-sm text-muted-foreground">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Migration Timeline Section */}
+        <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("enterprise.migrationTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("enterprise.migrationDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-4 gap-6">
+              {migration.map((step, index) => (
+                <div key={step.step} className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500 text-white font-bold text-xl mb-4">
+                    {index + 1}
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{step.step}</h3>
+                  <p className="text-sm text-muted-foreground">{step.description}</p>
                 </div>
               ))}
             </div>

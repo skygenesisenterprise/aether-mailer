@@ -20,6 +20,8 @@ import {
   Mail,
   Archive,
   Globe,
+  Quote,
+  User,
 } from "lucide-react";
 
 export default async function MailServerPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -145,6 +147,32 @@ export default async function MailServerPage({ params }: { params: Promise<{ loc
     {
       question: t("mailServer.faqUpdatesTitle"),
       answer: t("mailServer.faqUpdatesAnswer"),
+    },
+    {
+      question: t("mailServer.faqApiTitle"),
+      answer: t("mailServer.faqApiAnswer"),
+    },
+    {
+      question: t("mailServer.faqLdapTitle"),
+      answer: t("mailServer.faqLdapAnswer"),
+    },
+  ];
+
+  const testimonials = [
+    {
+      quote: t("mailServer.testimonialQuote1"),
+      author: t("mailServer.testimonialAuthor1"),
+      role: t("mailServer.testimonialRole1"),
+    },
+    {
+      quote: t("mailServer.testimonialQuote2"),
+      author: t("mailServer.testimonialAuthor2"),
+      role: t("mailServer.testimonialRole2"),
+    },
+    {
+      quote: t("mailServer.testimonialQuote3"),
+      author: t("mailServer.testimonialAuthor3"),
+      role: t("mailServer.testimonialRole3"),
     },
   ];
 
@@ -273,6 +301,42 @@ storage:
               <div className="relative">
                 <CodeBlock samples={sampleCode} defaultLanguage="bash" />
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonials Section */}
+        <section className="py-20 lg:py-28 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("mailServer.testimonialsTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("mailServer.testimonialsDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              {testimonials.map((testimonial, index) => (
+                <div
+                  key={index}
+                  className="p-6 rounded-lg border border-border bg-card"
+                >
+                  <Quote className="h-8 w-8 text-foreground/20 mb-4" />
+                  <p className="text-base text-muted-foreground leading-relaxed mb-6">
+                    "{testimonial.quote}"
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-foreground/10">
+                      <User className="h-5 w-5 text-foreground" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">{testimonial.author}</div>
+                      <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

@@ -14,6 +14,9 @@ import {
   Eye,
   EyeOff,
   Database,
+  Building2,
+  Briefcase,
+  HeartPulse,
 } from "lucide-react";
 
 export default async function EmailEncryptionPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -71,6 +74,24 @@ export default async function EmailEncryptionPage({ params }: { params: Promise<
     },
   ];
 
+  const useCases = [
+    {
+      icon: Building2,
+      title: t("emailEncryption.useCaseLegal"),
+      description: t("emailEncryption.useCaseLegalDesc"),
+    },
+    {
+      icon: HeartPulse,
+      title: t("emailEncryption.useCaseHealth"),
+      description: t("emailEncryption.useCaseHealthDesc"),
+    },
+    {
+      icon: Briefcase,
+      title: t("emailEncryption.useCaseFinance"),
+      description: t("emailEncryption.useCaseFinanceDesc"),
+    },
+  ];
+
   const faqs = [
     {
       question: t("emailEncryption.faqPgpTitle"),
@@ -83,6 +104,14 @@ export default async function EmailEncryptionPage({ params }: { params: Promise<
     {
       question: t("emailEncryption.faqCompatibilityTitle"),
       answer: t("emailEncryption.faqCompatibilityAnswer"),
+    },
+    {
+      question: t("emailEncryption.faqRevokeTitle"),
+      answer: t("emailEncryption.faqRevokeAnswer"),
+    },
+    {
+      question: t("emailEncryption.faqComplianceTitle"),
+      answer: t("emailEncryption.faqComplianceAnswer"),
     },
   ];
 
@@ -118,6 +147,30 @@ export default async function EmailEncryptionPage({ params }: { params: Promise<
                     {t("hero.ctaGithub")}
                   </Button>
                 </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Metrics Section */}
+        <section className="py-16 lg:py-20 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div className="text-center">
+                <div className="text-3xl sm:text-4xl font-bold text-foreground">256-bit</div>
+                <div className="text-sm text-muted-foreground mt-1">{t("emailEncryption.metricAes")}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl sm:text-4xl font-bold text-foreground">TLS 1.3</div>
+                <div className="text-sm text-muted-foreground mt-1">{t("emailEncryption.metricTls")}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl sm:text-4xl font-bold text-foreground">4096-bit</div>
+                <div className="text-sm text-muted-foreground mt-1">{t("emailEncryption.metricRsa")}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl sm:text-4xl font-bold text-foreground">100%</div>
+                <div className="text-sm text-muted-foreground mt-1">{t("emailEncryption.metricE2e")}</div>
               </div>
             </div>
           </div>
@@ -173,6 +226,34 @@ export default async function EmailEncryptionPage({ params }: { params: Promise<
                   <h3 className="text-lg font-semibold text-foreground mb-2">{type.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {type.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Use Cases Section */}
+        <section className="py-20 lg:py-28 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("emailEncryption.useCasesTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("emailEncryption.useCasesDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              {useCases.map((useCase) => (
+                <div
+                  key={useCase.title}
+                  className="p-6 rounded-lg border border-border bg-card"
+                >
+                  <useCase.icon className="h-8 w-8 text-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{useCase.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {useCase.description}
                   </p>
                 </div>
               ))}

@@ -17,6 +17,7 @@ import {
   Landmark,
   HeartPulse,
   Building,
+  HardDrive,
 } from "lucide-react";
 
 export default async function EmailArchivingPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -98,6 +99,25 @@ export default async function EmailArchivingPage({ params }: { params: Promise<{
     },
   ];
 
+  const storageMetrics = [
+    {
+      value: "∞",
+      label: t("emailArchiving.metricStorageUnlimited"),
+    },
+    {
+      value: "10PB",
+      label: t("emailArchiving.metricCapacity"),
+    },
+    {
+      value: "99.999%",
+      label: t("emailArchiving.metricIntegrity"),
+    },
+    {
+      value: "0",
+      label: t("emailArchiving.metricDataLoss"),
+    },
+  ];
+
   const faqs = [
     {
       question: t("emailArchiving.faqDurationTitle"),
@@ -110,6 +130,14 @@ export default async function EmailArchivingPage({ params }: { params: Promise<{
     {
       question: t("emailArchiving.faqCostTitle"),
       answer: t("emailArchiving.faqCostAnswer"),
+    },
+    {
+      question: t("emailArchiving.faqFormatTitle"),
+      answer: t("emailArchiving.faqFormatAnswer"),
+    },
+    {
+      question: t("emailArchiving.faqDeleteTitle"),
+      answer: t("emailArchiving.faqDeleteAnswer"),
     },
   ];
 
@@ -146,6 +174,21 @@ export default async function EmailArchivingPage({ params }: { params: Promise<{
                   </Button>
                 </Link>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Storage Metrics */}
+        <section className="py-16 lg:py-20 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {storageMetrics.map((metric) => (
+                <div key={metric.label} className="text-center">
+                  <HardDrive className="h-8 w-8 mx-auto text-foreground mb-3" />
+                  <div className="text-3xl sm:text-4xl font-bold text-foreground">{metric.value}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{metric.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

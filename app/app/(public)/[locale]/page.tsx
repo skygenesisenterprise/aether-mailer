@@ -9,16 +9,10 @@ import { CodeBlock } from "@/components/public/CodeBlock";
 import {
   Shield,
   Lock,
-  Users,
   Key,
-  Fingerprint,
-  Zap,
   ArrowRight,
-  Server,
   Globe,
   Code2,
-  Building2,
-  CheckCircle2,
   GitBranch,
   Database,
   Cloud,
@@ -26,7 +20,6 @@ import {
   BookOpen,
   Calendar,
   BarChart3,
-  X,
   Landmark,
   ShoppingCart,
   HeartPulse,
@@ -34,6 +27,12 @@ import {
   Mail,
   Archive,
   HardDrive,
+  Clock,
+  Gauge,
+  Boxes,
+  Puzzle,
+  Plug,
+  HandHeart,
 } from "lucide-react";
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -111,6 +110,62 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       icon: ShoppingCart,
       title: t("home.industriesEcommerce"),
       description: t("home.industriesEcommerceDesc"),
+    },
+  ];
+
+  const metrics = [
+    {
+      icon: Clock,
+      value: "<50ms",
+      label: t("home.metricsTokenLatency"),
+    },
+    {
+      icon: Gauge,
+      value: "99.9%",
+      label: t("home.metricsSla"),
+    },
+    {
+      icon: Boxes,
+      value: "10M+",
+      label: t("home.metricsEmailsDelivered"),
+    },
+    {
+      icon: HandHeart,
+      value: "0%",
+      label: t("home.metricsVendorLockin"),
+    },
+  ];
+
+  const integrations = [
+    {
+      icon: Puzzle,
+      name: "PostgreSQL",
+      category: "Database",
+    },
+    {
+      icon: Database,
+      name: "MySQL",
+      category: "Database",
+    },
+    {
+      icon: Cloud,
+      name: "AWS SES",
+      category: "Email Service",
+    },
+    {
+      icon: Plug,
+      name: "Webhook",
+      category: "Automation",
+    },
+    {
+      icon: Key,
+      name: "OAuth 2.0",
+      category: "Auth",
+    },
+    {
+      icon: Shield,
+      name: "S/MIME",
+      category: "Security",
     },
   ];
 
@@ -225,6 +280,47 @@ storage:
                   </Button>
                 </Link>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Metrics Section */}
+        <section className="py-16 lg:py-20 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="text-center">
+                  <metric.icon className="h-8 w-8 mx-auto text-foreground mb-3" />
+                  <div className="text-3xl sm:text-4xl font-bold text-foreground">{metric.value}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{metric.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Integrations Preview */}
+        <section className="py-16 lg:py-20 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mx-auto text-center mb-12">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-foreground">
+                {t("home.integrationsTitle")}
+              </h2>
+              <p className="mt-3 text-base text-muted-foreground">
+                {t("home.integrationsDescription")}
+              </p>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+              {integrations.map((integration) => (
+                <div
+                  key={integration.name}
+                  className="flex flex-col items-center justify-center p-4 rounded-lg border border-border bg-card hover:border-foreground/20 transition-colors"
+                >
+                  <integration.icon className="h-6 w-6 text-foreground mb-2" />
+                  <span className="text-sm font-medium text-foreground text-center">{integration.name}</span>
+                  <span className="text-xs text-muted-foreground">{integration.category}</span>
+                </div>
+              ))}
             </div>
           </div>
         </section>

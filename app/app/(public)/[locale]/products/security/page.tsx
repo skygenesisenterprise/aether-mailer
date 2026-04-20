@@ -14,6 +14,9 @@ import {
   AlertTriangle,
   FileCheck,
   Users,
+  Gauge,
+  Brain,
+  CheckCircle2,
 } from "lucide-react";
 
 export default async function EmailSecurityPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -94,6 +97,29 @@ export default async function EmailSecurityPage({ params }: { params: Promise<{ 
     },
   ];
 
+  const securityMetrics = [
+    {
+      icon: Gauge,
+      value: "99.7%",
+      label: t("emailSecurity.metricSpamBlock"),
+    },
+    {
+      icon: Brain,
+      value: "94.2%",
+      label: t("emailSecurity.metricPhishingDetect"),
+    },
+    {
+      icon: CheckCircle2,
+      value: "100%",
+      label: t("emailSecurity.metricDkimRate"),
+    },
+    {
+      icon: Shield,
+      value: "0",
+      label: t("emailSecurity.metricDataBreach"),
+    },
+  ];
+
   const faqs = [
     {
       question: t("emailSecurity.faqDkimTitle"),
@@ -106,6 +132,14 @@ export default async function EmailSecurityPage({ params }: { params: Promise<{ 
     {
       question: t("emailSecurity.faqSetupTitle"),
       answer: t("emailSecurity.faqSetupAnswer"),
+    },
+    {
+      question: t("emailSecurity.faqMaintenanceTitle"),
+      answer: t("emailSecurity.faqMaintenanceAnswer"),
+    },
+    {
+      question: t("emailSecurity.faqReportingTitle"),
+      answer: t("emailSecurity.faqReportingAnswer"),
     },
   ];
 
@@ -142,6 +176,21 @@ export default async function EmailSecurityPage({ params }: { params: Promise<{ 
                   </Button>
                 </Link>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Security Metrics */}
+        <section className="py-16 lg:py-20 border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {securityMetrics.map((metric) => (
+                <div key={metric.label} className="text-center">
+                  <metric.icon className="h-8 w-8 mx-auto text-emerald-500 mb-3" />
+                  <div className="text-3xl sm:text-4xl font-bold text-foreground">{metric.value}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{metric.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

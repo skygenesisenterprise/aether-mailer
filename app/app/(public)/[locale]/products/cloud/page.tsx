@@ -14,6 +14,12 @@ import {
   Users,
   Database,
   BarChart3,
+  Shield,
+  Lock,
+  CreditCard,
+  Clock,
+  Mail,
+  FileCheck,
 } from "lucide-react";
 
 export default async function CloudEmailPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -53,6 +59,59 @@ export default async function CloudEmailPage({ params }: { params: Promise<{ loc
     },
   ];
 
+  const whyItems = [
+    {
+      icon: CreditCard,
+      title: t("cloudEmail.whyCost"),
+      description: t("cloudEmail.whyCostDesc"),
+    },
+    {
+      icon: Lock,
+      title: t("cloudEmail.whyControl"),
+      description: t("cloudEmail.whyControlDesc"),
+    },
+    {
+      icon: Zap,
+      title: t("cloudEmail.whyApi"),
+      description: t("cloudEmail.whyApiDesc"),
+    },
+    {
+      icon: Users,
+      title: t("cloudEmail.whySupport"),
+      description: t("cloudEmail.whySupportDesc"),
+    },
+  ];
+
+  const stats = [
+    { value: "50 000+", label: t("cloudEmail.statsUsers"), icon: Users },
+    { value: "99.99%", label: t("cloudEmail.statsUptime"), icon: Clock },
+    { value: "2Mds", label: t("cloudEmail.statsEmails"), icon: Mail },
+    { value: "48h", label: t("cloudEmail.statsMigration"), icon: Clock },
+  ];
+
+  const securityItems = [
+    {
+      icon: Lock,
+      title: t("cloudEmail.securityEncryption"),
+      description: t("cloudEmail.securityEncryptionDesc"),
+    },
+    {
+      icon: Shield,
+      title: t("cloudEmail.securityTls"),
+      description: t("cloudEmail.securityTlsDesc"),
+    },
+    {
+      icon: Users,
+      title: t("cloudEmail.security2fa"),
+      description: t("cloudEmail.security2faDesc"),
+    },
+    {
+      icon: FileCheck,
+      title: t("cloudEmail.securityGdpr"),
+      description: t("cloudEmail.securityGdprDesc"),
+    },
+  ];
+
   const plans = [
     {
       name: t("cloudEmail.planStarter"),
@@ -63,7 +122,8 @@ export default async function CloudEmailPage({ params }: { params: Promise<{ loc
         "10 Go de stockage",
         "Support par email",
         "Domaine personnalisé",
-        " DKIM & DMARC",
+        "DKIM & DMARC",
+        t("cloudEmail.planStarterMoneyBack"),
       ],
       popular: false,
     },
@@ -129,6 +189,18 @@ export default async function CloudEmailPage({ params }: { params: Promise<{ loc
       question: t("cloudEmail.faqDowntimeTitle"),
       answer: t("cloudEmail.faqDowntimeAnswer"),
     },
+    {
+      question: t("cloudEmail.faqPrivacyTitle"),
+      answer: t("cloudEmail.faqPrivacyAnswer"),
+    },
+    {
+      question: t("cloudEmail.faqDomainTitle"),
+      answer: t("cloudEmail.faqDomainAnswer"),
+    },
+    {
+      question: t("cloudEmail.faqSlaTitle"),
+      answer: t("cloudEmail.faqSlaAnswer"),
+    },
   ];
 
   return (
@@ -168,6 +240,23 @@ export default async function CloudEmailPage({ params }: { params: Promise<{ loc
           </div>
         </section>
 
+        {/* Stats Section */}
+        <section className="py-16 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {stats.map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <stat.icon className="h-5 w-5 text-emerald-500" />
+                    <span className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
         <section className="py-20 lg:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -197,6 +286,58 @@ export default async function CloudEmailPage({ params }: { params: Promise<{ loc
           </div>
         </section>
 
+        {/* Why Aether Section */}
+        <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("cloudEmail.whyTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("cloudEmail.whyDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {whyItems.map((item) => (
+                <div key={item.title} className="bg-card p-6 rounded-lg border border-border">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-emerald-500/10 mb-4">
+                    <item.icon className="h-6 w-6 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Security Section */}
+        <section className="py-20 lg:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-16">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
+                {t("cloudEmail.securityTitle")}
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+                {t("cloudEmail.securityDescription")}
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {securityItems.map((item) => (
+                <div key={item.title} className="flex items-start gap-4">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-foreground/5 shrink-0">
+                    <item.icon className="h-5 w-5 text-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground mb-1">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Plans Section */}
         <section className="py-20 lg:py-28 border-b border-border bg-muted/30">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -220,7 +361,7 @@ export default async function CloudEmailPage({ params }: { params: Promise<{ loc
                 >
                   {plan.popular && (
                     <span className="inline-block px-2 py-1 text-xs font-medium bg-emerald-500 text-white rounded-full mb-4">
-                      Populaire
+                      {t("cloudEmail.planBusinessPopular")}
                     </span>
                   )}
                   <h3 className="text-lg font-semibold text-foreground mb-2">{plan.name}</h3>
@@ -269,6 +410,20 @@ export default async function CloudEmailPage({ params }: { params: Promise<{ loc
                   <p className="text-sm text-muted-foreground">{step.description}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-12 flex flex-wrap justify-center gap-8 text-center">
+              <div>
+                <div className="text-2xl font-bold text-foreground">{t("cloudEmail.migrationTimelineSmall")}</div>
+                <p className="text-sm text-muted-foreground">-500 boîte{`s`}</p>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-foreground">{t("cloudEmail.migrationTimelineMedium")}</div>
+                <p className="text-sm text-muted-foreground">-5000 boîte{`s`}</p>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-foreground">{t("cloudEmail.migrationTimelineLarge")}</div>
+                <p className="text-sm text-muted-foreground">Enterprise</p>
+              </div>
             </div>
           </div>
         </section>

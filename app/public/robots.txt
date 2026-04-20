@@ -1,0 +1,44 @@
+User-agent: *
+Allow: /
+
+# Block platform/dashboard routes
+Disallow: /dashboard/
+Disallow: /platform/
+Disallow: /agents/
+Disallow: /activity/
+Disallow: /monitoring/
+Disallow: /extension/
+Disallow: /marketplace/
+
+# Block auth routes
+Disallow: /login
+Disallow: /register
+Disallow: /authorize
+
+# Block API and internal routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /troubleshoot/
+Disallow: /logs/
+
+# Block development paths
+Disallow: /_next/
+Disallow: /__webpack_hmr/
+Disallow: /_error
+Disallow: /404
+
+# Block private routes
+Disallow: /account
+Disallow: /settings
+Disallow: /manage
+Disallow: /reports
+
+# Allow monitoring endpoints
+Allow: /health
+Allow: /api/v1/health
+
+# Crawl delay
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://identity.skygenesisenterprise.com/sitemap.xml

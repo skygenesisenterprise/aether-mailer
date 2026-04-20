@@ -1,11 +1,43 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { Providers } from "@/context/Providers";
 import "@/styles/globals.css";
-import { AuthProvider } from "@/context/JwtAuthContext";
-import { DashboardLayout } from "@/components/DashboardLayout";
+
+const fontSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const fontMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
-  title: "Aether Mailer",
-  description: "A modern, open-source email server built with Next.js",
+  title: {
+    template: "%s | Sky Genesis Enterprise",
+    default: "Aether Identity | Sky Genesis Enterprise",
+  },
+  description:
+    "An Enterprise OAuth2/OIDC support, multi-factor authentication, and secure account management for applications and services.",
+  icons: {
+    icon: [
+      {
+        url: "/enterprise-touch-icon.png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/enterprise-touch-icon.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/enterprise-touch-icon.png",
+        type: "image/svg+xml",
+      },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -14,12 +46,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
-      <body className="font-sans antialiased">
-        <AuthProvider>
-          <DashboardLayout>{children}</DashboardLayout>
-          {/* <Toaster /> */}
-        </AuthProvider>
+    <html suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className={`${fontSans.variable} ${fontMono.variable} antialiased`}
+      >
+        <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );

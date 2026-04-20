@@ -2,14 +2,8 @@
   "files": [],
   "references": [
     { "path": "./app" },
-    { "path": "./cli" },
-    { "path": "./routers" },
-    { "path": "./tools" },
-    { "path": "./options" },
-    { "path": "./package" },
-    { "path": "./snap" },
-    { "path": "./tests" },
-    { "path": "./prisma"}
+    { "path": "./server/prisma"},
+    { "path": "./infrastructure"}
   ],
   "compilerOptions": {
     "target": "ES2017",

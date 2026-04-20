@@ -2,18 +2,17 @@ services:
   aetheridentity:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.cloud
     image: aetheridentity:latest
     container_name: aetheridentity
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     expose:
+      - "3000"
       - "8080"
       - "5432"
     environment:
-      NODE_ENV: development
-      ENVIRONMENT: development
+      NODE_ENV: production
+      ENVIRONMENT: production
       DB_HOST: localhost
       DB_PORT: 5432
       DB_USER: aether
@@ -22,10 +21,10 @@ services:
       DATABASE_URL: postgresql://aether:${DB_PASSWORD:-password}@localhost:5432/etheria_account
       JWT_SECRET: ${JWT_SECRET:-default-secret-change-in-production}
       SERVER_PORT: 8080
-      NEXT_PUBLIC_API_URL: http://localhost:3000
-      NEXT_PUBLIC_ENVIRONMENT: development
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_ENVIRONMENT: production
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
-      GIN_MODE: debug
+      GIN_MODE: release
       USE_EMBEDDED_DB: "true"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -40,7 +39,7 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
-    entrypoint: ["/entrypoint.sh"]
+    entrypoint: ["/entrypoint-cloud.sh"]
 
 volumes:
   postgres_data:

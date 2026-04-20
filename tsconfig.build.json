@@ -12,12 +12,8 @@
     "outDir": "./dist"
   },
   "include": [
-    "packages/*/src/**/*",
     "tools/*/src/**/*",
-    "services/*/src/**/*",
-    "routers/*/src/**/*",
     "snap/src/**/*",
-    "cli/src/**/*",
     "options/src/**/*",
     "tests/src/**/*"
   ],
@@ -32,13 +28,8 @@
   ],
   "references": [
     { "path": "./app" },
-    { "path": "./server" },
-    { "path": "./cli" },
-    { "path": "./services" },
     { "path": "./tools" },
-    { "path": "./routers" },
     { "path": "./options" },
-    { "path": "./package" },
     { "path": "./snap" },
     { "path": "./tests" },
     { "path": "./prisma" }

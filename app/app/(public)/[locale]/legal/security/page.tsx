@@ -365,7 +365,7 @@ export default async function SecurityPage({ params }: { params: Promise<{ local
                 <p className="text-sm text-muted-foreground mb-4">
                   {t("security.contactDescription")}
                 </p>
-                <a href="mailto:security@aetheridentity.com">
+                <a href="mailto:security@skygenesisenterprise.com">
                   <Button variant="outline" className="w-full">
                     <Shield className="h-4 w-4 mr-2" />
                     {t("security.contactButton")}

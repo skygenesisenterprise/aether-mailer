@@ -36,6 +36,7 @@ import {
   Globe,
   Wrench,
   Info,
+  BookKey,
 } from "lucide-react";
 import { GitHubIcon } from "@/components/ui/icons/GitHubIcon";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,21 @@ const navItems: NavItem[] = [
     title: "Overview",
     href: "/dashboard/overview",
     icon: Gauge,
+  },
+  {
+    title: "Directory",
+    href: "/dashboard/directory/accounts",
+    icon: Users,
+    items: [
+      { title: "Accounts", href: "/dashboard/directory/accounts", icon: User },
+      { title: "Domains", href: "/dashboard/directory/domains", icon: Globe },
+      { title: "Groups", href: "/dashboard/directory/groups", icon: ListFilter },
+      { title: "Roles", href: "/dashboard/directory/roles", icon: Shield },
+      { title: "Lists", href: "/dashboard/directory/lists", icon: Contact },
+      { title: "Tenants", href: "/dashboard/directory/tenants", icon: Building2 },
+      { title: "OAuth Clients", href: "/dashboard/directory/oauth-clients", icon: Key },
+      { title: "API Keys", href: "/dashboard/directory/api-keys", icon: BookKey },
+    ],
   },
   {
     title: "History",
@@ -140,21 +156,6 @@ const navItems: NavItem[] = [
     items: [
       { title: "Delivery Issues", href: "/dashboard/troubleshoot/delivery", icon: XCircle },
       { title: "DMARC", href: "/dashboard/troubleshoot/dmarc", icon: ShieldCheck },
-    ],
-  },
-  {
-    title: "Directory",
-    href: "/dashboard/directory/accounts",
-    icon: Users,
-    items: [
-      { title: "Accounts", href: "/dashboard/directory/accounts", icon: User },
-      { title: "Domains", href: "/dashboard/directory/domains", icon: Globe },
-      { title: "Groups", href: "/dashboard/directory/groups", icon: ListFilter },
-      { title: "Roles", href: "/dashboard/directory/roles", icon: Shield },
-      { title: "Lists", href: "/dashboard/directory/lists", icon: Contact },
-      { title: "Tenants", href: "/dashboard/directory/tenants", icon: Building2 },
-      { title: "OAuth Clients", href: "/dashboard/directory/oauth-clients", icon: Key },
-      { title: "API Keys", href: "/dashboard/directory/api_keys", icon: Terminal },
     ],
   },
   {

@@ -13,14 +13,17 @@ import {
   Eye,
   Edit,
   Copy,
+  EyeOff,
   CheckCircle,
   XCircle,
   Clock,
+  AlertTriangle,
   Shield,
   Globe,
   Terminal,
   Settings,
   Users,
+  Zap,
 } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,68 +47,73 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const oauthClients = [
+const apiKeys = [
   {
     id: 1,
-    name: "Web Mail Client",
-    clientId: "aether-web-mail-001",
-    type: "public",
+    name: "Production API Key",
+    keyId: "aether_prod_001",
+    prefix: "aether_prod_",
+    type: "api_key",
     scopes: ["mail.read", "mail.send", "contacts.read"],
     status: "active",
     createdAt: "2024-01-15",
     lastUsed: "2 min ago",
-    redirectUris: ["https://mail.example.com/callback"],
+    expiresAt: "2025-01-15",
   },
   {
     id: 2,
-    name: "Mobile App",
-    clientId: "aether-mobile-002",
-    type: "public",
-    scopes: ["mail.read", "mail.send"],
+    name: "Development Key",
+    keyId: "aether_dev_002",
+    prefix: "aether_dev_",
+    type: "api_key",
+    scopes: ["mail.read"],
     status: "active",
     createdAt: "2024-02-20",
     lastUsed: "1h ago",
-    redirectUris: ["aether://oauth/callback"],
+    expiresAt: null,
   },
   {
     id: 3,
-    name: "Admin Dashboard",
-    clientId: "aether-admin-003",
-    type: "confidential",
-    scopes: ["admin.read", "admin.write", "users.read", "users.write"],
+    name: "Analytics Key",
+    keyId: "aether_analytics_003",
+    prefix: "aether_analytics_",
+    type: "api_key",
+    scopes: ["stats.read", "reports.read"],
     status: "active",
     createdAt: "2023-11-05",
     lastUsed: "5 min ago",
-    redirectUris: ["https://admin.example.com/callback"],
+    expiresAt: null,
   },
   {
     id: 4,
-    name: "Third Party Integration",
-    clientId: "aether-partner-004",
-    type: "confidential",
+    name: "Legacy Key",
+    keyId: "aether_legacy_004",
+    prefix: "aether_legacy_",
+    type: "api_key",
     scopes: ["mail.read"],
     status: "revoked",
     createdAt: "2023-09-12",
     lastUsed: "30 days ago",
-    redirectUris: ["https://partner.example.com/callback"],
+    expiresAt: "2024-09-12",
   },
   {
     id: 5,
-    name: "Analytics Service",
-    clientId: "aether-analytics-005",
-    type: "confidential",
-    scopes: ["stats.read", "reports.read"],
+    name: "Admin Key",
+    keyId: "aether_admin_005",
+    prefix: "aether_admin_",
+    type: "api_key",
+    scopes: ["admin.read", "admin.write", "users.read", "users.write"],
     status: "active",
     createdAt: "2024-03-01",
     lastUsed: "10 min ago",
-    redirectUris: ["https://analytics.example.com/callback"],
+    expiresAt: "2025-03-01",
   },
 ];
 
 const scopes = [
   { id: "mail.read", name: "Read emails", count: 4 },
-  { id: "mail.send", name: "Send emails", count: 3 },
-  { id: "contacts.read", name: "Read contacts", count: 2 },
+  { id: "mail.send", name: "Send emails", count: 1 },
+  { id: "contacts.read", name: "Read contacts", count: 1 },
   { id: "admin.read", name: "Admin read", count: 1 },
   { id: "admin.write", name: "Admin write", count: 1 },
   { id: "users.read", name: "Read users", count: 1 },
@@ -114,11 +122,11 @@ const scopes = [
 ];
 
 const recentActivity = [
-  { id: 1, action: "Client created", client: "Analytics Service", user: "admin@system.com", time: "5 min ago" },
-  { id: 2, action: "Secret rotated", client: "Admin Dashboard", user: "admin@system.com", time: "1h ago" },
-  { id: 3, action: "Scope added", client: "Web Mail Client", user: "admin@system.com", time: "2h ago" },
-  { id: 4, action: "Client revoked", client: "Third Party Integration", user: "admin@system.com", time: "3h ago" },
-  { id: 5, action: "Client approved", client: "Mobile App", user: "admin@system.com", time: "5h ago" },
+  { id: 1, action: "Key created", key: "Admin Key", user: "admin@system.com", time: "5 min ago" },
+  { id: 2, action: "Key rotated", key: "Production API Key", user: "admin@system.com", time: "1h ago" },
+  { id: 3, action: "Key revoked", key: "Legacy Key", user: "admin@system.com", time: "2h ago" },
+  { id: 4, action: "Key accessed", key: "Analytics Key", user: "analytics@system.com", time: "3h ago" },
+  { id: 5, action: "Key updated", key: "Development Key", user: "developer@system.com", time: "5h ago" },
 ];
 
 function getStatusColor(status: string) {
@@ -136,33 +144,32 @@ function getStatusColor(status: string) {
   }
 }
 
-function getTypeColor(type: string) {
-  switch (type) {
-    case "confidential":
-      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
-    case "public":
-      return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    default:
-      return "bg-slate-500/20 text-slate-400 border-slate-500/30";
+function getScopeColor(scope: string) {
+  if (scope.includes("admin") || scope.includes("write")) {
+    return "bg-red-500/20 text-red-400 border-red-500/30";
   }
+  if (scope.includes("read")) {
+    return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+  }
+  return "bg-slate-500/20 text-slate-400 border-slate-500/30";
 }
 
-export default function DirectoryOauthclientsPage() {
+export default function DirectoryApikeysPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [clientStats, setClientStats] = useState({
-    totalClients: 5,
-    activeClients: 4,
-    confidential: 3,
-    public: 2,
+  const [keyStats, setKeyStats] = useState({
+    totalKeys: 5,
+    activeKeys: 4,
+    expiringSoon: 1,
+    revoked: 1,
   });
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setClientStats((prev) => ({
+      setKeyStats((prev) => ({
         ...prev,
-        activeClients: prev.activeClients + Math.floor(Math.random() * 2) - 1,
+        activeKeys: prev.activeKeys + Math.floor(Math.random() * 2) - 1,
       }));
     }, 15000);
 
@@ -174,11 +181,11 @@ export default function DirectoryOauthclientsPage() {
     setTimeout(() => setIsLoading(false), 1500);
   };
 
-  const filteredClients = oauthClients.filter((client) => {
-    const matchesStatus = selectedStatus === "all" || client.status === selectedStatus;
+  const filteredKeys = apiKeys.filter((key) => {
+    const matchesStatus = selectedStatus === "all" || key.status === selectedStatus;
     const matchesSearch =
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.clientId.toLowerCase().includes(searchQuery.toLowerCase());
+      key.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      key.keyId.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -186,9 +193,9 @@ export default function DirectoryOauthclientsPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">OAuth Clients</h1>
+          <h1 className="text-2xl font-bold text-foreground">API Keys</h1>
           <p className="text-sm text-muted-foreground">
-            Manage OAuth 2.0 client applications and API access
+            Manage API keys for programmatic access
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -198,43 +205,43 @@ export default function DirectoryOauthclientsPage() {
           </Button>
           <Button size="sm">
             <Plus className="h-4 w-4 mr-2" />
-            Create Client
+            Create Key
           </Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="Total Clients"
-          value={clientStats.totalClients.toString()}
+          title="Total Keys"
+          value={keyStats.totalKeys.toString()}
           change="+1"
           changeType="positive"
-          description="registered apps"
+          description="registered keys"
           icon={Key}
         />
         <StatsCard
-          title="Active Clients"
-          value={clientStats.activeClients.toString()}
+          title="Active Keys"
+          value={keyStats.activeKeys.toString()}
           change="0"
-          changeType="neutral"
+          changeType="positive"
           description="operational"
           icon={CheckCircle}
         />
         <StatsCard
-          title="Confidential"
-          value={clientStats.confidential.toString()}
+          title="Expiring Soon"
+          value={keyStats.expiringSoon.toString()}
           change="0"
-          changeType="positive"
-          description="server-side apps"
-          icon={Shield}
+          changeType="negative"
+          description="within 30 days"
+          icon={AlertTriangle}
         />
         <StatsCard
-          title="Public"
-          value={clientStats.public.toString()}
+          title="Revoked"
+          value={keyStats.revoked.toString()}
           change="0"
-          changeType="positive"
-          description="client-side apps"
-          icon={Globe}
+          changeType="neutral"
+          description="disabled"
+          icon={XCircle}
         />
       </div>
 
@@ -243,14 +250,14 @@ export default function DirectoryOauthclientsPage() {
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <CardTitle className="text-base">All Clients</CardTitle>
-                <CardDescription>Manage OAuth applications</CardDescription>
+                <CardTitle className="text-base">All API Keys</CardTitle>
+                <CardDescription>Manage your API keys</CardDescription>
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search clients..."
+                    placeholder="Search keys..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 w-48"
@@ -265,7 +272,6 @@ export default function DirectoryOauthclientsPage() {
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="revoked">Revoked</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="expired">Expired</SelectItem>
                   </SelectContent>
                 </Select>
@@ -276,8 +282,8 @@ export default function DirectoryOauthclientsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Key ID</TableHead>
                   <TableHead>Scopes</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Used</TableHead>
@@ -285,45 +291,42 @@ export default function DirectoryOauthclientsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.map((client) => (
-                  <TableRow key={client.id}>
+                {filteredKeys.map((key) => (
+                  <TableRow key={key.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
                           <KeyRound className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{client.name}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{client.clientId}</p>
+                          <p className="text-sm font-medium">{key.name}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`text-xs ${getTypeColor(client.type)}`}>
-                        {client.type}
-                      </Badge>
+                      <span className="text-xs font-mono text-muted-foreground">{key.keyId}</span>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1 max-w-48">
-                        {client.scopes.slice(0, 2).map((scope) => (
-                          <Badge key={scope} variant="outline" className="text-[10px] px-1.5 py-0">
+                        {key.scopes.slice(0, 2).map((scope) => (
+                          <Badge key={scope} variant="outline" className={`text-[10px] px-1.5 py-0 ${getScopeColor(scope)}`}>
                             {scope}
                           </Badge>
                         ))}
-                        {client.scopes.length > 2 && (
+                        {key.scopes.length > 2 && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            +{client.scopes.length - 2}
+                            +{key.scopes.length - 2}
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`text-xs ${getStatusColor(client.status)}`}>
-                        {client.status}
+                      <Badge variant="outline" className={`text-xs ${getStatusColor(key.status)}`}>
+                        {key.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground">{client.lastUsed}</span>
+                      <span className="text-xs text-muted-foreground">{key.lastUsed}</span>
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -342,10 +345,10 @@ export default function DirectoryOauthclientsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Available Scopes</CardTitle>
-                <CardDescription>OAuth permission scopes</CardDescription>
+                <CardDescription>API permission scopes</CardDescription>
               </div>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/directory/oauth-clients/scopes" className="gap-1">
+                <Link href="/directory/api-keys/scopes" className="gap-1">
                   Manage
                   <Eye className="h-3.5 w-3.5" />
                 </Link>
@@ -360,7 +363,7 @@ export default function DirectoryOauthclientsPage() {
                     <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-xs font-mono">{scope.id}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{scope.count} apps</span>
+                  <span className="text-xs text-muted-foreground">{scope.count} keys</span>
                 </div>
               ))}
             </div>
@@ -369,8 +372,8 @@ export default function DirectoryOauthclientsPage() {
               <h4 className="text-sm font-medium mb-4">Quick Settings</h4>
               <div className="space-y-3">
                 <Button variant="outline" className="w-full justify-start">
-                  <Key className="h-4 w-4 mr-2" />
-                  Global token settings
+                  <Zap className="h-4 w-4 mr-2" />
+                  Rate limiting
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <Shield className="h-4 w-4 mr-2" />
@@ -392,10 +395,10 @@ export default function DirectoryOauthclientsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Recent Activity</CardTitle>
-                <CardDescription>Latest OAuth modifications</CardDescription>
+                <CardDescription>Latest API key modifications</CardDescription>
               </div>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/directory/oauth-clients/activity" className="gap-1">
+                <Link href="/directory/api-keys/activity" className="gap-1">
                   View all
                   <Eye className="h-3.5 w-3.5" />
                 </Link>
@@ -413,7 +416,7 @@ export default function DirectoryOauthclientsPage() {
                       <XCircle className="h-4 w-4 text-red-500" />
                     ) : activity.action.includes("rotated") ? (
                       <RefreshCw className="h-4 w-4 text-yellow-500" />
-                    ) : activity.action.includes("added") ? (
+                    ) : activity.action.includes("accessed") ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <Edit className="h-4 w-4 text-muted-foreground" />
@@ -423,7 +426,7 @@ export default function DirectoryOauthclientsPage() {
                     <p className="text-sm">
                       <span className="font-medium">{activity.action}</span>
                       <span className="text-muted-foreground"> - </span>
-                      <span className="font-medium">{activity.client}</span>
+                      <span className="font-medium">{activity.key}</span>
                     </p>
                     <p className="text-xs text-muted-foreground">by {activity.user}</p>
                   </div>
@@ -441,26 +444,26 @@ export default function DirectoryOauthclientsPage() {
           <CardHeader className="pb-3">
             <div>
               <CardTitle className="text-base">Quick Actions</CardTitle>
-              <CardDescription>Common OAuth operations</CardDescription>
+              <CardDescription>Common API key operations</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <Button variant="outline" className="w-full justify-start">
                 <Plus className="h-4 w-4 mr-2" />
-                Create new client
+                Create new API key
               </Button>
               <Button variant="outline" className="w-full justify-start">
                 <Copy className="h-4 w-4 mr-2" />
-                Copy client secrets
+                Copy key values
               </Button>
               <Button variant="outline" className="w-full justify-start">
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Rotate secrets
+                Rotate keys
               </Button>
               <Button variant="outline" className="w-full justify-start">
-                <Terminal className="h-4 w-4 mr-2" />
-                Generate test tokens
+                <EyeOff className="h-4 w-4 mr-2" />
+                Hide sensitive data
               </Button>
             </div>
           </CardContent>
@@ -481,9 +484,9 @@ export default function DirectoryOauthclientsPage() {
           </Link>
         </Button>
         <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>
-          <Link href="/directory/groups">
-            <Users className="h-5 w-5" />
-            <span className="text-sm">Groups</span>
+          <Link href="/directory/oauth-clients">
+            <KeyRound className="h-5 w-5" />
+            <span className="text-sm">OAuth Clients</span>
           </Link>
         </Button>
         <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>

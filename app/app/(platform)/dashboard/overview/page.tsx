@@ -9,27 +9,19 @@ import {
   Clock,
   Activity,
   Shield,
-  AlertTriangle,
   CheckCircle,
   XCircle,
   RefreshCw,
   Calendar,
   ArrowUpRight,
-  Bell,
   Lock,
-  FileText,
-  Server,
   Database,
-  Users,
-  TrendingUp,
-  TrendingDown,
   Eye,
   MoreHorizontal,
   Filter,
   Search,
   User,
   MailCheck,
-  BarChart3,
   Download,
 } from "lucide-react";
 
@@ -287,7 +279,7 @@ export default function OverviewPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-72 w-full min-h-[280px]">
+            <ChartContainer config={chartConfig} className="h-72 w-full min-h-70">
               <AreaChart data={emailTrafficData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="fillSentOverview" x1="0" y1="0" x2="0" y2="1">
@@ -468,7 +460,7 @@ export default function OverviewPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={deliveryConfig} className="h-64 w-full min-h-[240px]">
+          <ChartContainer config={deliveryConfig} className="h-64 w-full min-h-60">
             <BarChart data={deliveryRateData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis

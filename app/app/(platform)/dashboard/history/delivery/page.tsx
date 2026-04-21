@@ -325,7 +325,7 @@ export default function DeliveryPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-72 w-full min-h-[280px]">
+            <ChartContainer config={chartConfig} className="h-72 w-full min-h-70">
               <AreaChart data={deliveryTimelineData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="fillSent" x1="0" y1="0" x2="0" y2="1">

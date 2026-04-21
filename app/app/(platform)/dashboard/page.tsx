@@ -1,62 +1,198 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import {
   Mail,
+  Send,
+  Inbox,
   Clock,
-  Users,
   Activity,
-  Server,
-  Database,
-  Globe,
   Shield,
   AlertTriangle,
   CheckCircle,
-  Cpu,
-  HardDrive,
-  Wifi,
-  Zap,
+  XCircle,
   RefreshCw,
-  Download,
-  Upload,
   Calendar,
-  ArrowUp,
-  MoreHorizontal,
+  ArrowUpRight,
+  Bell,
+  Lock,
+  FileText,
+  Server,
+  Database,
+  Users,
 } from "lucide-react";
 
-export default function Dashboard() {
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { StatsCard } from "@/components/admin/stats-card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  LineChart,
+  Line,
+  ResponsiveContainer,
+} from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+
+const emailTrafficData = [
+  { time: "00:00", sent: 120, received: 340, failed: 5 },
+  { time: "04:00", sent: 80, received: 210, failed: 2 },
+  { time: "08:00", sent: 450, received: 890, failed: 12 },
+  { time: "10:00", sent: 680, received: 1240, failed: 8 },
+  { time: "12:00", sent: 520, received: 980, failed: 6 },
+  { time: "14:00", sent: 750, received: 1450, failed: 15 },
+  { time: "16:00", sent: 890, received: 1680, failed: 11 },
+  { time: "18:00", sent: 620, received: 1120, failed: 7 },
+  { time: "20:00", sent: 380, received: 720, failed: 4 },
+  { time: "22:00", sent: 180, received: 420, failed: 3 },
+];
+
+const deliveryRateData = [
+  { day: "Mon", success: 98.2, failed: 1.8 },
+  { day: "Tue", success: 97.8, failed: 2.2 },
+  { day: "Wed", success: 99.1, failed: 0.9 },
+  { day: "Thu", success: 98.5, failed: 1.5 },
+  { day: "Fri", success: 97.2, failed: 2.8 },
+  { day: "Sat", success: 99.4, failed: 0.6 },
+  { day: "Sun", success: 98.9, failed: 1.1 },
+];
+
+const recentAlerts = [
+  {
+    id: 1,
+    type: "security",
+    severity: "high",
+    message: "Suspicious login attempt detected",
+    time: "5 min ago",
+    domain: "mail.example.com",
+  },
+  {
+    id: 2,
+    type: "delivery",
+    severity: "medium",
+    message: "High bounce rate for domain.com",
+    time: "1h ago",
+    domain: "domain.com",
+  },
+  {
+    id: 3,
+    type: "system",
+    severity: "low",
+    message: "Update available: v2.4.1",
+    time: "3h ago",
+    domain: "System",
+  },
+  {
+    id: 4,
+    type: "dmarc",
+    severity: "medium",
+    message: "DMARC failure detected",
+    time: "5h ago",
+    domain: "client.net",
+  },
+];
+
+const dmarcSummary = [
+  { domain: "example.com", pass: 985, fail: 15, quarantine: 0 },
+  { domain: "company.org", pass: 1240, fail: 8, quarantine: 2 },
+  { domain: "business.net", pass: 856, fail: 42, quarantine: 8 },
+];
+
+const tlsSummary = [
+  { protocol: "TLS 1.3", usage: 72, status: "good" },
+  { protocol: "TLS 1.2", usage: 25, status: "ok" },
+  { protocol: "TLS 1.1", usage: 3, status: "warning" },
+];
+
+const chartConfig = {
+  sent: { label: "Sent", color: "oklch(0.6 0.2 250)" },
+  received: { label: "Received", color: "oklch(0.5 0.2 150)" },
+  failed: { label: "Failed", color: "oklch(0.6 0.2 20)" },
+};
+
+const deliveryConfig = {
+  success: { label: "Success", color: "oklch(0.6 0.2 150)" },
+  failed: { label: "Failed", color: "oklch(0.6 0.2 20)" },
+};
+
+function getSeverityColor(severity: string) {
+  switch (severity) {
+    case "high":
+      return "bg-red-500/20 text-red-400 border-red-500/30";
+    case "medium":
+      return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+    case "low":
+      return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+    default:
+      return "bg-slate-500/20 text-slate-400 border-slate-500/30";
+  }
+}
+
+function getAlertIcon(type: string) {
+  switch (type) {
+    case "security":
+      return Shield;
+    case "delivery":
+      return Mail;
+    case "dmarc":
+      return FileText;
+    case "system":
+      return Server;
+    default:
+      return Bell;
+  }
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "good":
+      return "text-green-500";
+    case "ok":
+      return "text-blue-500";
+    case "warning":
+      return "text-yellow-500";
+    case "error":
+      return "text-red-500";
+    default:
+      return "text-slate-500";
+  }
+}
+
+export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTimeRange, setSelectedTimeRange] = useState("24h");
-  const [serverStats, setServerStats] = useState({
-    uptime: 99.9,
-    cpu: 23,
-    storage: 67,
-    network: 1.2,
+  const [selectedPeriod, setSelectedPeriod] = useState("24h");
+  const [emailStats, setEmailStats] = useState({
+    sent: 4823,
+    received: 12847,
+    failed: 89,
+    pending: 42,
+    delivered: 98.2,
+    spamBlocked: 234,
   });
 
-  const timeRanges = ["1h", "24h", "7d", "30d"];
-
   useEffect(() => {
-    // Simulate real-time updates
     const interval = setInterval(() => {
-      setServerStats((prev) => ({
+      setEmailStats((prev) => ({
         ...prev,
-        cpu: Math.max(10, Math.min(40, prev.cpu + (Math.random() - 0.5) * 5)),
-        network: Math.max(
-          0.8,
-          Math.min(2.0, prev.network + (Math.random() - 0.5) * 0.2),
-        ),
+        sent: prev.sent + Math.floor(Math.random() * 3),
+        received: prev.received + Math.floor(Math.random() * 5),
+        pending: Math.max(0, prev.pending + Math.floor(Math.random() * 3) - 1),
       }));
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -67,458 +203,384 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      {/* Page Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-800">
-        <div className="px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
-                Tableau de Bord Aether Mailer
-              </h1>
-              <p className="text-slate-400 text-lg">
-                Surveillance et gestion complète du serveur de messagerie
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2 border border-slate-700">
-                <Calendar className="h-4 w-4 text-blue-400" />
-                <select
-                  value={selectedTimeRange}
-                  onChange={(e) => setSelectedTimeRange(e.target.value)}
-                  className="bg-slate-800 text-white text-sm outline-none cursor-pointer"
-                >
-                  {timeRanges.map((range) => (
-                    <option
-                      key={range}
-                      value={range}
-                      className="bg-slate-800 text-white"
-                    >
-                      {range}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isLoading}
-                className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-                />
-                Actualiser
-              </Button>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                <Download className="h-4 w-4 mr-2" />
-                Exporter
-              </Button>
-            </div>
-          </div>
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Real-time monitoring of your email infrastructure
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="w-36">
+              <Calendar className="mr-2 h-4 w-4" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1h">Last hour</SelectItem>
+              <SelectItem value="24h">24 hours</SelectItem>
+              <SelectItem value="7j">7 days</SelectItem>
+              <SelectItem value="30j">30 days</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Quick Stats */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="p-3 bg-green-500/20 rounded-xl">
-                  <Server className="h-6 w-6 text-green-400" />
-                </div>
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs px-2 py-1">
-                  Actif
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-3xl font-bold text-white">
-                {serverStats.uptime}%
-              </div>
-              <div className="text-sm text-slate-400">Uptime serveur</div>
-              <div className="flex items-center gap-2 text-xs text-green-400">
-                <ArrowUp className="h-3 w-3" />
-                <span>Stable</span>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Emails sent"
+          value={emailStats.sent.toLocaleString()}
+          change="+12%"
+          changeType="positive"
+          description="vs yesterday"
+          icon={Send}
+        />
+        <StatsCard
+          title="Emails received"
+          value={emailStats.received.toLocaleString()}
+          change="+8%"
+          changeType="positive"
+          description="vs yesterday"
+          icon={Inbox}
+        />
+        <StatsCard
+          title="Delivery rate"
+          value={`${emailStats.delivered}%`}
+          change="+0.3%"
+          changeType="positive"
+          description="vs yesterday"
+          icon={CheckCircle}
+        />
+        <StatsCard
+          title="Failed emails"
+          value={emailStats.failed.toString()}
+          change="-5%"
+          changeType="positive"
+          description="vs yesterday"
+          icon={XCircle}
+        />
+      </div>
 
-          <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="p-3 bg-blue-500/20 rounded-xl">
-                  <Cpu className="h-6 w-6 text-blue-400" />
+      <div className="grid gap-6 lg:grid-cols-7">
+        <Card className="lg:col-span-4">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Email traffic</CardTitle>
+                <CardDescription>Sent and received emails per hour</CardDescription>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-[oklch(0.6 0.2 250)]" />
+                  <span className="text-muted-foreground">Sent</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-400">Normal</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-3xl font-bold text-white">
-                {serverStats.cpu.toFixed(1)}%
-              </div>
-              <div className="text-sm text-slate-400">Utilisation CPU</div>
-              <div className="w-full bg-slate-700 rounded-full h-3">
-                <div
-                  className="bg-blue-500 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${serverStats.cpu}%` }}
-                ></div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="p-3 bg-yellow-500/20 rounded-xl">
-                  <HardDrive className="h-6 w-6 text-yellow-400" />
-                </div>
-                <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs px-2 py-1">
-                  Attention
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-3xl font-bold text-white">
-                {serverStats.storage}%
-              </div>
-              <div className="text-sm text-slate-400">Stockage utilisé</div>
-              <div className="w-full bg-slate-700 rounded-full h-3">
-                <div
-                  className="bg-yellow-500 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${serverStats.storage}%` }}
-                ></div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="p-3 bg-purple-500/20 rounded-xl">
-                  <Wifi className="h-6 w-6 text-purple-400" />
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-400">Stable</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-[oklch(0.5 0.2 150)]" />
+                  <span className="text-muted-foreground">Received</span>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-3xl font-bold text-white">
-                {serverStats.network} Gbps
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Upload className="h-3 w-3" />
-                <span>↑ 800 Mbps</span>
-                <span className="mx-1">•</span>
-                <Download className="h-3 w-3" />
-                <span>↓ 400 Mbps</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-72 w-full min-h-70">
+              <AreaChart data={emailTrafficData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="fillSent" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-sent)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-sent)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="fillReceived" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-received)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-received)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis
+                  dataKey="time"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Area
+                  type="monotone"
+                  dataKey="received"
+                  stroke="var(--color-received)"
+                  strokeWidth={2}
+                  fill="url(#fillReceived)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="sent"
+                  stroke="var(--color-sent)"
+                  strokeWidth={2}
+                  fill="url(#fillSent)"
+                />
+              </AreaChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
-        {/* Email Service Metrics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-300">
-                  Emails/Jour
-                </CardTitle>
-                <Mail className="h-4 w-4 text-slate-400" />
+        <Card className="lg:col-span-3">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Recent alerts</CardTitle>
+                <CardDescription>Latest notifications</CardDescription>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">3,842</div>
-              <div className="flex items-center gap-1 text-xs text-green-400 mt-1">
-                <ArrowUp className="h-3 w-3" />
-                <span>+12% vs hier</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-300">
-                  Comptes Actifs
-                </CardTitle>
-                <Users className="h-4 w-4 text-slate-400" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">247</div>
-              <div className="flex items-center gap-1 text-xs text-green-400 mt-1">
-                <ArrowUp className="h-3 w-3" />
-                <span>+5 ce mois</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-300">
-                  Domaines
-                </CardTitle>
-                <Globe className="h-4 w-4 text-slate-400" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">12</div>
-              <div className="flex items-center gap-1 text-xs text-green-400 mt-1">
-                <CheckCircle className="h-3 w-3" />
-                <span>Tous vérifiés</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-300">
-                  Sécurité
-                </CardTitle>
-                <Shield className="h-4 w-4 text-slate-400" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">100%</div>
-              <div className="flex items-center gap-1 text-xs text-green-400 mt-1">
-                <CheckCircle className="h-3 w-3" />
-                <span>Protections actives</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Server Activity */}
-          <Card className="lg:col-span-2 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-white font-bold">
-                    Activité Serveur
-                  </CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Événements système en temps réel
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-slate-400 hover:text-white"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                {
-                  type: "success",
-                  service: "SMTP Server",
-                  message: "Service démarré avec succès",
-                  time: "Il y a 2 minutes",
-                  icon: CheckCircle,
-                },
-                {
-                  type: "warning",
-                  service: "Stockage",
-                  message: "Espace disque à 67% - Nettoyage recommandé",
-                  time: "Il y a 1 heure",
-                  icon: AlertTriangle,
-                },
-                {
-                  type: "info",
-                  service: "Database",
-                  message: "Backup quotidien terminé avec succès",
-                  time: "Il y a 3 heures",
-                  icon: Database,
-                },
-                {
-                  type: "success",
-                  service: "SSL Certificate",
-                  message: "Certificat renouvelé pour 90 jours",
-                  time: "Il y a 6 heures",
-                  icon: Shield,
-                },
-                {
-                  type: "error",
-                  service: "IMAP Server",
-                  message: "Redémarrage automatique après erreur",
-                  time: "Il y a 8 heures",
-                  icon: AlertTriangle,
-                },
-              ].map((event, index) => {
-                const IconComponent = event.icon;
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard/notifications" className="gap-1">
+                  View all
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {recentAlerts.map((alert) => {
+                const AlertIcon = getAlertIcon(alert.type);
                 return (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 border border-slate-700 rounded-lg hover:bg-slate-700/50 transition-all duration-200"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          event.type === "success"
-                            ? "bg-green-500/20"
-                            : event.type === "warning"
-                              ? "bg-yellow-500/20"
-                              : event.type === "error"
-                                ? "bg-red-500/20"
-                                : "bg-blue-500/20"
-                        }`}
-                      >
-                        <IconComponent
-                          className={`h-4 w-4 ${
-                            event.type === "success"
-                              ? "text-green-400"
-                              : event.type === "warning"
-                                ? "text-yellow-400"
-                                : event.type === "error"
-                                  ? "text-red-400"
-                                  : "text-blue-400"
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {event.service}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {event.message}
-                        </p>
-                      </div>
+                  <div key={alert.id} className="flex items-center gap-3 px-6 py-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                      <AlertIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <Clock className="h-3 w-3" />
-                      {event.time}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{alert.message}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-normal ${getSeverityColor(alert.severity)}`}>
+                          {alert.severity}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{alert.time}</span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Quick Actions */}
-          <div className="space-y-6">
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-white font-bold">
-                  Actions Rapides
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Gestion système
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full justify-start bg-slate-700 hover:bg-slate-600 text-white">
-                  <Database className="mr-2 h-4 w-4" />
-                  Backup Base
-                </Button>
-                <Button className="w-full justify-start bg-slate-700 hover:bg-slate-600 text-white">
-                  <Zap className="mr-2 h-4 w-4" />
-                  Optimiser Performance
-                </Button>
-                <Button className="w-full justify-start bg-slate-700 hover:bg-slate-600 text-white">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Scanner Sécurité
-                </Button>
-                <Button className="w-full justify-start bg-slate-700 hover:bg-slate-600 text-white">
-                  <Activity className="mr-2 h-4 w-4" />
-                  Logs Système
-                </Button>
-              </CardContent>
-            </Card>
+      <div className="grid gap-6 lg:grid-cols-7">
+        <Card className="lg:col-span-4">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Delivery rate</CardTitle>
+                <CardDescription>Percentage by day</CardDescription>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-[oklch(0.5 0.2 150)]" />
+                  <span className="text-muted-foreground">Success</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-[oklch(0.6 0.2 20)]" />
+                  <span className="text-muted-foreground">Failed</span>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={deliveryConfig} className="h-64 w-full min-h-60">
+              <BarChart data={deliveryRateData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis
+                  dataKey="day"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="success" stackId="a" fill="var(--color-success)" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="failed" stackId="a" fill="var(--color-failed)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-white font-bold">
-                  Performance
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Métriques en temps réel
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-300">
-                      Taux de livraison
-                    </span>
-                    <span className="text-sm font-medium text-green-400">
-                      98.7%
-                    </span>
+        <Card className="lg:col-span-3">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">TLS Security</CardTitle>
+                <CardDescription>Protocol usage</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard/reports/tls" className="gap-1">
+                  Details
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {tlsSummary.map((item) => (
+                <div key={item.protocol} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Lock className={`h-4 w-4 ${getStatusColor(item.status)}`} />
+                    <span className="text-sm font-medium">{item.protocol}</span>
                   </div>
-                  <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full"
-                      style={{ width: "98.7%" }}
-                    ></div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${getStatusColor(item.status)} bg-current`}
+                        style={{ width: `${item.usage}%` }}
+                      />
+                    </div>
+                    <span className="text-sm w-10 text-right">{item.usage}%</span>
                   </div>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-300">
-                      Latence moyenne
-                    </span>
-                    <span className="text-sm font-medium text-white">42ms</span>
+      <div className="grid gap-6 lg:grid-cols-7">
+        <Card className="lg:col-span-4">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">DMARC Summary</CardTitle>
+                <CardDescription>Compliance statistics by domain</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard/reports/dmarc" className="gap-1">
+                  View report
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dmarcSummary.map((item) => (
+                <div key={item.domain} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
+                      <Shield className="h-4 w-4 text-green-500" />
+                    </div>
+                    <span className="text-sm font-medium">{item.domain}</span>
                   </div>
-                  <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{ width: "42%" }}
-                    ></div>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                      <span className="text-green-500">{item.pass}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <XCircle className="h-3.5 w-3.5 text-red-500" />
+                      <span className="text-red-500">{item.fail}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />
+                      <span className="text-yellow-500">{item.quarantine}</span>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-300">
-                      Connexions actives
-                    </span>
-                    <span className="text-sm font-medium text-white">
-                      1,247
-                    </span>
+        <Card className="lg:col-span-3">
+          <CardHeader className="pb-3">
+            <div>
+              <CardTitle className="text-base">Quick stats</CardTitle>
+              <CardDescription>System overview</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                    <Users className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div
-                      className="bg-purple-500 h-2 rounded-full"
-                      style={{ width: "62%" }}
-                    ></div>
-                  </div>
+                  <span className="text-sm">Active accounts</span>
                 </div>
+                <span className="text-sm font-medium">1,247</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                    <Database className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm">Storage used</span>
+                </div>
+                <span className="text-sm font-medium">67%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm">Spam blocked</span>
+                </div>
+                <span className="text-sm font-medium">{emailStats.spamBlocked}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm">Pending emails</span>
+                </div>
+                <span className="text-sm font-medium">{emailStats.pending}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-300">
-                      Espace disponible
-                    </span>
-                    <span className="text-sm font-medium text-yellow-400">
-                      180 GB
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div
-                      className="bg-yellow-500 h-2 rounded-full"
-                      style={{ width: "33%" }}
-                    ></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>
+          <Link href="/dashboard/overview">
+            <Activity className="h-5 w-5" />
+            <span className="text-sm">Overview</span>
+          </Link>
+        </Button>
+        <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>
+          <Link href="/dashboard/delivery">
+            <Mail className="h-5 w-5" />
+            <span className="text-sm">Delivery</span>
+          </Link>
+        </Button>
+        <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>
+          <Link href="/dashboard/reports/dmarc">
+            <Shield className="h-5 w-5" />
+            <span className="text-sm">DMARC Report</span>
+          </Link>
+        </Button>
+        <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>
+          <Link href="/dashboard/reports/tls">
+            <Lock className="h-5 w-5" />
+            <span className="text-sm">TLS Report</span>
+          </Link>
+        </Button>
       </div>
     </div>
   );

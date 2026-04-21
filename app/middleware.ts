@@ -29,7 +29,7 @@ function isValidLocale(locale: string): locale is Locale {
 }
 
 const AUTH_PATHS = ["/login", "/register"];
-const PROTECTED_PATHS = ["/dashboard"];
+const PROTECTED_PATHS = ["/exemple"];
 const NO_LOCALE_PATHS = ["/discord", "/dashboard", "/docs", "/downloads", "/health", "/mfa", "/authorize"];
 
 function isValidJWT(token: string | undefined): boolean {

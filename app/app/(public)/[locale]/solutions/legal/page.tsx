@@ -6,163 +6,164 @@ import { Button } from "@/components/ui/button";
 import { FaqAccordion } from "@/components/public/FaqAccordion";
 import {
   ArrowRight,
+  Scale,
   Shield,
   Lock,
   FileCheck,
+  Clock,
   Users,
-  Building,
-  BookOpen,
-  Award,
-  Calendar,
-  Mail,
+  Gavel,
+  Archive,
   FileText,
+  BookOpen,
   Video,
-  Library,
-  User,
-  PenTool,
+  Award,
+  BadgeCheck,
+  ScrollText,
+  Briefcase,
 } from "lucide-react";
 
-export default async function EducationPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function LegalPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Public" });
 
   const capabilities = [
     {
-      icon: Mail,
-      title: t("education.capabilitiesEmailTitle"),
-      description: t("education.capabilitiesEmailDesc"),
-    },
-    {
-      icon: Calendar,
-      title: t("education.capabilitiesCalendarTitle"),
-      description: t("education.capabilitiesCalendarDesc"),
-    },
-    {
       icon: Shield,
-      title: t("education.capabilitiesSecurityTitle"),
-      description: t("education.capabilitiesSecurityDesc"),
+      title: t("legal.capabilitiesSecurityTitle"),
+      description: t("legal.capabilitiesSecurityDesc"),
     },
     {
       icon: Lock,
-      title: t("education.capabilitiesPrivacyTitle"),
-      description: t("education.capabilitiesPrivacyDesc"),
-    },
-    {
-      icon: Users,
-      title: t("education.capabilitiesCollaborationTitle"),
-      description: t("education.capabilitiesCollaborationDesc"),
+      title: t("legal.capabilitiesEncryptionTitle"),
+      description: t("legal.capabilitiesEncryptionDesc"),
     },
     {
       icon: FileCheck,
-      title: t("education.capabilitiesComplianceTitle"),
-      description: t("education.capabilitiesComplianceDesc"),
+      title: t("legal.capabilitiesConfidentialityTitle"),
+      description: t("legal.capabilitiesConfidentialityDesc"),
+    },
+    {
+      icon: Clock,
+      title: t("legal.capabilitiesRetentionTitle"),
+      description: t("legal.capabilitiesRetentionDesc"),
+    },
+    {
+      icon: Users,
+      title: t("legal.capabilitiesAccessTitle"),
+      description: t("legal.capabilitiesAccessDesc"),
+    },
+    {
+      icon: Archive,
+      title: t("legal.capabilitiesArchiveTitle"),
+      description: t("legal.capabilitiesArchiveDesc"),
     },
   ];
 
   const benefits = [
     {
-      icon: User,
-      title: t("education.benefitsStudentsTitle"),
-      description: t("education.benefitsStudentsDesc"),
+      icon: BadgeCheck,
+      title: t("legal.benefitsConfTitle"),
+      description: t("legal.benefitsConfDesc"),
     },
     {
-      icon: PenTool,
-      title: t("education.benefitsFacultyTitle"),
-      description: t("education.benefitsFacultyDesc"),
-    },
-    {
-      icon: Building,
-      title: t("education.benefitsInstitutionTitle"),
-      description: t("education.benefitsInstitutionDesc"),
+      icon: Scale,
+      title: t("legal.benefitsComplianceTitle"),
+      description: t("legal.benefitsComplianceDesc"),
     },
     {
       icon: Lock,
-      title: t("education.benefitsSecurityTitle"),
-      description: t("education.benefitsSecurityDesc"),
+      title: t("legal.benefitsSecureTitle"),
+      description: t("legal.benefitsSecureDesc"),
+    },
+    {
+      icon: Clock,
+      title: t("legal.benefitsRetentionTitle"),
+      description: t("legal.benefitsRetentionDesc"),
     },
   ];
 
   const metrics = [
     {
-      value: "100K+",
-      label: t("education.metricsUsers"),
+      value: "10ans+",
+      label: t("legal.metricsRetention"),
     },
     {
-      value: "99.9%",
-      label: t("education.metricsUptime"),
+      value: "99.99%",
+      label: t("legal.metricsUptime"),
     },
     {
-      value: "<1s",
-      label: t("education.metricsLatency"),
+      value: "AES-256",
+      label: t("legal.metricsEncryption"),
     },
     {
       value: "100%",
-      label: t("education.metricsMobile"),
+      label: t("legal.metricsTraceability"),
     },
   ];
 
   const useCases = [
     {
-      icon: User,
-      title: t("education.useCaseStudents"),
-      description: t("education.useCaseStudentsDesc"),
+      icon: Briefcase,
+      title: t("legal.useCaseLawyers"),
+      description: t("legal.useCaseLawyersDesc"),
     },
     {
-      icon: PenTool,
-      title: t("education.useCaseFaculty"),
-      description: t("education.useCaseFacultyDesc"),
+      icon: Gavel,
+      title: t("legal.useCaseNotaries"),
+      description: t("legal.useCaseNotariesDesc"),
     },
     {
-      icon: Library,
-      title: t("education.useCaseResearch"),
-      description: t("education.useCaseResearchDesc"),
+      icon: ScrollText,
+      title: t("legal.useCaseContracts"),
+      description: t("legal.useCaseContractsDesc"),
     },
     {
-      icon: Award,
-      title: t("education.useCaseAdministration"),
-      description: t("education.useCaseAdministrationDesc"),
+      icon: Archive,
+      title: t("legal.useCaseDossiers"),
+      description: t("legal.useCaseDossiersDesc"),
     },
   ];
 
   const faqs = [
     {
-      question: t("education.faqStudentsTitle"),
-      answer: t("education.faqStudentsAnswer"),
+      question: t("legal.faqRetentionTitle"),
+      answer: t("legal.faqRetentionAnswer"),
     },
     {
-      question: t("education.faqIntegrationTitle"),
-      answer: t("education.faqIntegrationAnswer"),
+      question: t("legal.faqConfidentialTitle"),
+      answer: t("legal.faqConfidentialAnswer"),
     },
     {
-      question: t("education.faqCostTitle"),
-      answer: t("education.faqCostAnswer"),
+      question: t("legal.faqMigrationTitle"),
+      answer: t("legal.faqMigrationAnswer"),
     },
     {
-      question: t("education.faqMobilityTitle"),
-      answer: t("education.faqMobilityAnswer"),
+      question: t("legal.faqAccessTitle"),
+      answer: t("legal.faqAccessAnswer"),
     },
   ];
 
   const resources = [
     {
       icon: FileText,
-      title: t("education.resourcesGuide"),
-      description: t("education.resourcesGuideDesc"),
+      title: t("legal.resourcesGuide"),
+      description: t("legal.resourcesGuideDesc"),
     },
     {
       icon: BookOpen,
-      title: t("education.resourcesManual"),
-      description: t("education.resourcesManualDesc"),
+      title: t("legal.resourcesCompliance"),
+      description: t("legal.resourcesComplianceDesc"),
     },
     {
       icon: Video,
-      title: t("education.resourcesWebinar"),
-      description: t("education.resourcesWebinarDesc"),
+      title: t("legal.resourcesWebinar"),
+      description: t("legal.resourcesWebinarDesc"),
     },
     {
       icon: Award,
-      title: t("education.resourcesCaseStudy"),
-      description: t("education.resourcesCaseStudyDesc"),
+      title: t("legal.resourcesCaseStudy"),
+      description: t("legal.resourcesCaseStudyDesc"),
     },
   ];
 
@@ -176,24 +177,24 @@ export default async function EducationPage({ params }: { params: Promise<{ loca
             <div className="max-w-4xl">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                {t("education.badge")}
+                {t("legal.badge")}
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-tight text-balance">
-                {t("education.heroTitle")}
+                {t("legal.heroTitle")}
               </h1>
               <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
-                {t("education.heroDescription")}
+                {t("legal.heroDescription")}
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-start gap-4">
                 <Link href={`/${locale}/products/mail-server`}>
                   <Button size="lg" className="gap-2 h-12 px-6 text-base">
-                    {t("education.ctaSelfHosted")}
+                    {t("legal.ctaSelfHosted")}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href={`/${locale}/company/contact`}>
                   <Button variant="outline" size="lg" className="gap-2 h-12 px-6 text-base">
-                    {t("education.ctaContact")}
+                    {t("legal.ctaContact")}
                   </Button>
                 </Link>
               </div>
@@ -218,10 +219,10 @@ export default async function EducationPage({ params }: { params: Promise<{ loca
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
-                {t("education.benefitsTitle")}
+                {t("legal.benefitsTitle")}
               </h2>
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                {t("education.benefitsDescription")}
+                {t("legal.benefitsDescription")}
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -245,10 +246,10 @@ export default async function EducationPage({ params }: { params: Promise<{ loca
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-background">
-                {t("education.capabilitiesTitle")}
+                {t("legal.capabilitiesTitle")}
               </h2>
               <p className="mt-4 text-lg text-background/70 leading-relaxed">
-                {t("education.capabilitiesDescription")}
+                {t("legal.capabilitiesDescription")}
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -273,10 +274,10 @@ export default async function EducationPage({ params }: { params: Promise<{ loca
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
-                {t("education.useCasesTitle")}
+                {t("legal.useCasesTitle")}
               </h2>
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                {t("education.useCasesDescription")}
+                {t("legal.useCasesDescription")}
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -300,10 +301,10 @@ export default async function EducationPage({ params }: { params: Promise<{ loca
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mx-auto text-center mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
-                {t("education.faqTitle")}
+                {t("legal.faqTitle")}
               </h2>
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                {t("education.faqDescription")}
+                {t("legal.faqDescription")}
               </p>
             </div>
             <FaqAccordion faqs={faqs} />
@@ -314,10 +315,10 @@ export default async function EducationPage({ params }: { params: Promise<{ loca
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mb-16">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
-                {t("education.resourcesTitle")}
+                {t("legal.resourcesTitle")}
               </h2>
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                {t("education.resourcesDescription")}
+                {t("legal.resourcesDescription")}
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -341,19 +342,19 @@ export default async function EducationPage({ params }: { params: Promise<{ loca
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mx-auto text-center">
               <h2 className="text-3xl sm:text-4xl font-semibold text-foreground">
-                {t("education.ctaTitle")}
+                {t("legal.ctaTitle")}
               </h2>
-              <p className="mt-4 text-lg text-muted-foreground">{t("education.ctaDescription")}</p>
+              <p className="mt-4 text-lg text-muted-foreground">{t("legal.ctaDescription")}</p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href={`/${locale}/products/mail-server`}>
                   <Button size="lg" className="gap-2 h-12 px-8 text-base">
-                    {t("education.ctaGetStarted")}
+                    {t("legal.ctaGetStarted")}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href={`/${locale}/company/contact`}>
                   <Button variant="outline" size="lg" className="h-12 px-8 text-base">
-                    {t("education.ctaContactSales")}
+                    {t("legal.ctaContactSales")}
                   </Button>
                 </Link>
               </div>

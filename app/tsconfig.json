@@ -31,7 +31,6 @@
       "@/types/*": ["./types/*"],
       "@/config/*": ["./config/*"]
     },
-    "baseUrl": ".",
     "types": ["next", "node"],
     "allowImportingTsExtensions": true
   },

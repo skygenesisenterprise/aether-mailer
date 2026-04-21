@@ -10,6 +10,7 @@ import {
   Shield,
   Activity,
   BarChart3,
+  History,
   Settings,
   Users,
   User,
@@ -21,7 +22,6 @@ import {
   Send,
   Clock,
   Search,
-  CheckCircle,
   XCircle,
   FileText,
   ChevronRight,
@@ -73,14 +73,13 @@ const navItems: NavItem[] = [
     icon: Gauge,
   },
   {
-    title: "Sent Emails",
+    title: "History",
     href: "/dashboard/history/delivery",
-    icon: Send,
-  },
-  {
-    title: "Received Emails",
-    href: "/dashboard/history/received",
-    icon: Mail,
+    icon: History,
+    items: [
+      { title: "Sent Emails", href: "/dashboard/history/delivery", icon: Send },
+      { title: "Received Emails", href: "/dashboard/history/received", icon: Mail },
+    ],
   },
   {
     title: "Queues",
@@ -90,11 +89,6 @@ const navItems: NavItem[] = [
       { title: "Messages", href: "/dashboard/queues/messages", icon: Mail },
       { title: "Reports", href: "/dashboard/queues/reports", icon: FileText },
     ],
-  },
-  {
-    title: "Delivery",
-    href: "/dashboard/delivery",
-    icon: CheckCircle,
   },
   {
     title: "Reports",
@@ -368,6 +362,9 @@ function isActive(pathname: string, href: string): boolean {
 function isActiveGroup(pathname: string, href: string): boolean {
   if (href === "/dashboard") {
     return pathname === "/dashboard";
+  }
+  if (href === "/dashboard/history") {
+    return pathname === "/dashboard/history/delivery" || pathname === "/dashboard/history/received";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

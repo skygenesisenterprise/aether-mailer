@@ -18,7 +18,7 @@ jobs:
           node-version: 20
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Install dependencies
         working-directory: package/node
@@ -49,7 +49,7 @@ jobs:
           registry-url: https://registry.npmjs.org/
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Configure npmjs authentication
         run: |
@@ -91,7 +91,7 @@ jobs:
           registry-url: https://npm.pkg.github.com/
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Prepare GitHub Packages publish
         working-directory: package/node

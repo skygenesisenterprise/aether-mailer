@@ -38,7 +38,7 @@ function isValidJWT(token: string | undefined): boolean {
   return parts.length === 3;
 }
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const segments = pathname.split("/").filter(Boolean);
   const firstSegment = segments[0];

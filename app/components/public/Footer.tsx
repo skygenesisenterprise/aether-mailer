@@ -193,10 +193,10 @@ export async function Footer({ locale: initialLocale }: FooterProps) {
     developers: {
       title: t("developers"),
       links: [
-        { name: t("documentation"), href: `/${locale}/docs` },
-        { name: t("apiReference"), href: `/${locale}/docs/api` },
-        { name: t("sdks"), href: `/${locale}/docs/sdks` },
-        { name: t("quickstarts"), href: `/${locale}/docs/quickstarts` },
+        { name: t("documentation"), href: `/${locale}/developers` },
+        { name: t("apiReference"), href: `/${locale}/developers/api` },
+        { name: t("sdks"), href: `/${locale}/developers/sdks` },
+        { name: t("quickstarts"), href: `/${locale}/developers/quickstarts` },
         { name: t("statusPage"), href: "https://status.skygenesisenterprise.com" },
       ],
     },
@@ -205,9 +205,9 @@ export async function Footer({ locale: initialLocale }: FooterProps) {
       links: [
         { name: t("blog"), href: `/${locale}/blog` },
         { name: t("caseStudies"), href: `/${locale}/case-studies` },
-        { name: t("whitepapers"), href: `/${locale}/resources/whitepapers` },
-        { name: t("webinars"), href: `/${locale}/resources/webinars` },
-        { name: t("community"), href: "/discord" },
+        { name: t("whitepapers"), href: `/${locale}/ressources/whitepapers` },
+        { name: t("webinars"), href: `/${locale}/ressources/webinars` },
+        { name: t("community"), href: `/${locale}/community` },
       ],
     },
     company: {

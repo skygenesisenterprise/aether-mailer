@@ -86,7 +86,7 @@ COPY app/next.config.ts       ./app/
 COPY app/postcss.config.mjs   ./app/
 COPY app/components.json      ./app/
 COPY app/eslint.config.mjs    ./app/
-COPY app/middleware.ts        ./app/
+COPY app/proxy.ts             ./app/
 COPY app/app/                 ./app/app/
 COPY app/components/          ./app/components/
 COPY app/config/              ./app/config/

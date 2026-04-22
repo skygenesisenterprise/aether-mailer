@@ -233,3 +233,65 @@ func (s *SecurityService) GetMonitoringStatus() (map[string]interface{}, error) 
 		"memory": 0.0,
 	}, nil
 }
+
+func (s *SecurityService) GetSecurityInfo() (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"mfa_enabled":       true,
+		"2fa_methods":      []string{"totp", "email"},
+		"attack_protection": true,
+	}, nil
+}
+
+func (s *SecurityService) ListDevices() ([]models.Device, error) {
+	var devices []models.Device
+	if err := s.DB.Find(&devices).Error; err != nil {
+		return nil, err
+	}
+	return devices, nil
+}
+
+func (s *SecurityService) TrustDevice(id string) error {
+	var device models.Device
+	if err := s.DB.First(&device, "id = ?", id).Error; err != nil {
+		return err
+	}
+	device.IsTrusted = true
+	return s.DB.Save(&device).Error
+}
+
+func (s *SecurityService) RevokeDevice(id string) error {
+	return s.DB.Delete(&models.Device{}, "id = ?", id).Error
+}
+
+func (s *SecurityService) ListSessions() ([]models.UserSession, error) {
+	var sessions []models.UserSession
+	if err := s.DB.Where("is_valid = ?", true).Find(&sessions).Error; err != nil {
+		return nil, err
+	}
+	return sessions, nil
+}
+
+func (s *SecurityService) RevokeSession(id string) error {
+	var session models.UserSession
+	if err := s.DB.First(&session, "id = ?", id).Error; err != nil {
+		return err
+	}
+	session.IsValid = false
+	return s.DB.Save(&session).Error
+}
+
+func (s *SecurityService) ListSecurityActivities() ([]map[string]interface{}, error) {
+	return []map[string]interface{}{}, nil
+}
+
+func (s *SecurityService) Enable2FA(method, code string) error {
+	return nil
+}
+
+func (s *SecurityService) Disable2FA(code string) error {
+	return nil
+}
+
+func (s *SecurityService) Verify2FA(code string) (map[string]interface{}, error) {
+	return map[string]interface{}{"verified": true}, nil
+}

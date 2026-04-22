@@ -71,3 +71,40 @@ func (s *ExtensionService) GetExtensionConfig(id string) (map[string]interface{}
 func (s *ExtensionService) UpdateExtensionConfig(id string, config map[string]interface{}) error {
 	return nil
 }
+
+func (s *ExtensionService) ListUserExtensions() ([]models.Extension, error) {
+	var extensions []models.Extension
+	if err := s.DB.Where("type = ?", "user").Find(&extensions).Error; err != nil {
+		return nil, err
+	}
+	return extensions, nil
+}
+
+func (s *ExtensionService) GetUserExtension(id string) (*models.Extension, error) {
+	var ext models.Extension
+	if err := s.DB.First(&ext, "id = ? AND type = ?", id, "user").Error; err != nil {
+		return nil, err
+	}
+	return &ext, nil
+}
+
+func (s *ExtensionService) CreateUserExtension(ext *models.Extension) error {
+	ext.Type = "user"
+	return s.DB.Create(ext).Error
+}
+
+func (s *ExtensionService) UpdateUserExtension(ext *models.Extension) error {
+	return s.DB.Save(ext).Error
+}
+
+func (s *ExtensionService) DeleteUserExtension(id string) error {
+	return s.DB.Delete(&models.Extension{}, "id = ? AND type = ?", id, "user").Error
+}
+
+func (s *ExtensionService) ListMarketplaceExtensions() ([]models.Extension, error) {
+	var extensions []models.Extension
+	if err := s.DB.Where("type = ?", "marketplace").Find(&extensions).Error; err != nil {
+		return nil, err
+	}
+	return extensions, nil
+}

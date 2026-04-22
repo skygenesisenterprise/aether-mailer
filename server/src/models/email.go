@@ -1,144 +1,194 @@
 package models
 
-import (
-	"gorm.io/gorm"
-	"time"
-)
+import "time"
 
-// Email represents an email message
 type Email struct {
-	ID           string         `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	MessageID    string         `json:"messageId" gorm:"uniqueIndex;not null"`
-	FromAddress  string         `json:"fromAddress" gorm:"not null;index"`
-	ToAddresses  string         `json:"toAddresses" gorm:"type:text;not null"`
-	CcAddresses  string         `json:"ccAddresses" gorm:"type:text"`
-	BccAddresses string         `json:"bccAddresses" gorm:"type:text"`
-	Subject      string         `json:"subject" gorm:"type:text"`
-	BodyText     string         `json:"bodyText" gorm:"type:text"`
-	BodyHTML     string         `json:"bodyHTML" gorm:"type:longtext"`
-	Headers      string         `json:"headers" gorm:"type:longtext"`
-	Attachments  string         `json:"attachments" gorm:"type:text"`
-	Size         int64          `json:"size" gorm:"default:0"`
-	Priority     EmailPriority  `json:"priority" gorm:"default:normal"`
-	IsRead       bool           `json:"isRead" gorm:"default:false"`
-	IsDraft      bool           `json:"isDraft" gorm:"default:false"`
-	IsSent       bool           `json:"isSent" gorm:"default:false"`
-	IsDeleted    bool           `json:"isDeleted" gorm:"default:false"`
-	IsSpam       bool           `json:"isSpam" gorm:"default:false"`
-	IsArchived   bool           `json:"isArchived" gorm:"default:false"`
-	FolderID     *string        `json:"folderId" gorm:"index"`
-	UserID       string         `json:"userId" gorm:"not null;index"`
-	DomainID     *string        `json:"domainId" gorm:"index"`
-	SentAt       *time.Time     `json:"sentAt"`
-	ReceivedAt   time.Time      `json:"receivedAt" gorm:"index"`
-	CreatedAt    time.Time      `json:"createdAt"`
-	UpdatedAt    time.Time      `json:"updatedAt"`
-	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`
-
-	// Relations
-	User     User    `json:"user" gorm:"foreignKey:UserID"`
-	Domain   *Domain `json:"domain,omitempty" gorm:"foreignKey:DomainID"`
-	Folder   *Folder `json:"folder,omitempty" gorm:"foreignKey:FolderID"`
-	ThreadID *string `json:"threadId" gorm:"index"`
-	Thread   *Thread `json:"thread,omitempty" gorm:"foreignKey:ThreadID"`
+	ID             string            `json:"id"`
+	AccountID      string            `json:"account_id"`
+	ThreadID       string            `json:"thread_id,omitempty"`
+	MailboxID      string            `json:"mailbox_id"`
+	Subject        string            `json:"subject"`
+	Preview        string            `json:"preview"`
+	Body           string            `json:"body,omitempty"`
+	BodyHTML       string            `json:"body_html,omitempty"`
+	From           *EmailAddress     `json:"from"`
+	To             []*EmailAddress   `json:"to"`
+	Cc             []*EmailAddress   `json:"cc,omitempty"`
+	Bcc            []*EmailAddress   `json:"bcc,omitempty"`
+	ReplyTo        *EmailAddress     `json:"reply_to,omitempty"`
+	Date           time.Time         `json:"date"`
+	Size           int64             `json:"size"`
+	Attachments    []*Attachment     `json:"attachments,omitempty"`
+	Headers        map[string]string `json:"headers,omitempty"`
+	IsRead         bool              `json:"is_read"`
+	IsStarred      bool              `json:"is_starred"`
+	IsDraft        bool              `json:"is_draft"`
+	IsFlagged      bool              `json:"is_flagged"`
+	IsDeleted      bool              `json:"is_deleted"`
+	HasAttachments bool              `json:"has_attachments"`
+	Keywords       []string          `json:"keywords,omitempty"`
+	Labels         []string          `json:"labels,omitempty"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
-// EmailPriority represents email priority levels
-type EmailPriority string
-
-const (
-	EmailPriorityLow    EmailPriority = "low"
-	EmailPriorityNormal EmailPriority = "normal"
-	EmailPriorityHigh   EmailPriority = "high"
-	EmailPriorityUrgent EmailPriority = "urgent"
-)
-
-// EmailFolder represents an email folder
-type Folder struct {
-	ID          string         `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	Name        string         `json:"name" gorm:"not null"`
-	Type        FolderType     `json:"type" gorm:"not null"`
-	UserID      string         `json:"userId" gorm:"not null;index"`
-	ParentID    *string        `json:"parentId" gorm:"index"`
-	IsSystem    bool           `json:"isSystem" gorm:"default:false"`
-	UnreadCount int            `json:"unreadCount" gorm:"default:0"`
-	TotalCount  int            `json:"totalCount" gorm:"default:0"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
-
-	// Relations
-	User     User     `json:"user" gorm:"foreignKey:UserID"`
-	Parent   *Folder  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
-	Children []Folder `json:"children,omitempty" gorm:"foreignKey:ParentID"`
-	Emails   []Email  `json:"emails,omitempty" gorm:"foreignKey:FolderID"`
+type EmailAddress struct {
+	Name    string `json:"name,omitempty"`
+	Email   string `json:"email"`
+	Mailbox string `json:"mailbox,omitempty"`
+	Host    string `json:"host,omitempty"`
 }
 
-// FolderType represents folder types
-type FolderType string
+func (e *EmailAddress) Parse(emailStr string) {
+	if emailStr == "" {
+		return
+	}
 
-const (
-	FolderTypeInbox   FolderType = "inbox"
-	FolderTypeSent    FolderType = "sent"
-	FolderTypeDrafts  FolderType = "drafts"
-	FolderTypeTrash   FolderType = "trash"
-	FolderTypeSpam    FolderType = "spam"
-	FolderTypeArchive FolderType = "archive"
-	FolderTypeCustom  FolderType = "custom"
-)
+	atIndex := -1
+	for i := 0; i < len(emailStr); i++ {
+		if emailStr[i] == '@' {
+			atIndex = i
+			break
+		}
+	}
 
-// EmailThread represents an email conversation thread
+	if atIndex > 0 {
+		e.Mailbox = emailStr[:atIndex]
+		e.Host = emailStr[atIndex+1:]
+	}
+	e.Email = emailStr
+}
+
+type Attachment struct {
+	ID          string `json:"id"`
+	EmailID     string `json:"email_id"`
+	PartID      string `json:"part_id"`
+	Filename    string `json:"filename"`
+	MimeType    string `json:"mime_type"`
+	Size        int64  `json:"size"`
+	Disposition string `json:"disposition,omitempty"`
+	CID         string `json:"cid,omitempty"`
+	BlobID      string `json:"blob_id,omitempty"`
+	Inline      bool   `json:"inline"`
+	Downloads   int    `json:"downloads"`
+	Checksum    string `json:"checksum,omitempty"`
+}
+
+type EmailList struct {
+	AccountID     string    `json:"account_id"`
+	MailboxID     string    `json:"mailbox_id,omitempty"`
+	TotalEmails   int64     `json:"total_emails"`
+	TotalThreads  int64     `json:"total_threads"`
+	UnreadEmails  int64     `json:"unread_emails"`
+	Position      int       `json:"position"`
+	EmailsPerPage int       `json:"emails_per_page"`
+	Emails        []*Email  `json:"emails"`
+	Threads       []*Thread `json:"threads,omitempty"`
+	HasMore       bool      `json:"has_more"`
+}
+
 type Thread struct {
-	ID          string         `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID      string         `json:"userId" gorm:"not null;index"`
-	Subject     string         `json:"subject" gorm:"not null"`
-	MessageIDs  string         `json:"messageIds" gorm:"type:text"`
-	LastMessage *time.Time     `json:"lastMessage"`
-	IsRead      bool           `json:"isRead" gorm:"default:false"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
-
-	// Relations
-	User   User    `json:"user" gorm:"foreignKey:UserID"`
-	Emails []Email `json:"emails,omitempty" gorm:"foreignKey:ThreadID"`
+	ID              string          `json:"id"`
+	AccountID       string          `json:"account_id"`
+	Subject         string          `json:"subject"`
+	Emails          []*Email        `json:"emails"`
+	TotalEmails     int             `json:"total_emails"`
+	HasAttachments  bool            `json:"has_attachments"`
+	IsRead          bool            `json:"is_read"`
+	IsStarred       bool            `json:"is_starred"`
+	Labels          []string        `json:"labels,omitempty"`
+	LastMessageDate time.Time       `json:"last_message_date"`
+	Participants    []*EmailAddress `json:"participants"`
 }
 
-// EmailAttachment represents an email attachment
-type EmailAttachment struct {
-	ID          string         `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	EmailID     string         `json:"emailId" gorm:"not null;index"`
-	Filename    string         `json:"filename" gorm:"not null"`
-	ContentType string         `json:"contentType" gorm:"not null"`
-	Size        int64          `json:"size" gorm:"default:0"`
-	Content     string         `json:"content" gorm:"type:longtext"`
-	ContentID   string         `json:"contentId"`
-	IsInline    bool           `json:"isInline" gorm:"default:false"`
-	Checksum    string         `json:"checksum"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
-
-	// Relations
-	Email Email `json:"email" gorm:"foreignKey:EmailID"`
+type EmailQuery struct {
+	AccountID     string      `json:"account_id"`
+	MailboxIDs    []string    `json:"mailbox_ids,omitempty"`
+	InMailbox     []string    `json:"in_mailbox,omitempty"`
+	NotInMailbox  []string    `json:"not_in_mailbox,omitempty"`
+	ThreadID      string      `json:"thread_id,omitempty"`
+	From          string      `json:"from,omitempty"`
+	To            string      `json:"to,omitempty"`
+	CC            string      `json:"cc,omitempty"`
+	BCC           string      `json:"bcc,omitempty"`
+	Subject       string      `json:"subject,omitempty"`
+	Body          string      `json:"body,omitempty"`
+	HasKeyword    []string    `json:"has_keyword,omitempty"`
+	NotKeyword    []string    `json:"not_keyword,omitempty"`
+	HasAttachment *bool       `json:"has_attachment,omitempty"`
+	DateBefore    *time.Time  `json:"date_before,omitempty"`
+	DateAfter     *time.Time  `json:"date_after,omitempty"`
+	SizeBefore    *int64      `json:"size_before,omitempty"`
+	SizeAfter     *int64      `json:"size_after,omitempty"`
+	IsRead        *bool       `json:"is_read,omitempty"`
+	IsStarred     *bool       `json:"is_starred,omitempty"`
+	IsFlagged     *bool       `json:"is_flagged,omitempty"`
+	IsDraft       *bool       `json:"is_draft,omitempty"`
+	Labels        []string    `json:"labels,omitempty"`
+	Sort          []SortOrder `json:"sort,omitempty"`
+	Limit         int         `json:"limit,omitempty"`
+	Offset        int         `json:"offset,omitempty"`
+	Paginate      bool        `json:"paginate"`
 }
 
-// EmailRule represents an email filtering rule
-type EmailRule struct {
-	ID          string         `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID      string         `json:"userId" gorm:"not null;index"`
-	Name        string         `json:"name" gorm:"not null"`
-	Description string         `json:"description"`
-	Conditions  string         `json:"conditions" gorm:"type:text;not null"` // JSON
-	Actions     string         `json:"actions" gorm:"type:text;not null"`    // JSON
-	IsActive    bool           `json:"isActive" gorm:"default:true"`
-	Priority    int            `json:"priority" gorm:"default:0"`
-	MatchCount  int            `json:"matchCount" gorm:"default:0"`
-	LastMatched *time.Time     `json:"lastMatched"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
+type SortOrder struct {
+	IsAscending bool   `json:"is_ascending"`
+	Property    string `json:"property"`
+}
 
-	// Relations
-	User User `json:"user" gorm:"foreignKey:UserID"`
+type EmailResponse struct {
+	Success bool   `json:"success"`
+	Data    *Email `json:"data,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+type EmailListResponse struct {
+	Success bool       `json:"success"`
+	Data    *EmailList `json:"data,omitempty"`
+	Error   string     `json:"error,omitempty"`
+}
+
+type ThreadResponse struct {
+	Success bool    `json:"success"`
+	Data    *Thread `json:"data,omitempty"`
+	Error   string  `json:"error,omitempty"`
+}
+
+type SendEmailRequest struct {
+	From        *EmailAddress     `json:"from"`
+	To          []*EmailAddress   `json:"to" binding:"required"`
+	Cc          []*EmailAddress   `json:"cc,omitempty"`
+	Bcc         []*EmailAddress   `json:"bcc,omitempty"`
+	ReplyTo     *EmailAddress     `json:"reply_to,omitempty"`
+	Subject     string            `json:"subject" binding:"required"`
+	Body        string            `json:"body,omitempty"`
+	BodyHTML    string            `json:"body_html,omitempty"`
+	IsDraft     bool              `json:"is_draft"`
+	Attachments []SendAttachment  `json:"attachments,omitempty"`
+	Keywords    []string          `json:"keywords,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+}
+
+type SendAttachment struct {
+	Filename string `json:"filename" binding:"required"`
+	MimeType string `json:"mime_type"`
+	Content  string `json:"content"` // base64 encoded
+}
+
+type EmailActionRequest struct {
+	AccountID string   `json:"account_id" binding:"required"`
+	EmailIDs  []string `json:"email_ids" binding:"required"`
+	MailboxID string   `json:"mailbox_id,omitempty"`
+	Operation string   `json:"operation" binding:"required"` // markRead, markUnread, markStarred, unstar, flag, unflag, move, delete, archive
+}
+
+type MoveEmailsRequest struct {
+	AccountID     string   `json:"account_id" binding:"required"`
+	EmailIDs      []string `json:"email_ids" binding:"required"`
+	DestMailboxID string   `json:"dest_mailbox_id" binding:"required"`
+}
+
+type SetLabelsRequest struct {
+	AccountID string   `json:"account_id" binding:"required"`
+	EmailIDs  []string `json:"email_ids" binding:"required"`
+	Labels    []string `json:"labels"`
 }

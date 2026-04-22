@@ -2,186 +2,121 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
-// User represents the user model
+// User représente un utilisateur dans la base de données
 type User struct {
-	ID                string     `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	Email             string     `json:"email" gorm:"uniqueIndex;not null"`
-	Username          *string    `json:"username,omitempty" gorm:"uniqueIndex"`
-	FirstName         *string    `json:"firstName,omitempty"`
-	LastName          *string    `json:"lastName,omitempty"`
-	DisplayName       *string    `json:"displayName,omitempty"`
-	Avatar            *string    `json:"avatar,omitempty"`
-	Role              UserRole   `json:"role" gorm:"not null;default:'USER'"`
-	IsActive          bool       `json:"isActive" gorm:"not null;default:true"`
-	IsEmailVerified   bool       `json:"isEmailVerified" gorm:"not null;default:false"`
-	LastLoginAt       *time.Time `json:"lastLoginAt,omitempty"`
-	PasswordChangedAt *time.Time `json:"passwordChangedAt,omitempty"`
-	EmailVerifiedAt   *time.Time `json:"emailVerifiedAt,omitempty"`
-	CreatedAt         time.Time  `json:"createdAt" gorm:"not null;default:now()"`
-	UpdatedAt         time.Time  `json:"updatedAt" gorm:"not null;default:now()"`
-	CreatedBy         *string    `json:"createdBy,omitempty"`
-	UpdatedBy         *string    `json:"updatedBy,omitempty"`
+	ID            string         `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	Email         *string        `gorm:"size:255;uniqueIndex" json:"email,omitempty"`
+	Username      *string        `gorm:"size:255;uniqueIndex" json:"username,omitempty"`
+	Name          *string        `gorm:"size:255" json:"name,omitempty"`
+	PasswordHash  *string        `gorm:"size:255;column:password_hash" json:"-"`
+	PasswordSalt  *string        `gorm:"size:255;column:password_salt" json:"-"`
+	EmailVerified bool           `gorm:"default:false;column:email_verified" json:"emailVerified"`
+	IsActive      bool           `gorm:"default:true;column:is_active" json:"isActive"`
+	LastLoginAt   *time.Time     `gorm:"column:last_login_at" json:"lastLoginAt,omitempty"`
+	CreatedAt     time.Time      `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt     time.Time      `gorm:"column:updated_at" json:"updatedAt"`
+	DeletedAt     gorm.DeletedAt `gorm:"index;column:deleted_at" json:"-"`
+
+	// Discord integration
+	DiscordID     *string `gorm:"size:255;uniqueIndex;column:discord_id" json:"discordId,omitempty"`
+	DiscordLinked bool    `gorm:"default:false;column:discord_linked" json:"discordLinked"`
+
+	// TOTP/2FA
+	TotpSecret  *string `gorm:"size:255;column:totp_secret" json:"-"`
+	TotpEnabled bool    `gorm:"default:false;column:totp_enabled" json:"totpEnabled"`
+
+	// Role for admin checks
+	Role string `gorm:"size:50;column:role" json:"role"`
 }
 
-// CreateUserRequest represents the create user request
-type CreateUserRequest struct {
-	Email       string    `json:"email" binding:"required,email"`
-	Username    *string   `json:"username,omitempty"`
-	Password    string    `json:"password" binding:"required,min=8"`
-	FirstName   *string   `json:"firstName,omitempty"`
-	LastName    *string   `json:"lastName,omitempty"`
-	DisplayName *string   `json:"displayName,omitempty"`
-	Role        *UserRole `json:"role,omitempty"`
-	IsActive    *bool     `json:"isActive,omitempty"`
+// TableName spécifie le nom de la table pour le modèle User
+func (User) TableName() string {
+	return "users"
 }
 
-// UpdateUserRequest represents the update user request
-type UpdateUserRequest struct {
-	Username        *string   `json:"username,omitempty"`
-	FirstName       *string   `json:"firstName,omitempty"`
-	LastName        *string   `json:"lastName,omitempty"`
-	DisplayName     *string   `json:"displayName,omitempty"`
-	Avatar          *string   `json:"avatar,omitempty"`
-	Role            *UserRole `json:"role,omitempty"`
-	IsActive        *bool     `json:"isActive,omitempty"`
-	IsEmailVerified *bool     `json:"isEmailVerified,omitempty"`
+// Profile représente le profil d'un utilisateur
+type Profile struct {
+	ID          string  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	UserID      string  `gorm:"type:uuid;uniqueIndex;column:user_id;not null" json:"userId"`
+	DisplayName *string `gorm:"size:255;column:display_name" json:"displayName,omitempty"`
+	AvatarURL   *string `gorm:"size:500;column:avatar_url" json:"avatarUrl,omitempty"`
+	Locale      *string `gorm:"size:10" json:"locale,omitempty"`
+	Timezone    *string `gorm:"size:50" json:"timezone,omitempty"`
+	Bio         *string `gorm:"type:text" json:"bio,omitempty"`
 }
 
-// ChangePasswordRequest represents the change password request
-type ChangePasswordRequest struct {
-	CurrentPassword string `json:"currentPassword" binding:"required"`
-	NewPassword     string `json:"newPassword" binding:"required,min=8"`
+func (Profile) TableName() string {
+	return "profiles"
 }
 
-// ResetPasswordRequest represents the reset password request
-type ResetPasswordRequest struct {
-	Email string `json:"email" binding:"required,email"`
+// Account représente un compte externe lié (OAuth)
+type Account struct {
+	ID                string     `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	UserID            string     `gorm:"type:uuid;column:user_id;not null;index" json:"userId"`
+	Provider          string     `gorm:"size:100;not null" json:"provider"`
+	ProviderAccountID string     `gorm:"size:255;column:provider_account_id;not null" json:"providerAccountId"`
+	RefreshToken      *string    `gorm:"type:text;column:refresh_token" json:"-"`
+	AccessToken       *string    `gorm:"type:text;column:access_token" json:"-"`
+	ExpiresAt         *time.Time `gorm:"column:expires_at" json:"expiresAt,omitempty"`
+	TokenType         *string    `gorm:"size:50;column:token_type" json:"tokenType,omitempty"`
+	Scope             *string    `gorm:"size:500" json:"scope,omitempty"`
+	IDToken           *string    `gorm:"type:text;column:id_token" json:"-"`
+	SessionState      *string    `gorm:"size:255;column:session_state" json:"sessionState,omitempty"`
+	CreatedAt         time.Time  `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt         time.Time  `gorm:"column:updated_at" json:"updatedAt"`
 }
 
-// ConfirmResetPasswordRequest represents the confirm reset password request
-type ConfirmResetPasswordRequest struct {
-	Token       string `json:"token" binding:"required"`
-	NewPassword string `json:"newPassword" binding:"required,min=8"`
+func (Account) TableName() string {
+	return "accounts"
 }
 
-// UpdateProfileRequest represents the update profile request
-type UpdateProfileRequest struct {
-	Username    *string `json:"username,omitempty"`
-	FirstName   *string `json:"firstName,omitempty"`
-	LastName    *string `json:"lastName,omitempty"`
-	DisplayName *string `json:"displayName,omitempty"`
-	Avatar      *string `json:"avatar,omitempty"`
+// Session représente une session utilisateur
+type Session struct {
+	ID           string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	SessionToken string    `gorm:"size:255;uniqueIndex;column:session_token;not null" json:"sessionToken"`
+	UserID       string    `gorm:"type:uuid;column:user_id;not null;index" json:"userId"`
+	AccessToken  *string   `gorm:"type:text;column:access_token" json:"-"`
+	Expires      time.Time `json:"expires"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updatedAt"`
 }
 
-// UserLoginRequest represents the user login request
-type UserLoginRequest struct {
-	Email      string `json:"email" binding:"required,email"`
-	Password   string `json:"password" binding:"required"`
-	RememberMe *bool  `json:"rememberMe,omitempty"`
+func (Session) TableName() string {
+	return "sessions"
 }
 
-// UserLoginResponse represents the user login response
-type UserLoginResponse struct {
-	User         User    `json:"user"`
-	AccessToken  string  `json:"accessToken"`
-	RefreshToken *string `json:"refreshToken,omitempty"`
-	ExpiresIn    int     `json:"expiresIn"`
+// UserResponse représente la réponse utilisateur sans les données sensibles
+type UserResponse struct {
+	ID            string     `json:"id"`
+	Email         *string    `json:"email,omitempty"`
+	Username      *string    `json:"username,omitempty"`
+	Name          *string    `json:"name,omitempty"`
+	EmailVerified bool       `json:"emailVerified"`
+	IsActive      bool       `json:"isActive"`
+	DiscordLinked bool       `json:"discordLinked"`
+	TotpEnabled   bool       `json:"totpEnabled"`
+	LastLoginAt   *time.Time `json:"lastLoginAt,omitempty"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
 }
 
-// UserSession represents the user session
-type UserSession struct {
-	ID           string    `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID       string    `json:"userId" gorm:"not null;index"`
-	Token        string    `json:"token" gorm:"not null"`
-	RefreshToken *string   `json:"refreshToken,omitempty"`
-	UserAgent    *string   `json:"userAgent,omitempty"`
-	IPAddress    *string   `json:"ipAddress,omitempty"`
-	IsActive     bool      `json:"isActive" gorm:"not null;default:true"`
-	ExpiresAt    time.Time `json:"expiresAt" gorm:"not null"`
-	CreatedAt    time.Time `json:"createdAt" gorm:"not null;default:now()"`
-	UpdatedAt    time.Time `json:"updatedAt" gorm:"not null;default:now()"`
-}
-
-// UserListResponse represents the user list response
-type UserListResponse struct {
-	Users []User `json:"users"`
-	Total int    `json:"total"`
-	Page  int    `json:"page"`
-	Limit int    `json:"limit"`
-}
-
-// UserQueryParams represents the user query parameters
-type UserQueryParams struct {
-	Page            *int      `form:"page,omitempty"`
-	Limit           *int      `form:"limit,omitempty"`
-	Search          *string   `form:"search,omitempty"`
-	Role            *UserRole `form:"role,omitempty"`
-	IsActive        *bool     `form:"isActive,omitempty"`
-	IsEmailVerified *bool     `form:"isEmailVerified,omitempty"`
-	SortBy          *string   `form:"sortBy,omitempty"`
-	SortOrder       *string   `form:"sortOrder,omitempty"`
-}
-
-// UserStats represents the user statistics
-type UserStats struct {
-	Total           int              `json:"total"`
-	Active          int              `json:"active"`
-	Inactive        int              `json:"inactive"`
-	EmailVerified   int              `json:"emailVerified"`
-	EmailUnverified int              `json:"emailUnverified"`
-	ByRole          map[UserRole]int `json:"byRole"`
-}
-
-// UserActivity represents the user activity
-type UserActivity struct {
-	ID        string                 `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID    string                 `json:"userId" gorm:"not null;index"`
-	Action    UserActivityType       `json:"action" gorm:"not null"`
-	Details   map[string]interface{} `json:"details,omitempty" gorm:"type:jsonb"`
-	IPAddress *string                `json:"ipAddress,omitempty"`
-	UserAgent *string                `json:"userAgent,omitempty"`
-	Timestamp time.Time              `json:"timestamp" gorm:"not null;default:now()"`
-}
-
-// UserRole represents the user role
-type UserRole string
-
-const (
-	UserRoleAdmin       UserRole = "ADMIN"
-	UserRoleDomainAdmin UserRole = "DOMAIN_ADMIN"
-	UserRoleUser        UserRole = "USER"
-	UserRoleViewer      UserRole = "VIEWER"
-)
-
-// UserActivityType represents the user activity type
-type UserActivityType string
-
-const (
-	UserActivityLogin                  UserActivityType = "LOGIN"
-	UserActivityLogout                 UserActivityType = "LOGOUT"
-	UserActivityPasswordChanged        UserActivityType = "PASSWORD_CHANGED"
-	UserActivityProfileUpdated         UserActivityType = "PROFILE_UPDATED"
-	UserActivityEmailVerified          UserActivityType = "EMAIL_VERIFIED"
-	UserActivityAccountCreated         UserActivityType = "ACCOUNT_CREATED"
-	UserActivityAccountActivated       UserActivityType = "ACCOUNT_ACTIVATED"
-	UserActivityAccountDeactivated     UserActivityType = "ACCOUNT_DEACTIVATED"
-	UserActivityPasswordResetRequested UserActivityType = "PASSWORD_RESET_REQUESTED"
-	UserActivityPasswordResetCompleted UserActivityType = "PASSWORD_RESET_COMPLETED"
-)
-
-// UserPreferences represents the user preferences
-type UserPreferences struct {
-	ID                 string                 `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID             string                 `json:"userId" gorm:"not null;uniqueIndex"`
-	Theme              string                 `json:"theme" gorm:"default:'system'"`
-	Language           string                 `json:"language" gorm:"default:'en'"`
-	Timezone           string                 `json:"timezone" gorm:"default:'UTC'"`
-	EmailNotifications bool                   `json:"emailNotifications" gorm:"default:true"`
-	PushNotifications  bool                   `json:"pushNotifications" gorm:"default:true"`
-	TwoFactorEnabled   bool                   `json:"twoFactorEnabled" gorm:"default:false"`
-	Preferences        map[string]interface{} `json:"preferences,omitempty" gorm:"type:jsonb"`
-	CreatedAt          time.Time              `json:"createdAt" gorm:"not null;default:now()"`
-	UpdatedAt          time.Time              `json:"updatedAt" gorm:"not null;default:now()"`
+// ToResponse convertit un modèle User en UserResponse
+func (u *User) ToResponse() *UserResponse {
+	return &UserResponse{
+		ID:            u.ID,
+		Email:         u.Email,
+		Username:      u.Username,
+		Name:          u.Name,
+		EmailVerified: u.EmailVerified,
+		IsActive:      u.IsActive,
+		DiscordLinked: u.DiscordLinked,
+		TotpEnabled:   u.TotpEnabled,
+		LastLoginAt:   u.LastLoginAt,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+	}
 }

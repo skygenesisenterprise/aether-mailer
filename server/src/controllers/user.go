@@ -3,330 +3,167 @@ package controllers
 import (
 	"net/http"
 	"strconv"
-	"time"
+	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
-	"github.com/gin-gonic/gin"
 )
 
-// UserController handles user endpoints
-type UserController struct {
-	userService *services.UserService
+// GetUser récupère les informations d'un utilisateur
+func GetUser(c *gin.Context) {
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
+
+	// Récupérer l'utilisateur depuis la base de données
+	userService := services.NewUserService(services.DB)
+	user, err := userService.GetUserByID(strconv.FormatUint(userID, 10))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, user.ToResponse())
 }
 
-// NewUserController creates a new user controller
-func NewUserController(userService *services.UserService) *UserController {
-	return &UserController{
-		userService: userService,
-	}
-}
-
-// GetUsers retrieves all users with filtering and pagination
-func (c *UserController) GetUsers(ctx *gin.Context) {
-	// Parse query parameters
-	filters := services.UserFilters{}
-
-	if email := ctx.Query("email"); email != "" {
-		filters.Email = &email
+// UpdateUser met à jour les informations d'un utilisateur
+func UpdateUser(c *gin.Context) {
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
 	}
 
-	if role := ctx.Query("role"); role != "" {
-		userRole := models.UserRole(role)
-		filters.Role = &userRole
+	var updateData struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
-	if isActive := ctx.Query("isActive"); isActive != "" {
-		active := isActive == "true"
-		filters.IsActive = &active
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
 	}
 
-	if page := ctx.Query("page"); page != "" {
-		if pageNum, err := strconv.Atoi(page); err == nil {
-			filters.Page = &pageNum
+	// Récupérer l'utilisateur existant
+	userService := services.NewUserService(services.DB)
+	user, err := userService.GetUserByID(strconv.FormatUint(userID, 10))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+
+	// Mettre à jour les champs
+	name := updateData.Name
+	email := updateData.Email
+	if name != "" {
+		user.Name = &name
+	}
+	if email != "" {
+		user.Email = &email
+	}
+	if updateData.Password != "" {
+		password := updateData.Password
+		if err := userService.UpdateUser(user, &password); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to update user",
+			})
+			return
+		}
+	} else {
+		if err := userService.UpdateUser(user, nil); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to update user",
+			})
+			return
 		}
 	}
 
-	if limit := ctx.Query("limit"); limit != "" {
-		if limitNum, err := strconv.Atoi(limit); err == nil {
-			filters.Limit = &limitNum
-		}
-	}
+	c.JSON(http.StatusOK, user.ToResponse())
+}
 
-	result, err := c.userService.GetUsers(filters)
+// DeleteUser supprime un utilisateur
+func DeleteUser(c *gin.Context) {
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USERS_ERROR",
-				"message": "Failed to retrieve users",
-			},
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"data":       result.Data,
-		"pagination": result.Pagination,
-		"timestamp":  time.Now().Format(time.RFC3339),
+	// Supprimer l'utilisateur
+	userService := services.NewUserService(services.DB)
+	if err := userService.DeleteUser(strconv.FormatUint(userID, 10)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to delete user",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User deleted successfully",
 	})
 }
 
-// GetUserByID retrieves a user by ID
-func (c *UserController) GetUserByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+// ListUsers récupère la liste paginée des utilisateurs avec filtres
+func ListUsers(c *gin.Context) {
+	// Récupérer les paramètres de pagination
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
-	result, err := c.userService.GetUserByID(id)
+	// Récupérer les filtres
+	filter := services.ListUsersFilter{
+		Search:    c.Query("search"),
+		SortBy:    c.Query("sort_by"),
+		SortOrder: c.Query("sort_order"),
+	}
+
+	// Filtre par statut actif/inactif
+	isActiveParam := c.Query("is_active")
+	if isActiveParam != "" {
+		isActive := strings.ToLower(isActiveParam) == "true"
+		filter.IsActive = &isActive
+	}
+
+	// Récupérer les utilisateurs
+	userService := services.NewUserService(services.DB)
+	result, err := userService.ListUsers(page, limit, filter)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to retrieve user",
-			},
+			"error":   "Failed to list users",
 		})
 		return
 	}
 
-	if !result.Success {
-		ctx.JSON(http.StatusNotFound, result)
-		return
+	// Convertir les utilisateurs en réponses
+	var userResponses []*models.UserResponse
+	for _, user := range result.Users {
+		userResponses = append(userResponses, user.ToResponse())
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"data":      result.Data,
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-}
-
-// CreateUser creates a new user
-func (c *UserController) CreateUser(ctx *gin.Context) {
-	var req models.CreateUserRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "VALIDATION_ERROR",
-				"message": err.Error(),
-			},
-		})
-		return
-	}
-
-	result, err := c.userService.CreateUser(req)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to create user",
-			},
-		})
-		return
-	}
-
-	if !result.Success {
-		ctx.JSON(http.StatusBadRequest, result)
-		return
-	}
-
-	ctx.JSON(http.StatusCreated, gin.H{
-		"success":   true,
-		"data":      result.Data,
-		"message":   "User created successfully",
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-}
-
-// UpdateUser updates an existing user
-func (c *UserController) UpdateUser(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	var req models.UpdateUserRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "VALIDATION_ERROR",
-				"message": err.Error(),
-			},
-		})
-		return
-	}
-
-	result, err := c.userService.UpdateUser(id, req)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to update user",
-			},
-		})
-		return
-	}
-
-	if !result.Success {
-		if result.Error != nil && result.Error.Code == "USER_NOT_FOUND" {
-			ctx.JSON(http.StatusNotFound, result)
-		} else {
-			ctx.JSON(http.StatusBadRequest, result)
-		}
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"data":      result.Data,
-		"message":   "User updated successfully",
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-}
-
-// DeleteUser deletes a user
-func (c *UserController) DeleteUser(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	result, err := c.userService.DeleteUser(id)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to delete user",
-			},
-		})
-		return
-	}
-
-	if !result.Success {
-		ctx.JSON(http.StatusNotFound, result)
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"message":   "User deleted successfully",
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-}
-
-// ChangePassword changes a user's password
-func (c *UserController) ChangePassword(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	var req models.ChangePasswordRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "VALIDATION_ERROR",
-				"message": err.Error(),
-			},
-		})
-		return
-	}
-
-	result, err := c.userService.ChangePassword(id, req)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to change password",
-			},
-		})
-		return
-	}
-
-	if !result.Success {
-		ctx.JSON(http.StatusBadRequest, result)
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"message":   "Password changed successfully",
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-}
-
-// SuspendUser suspends a user account
-func (c *UserController) SuspendUser(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	result, err := c.userService.SuspendUser(id)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to suspend user",
-			},
-		})
-		return
-	}
-
-	if !result.Success {
-		ctx.JSON(http.StatusBadRequest, result)
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"message":   "User suspended successfully",
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-}
-
-// ActivateUser activates a user account
-func (c *UserController) ActivateUser(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	result, err := c.userService.ActivateUser(id)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to activate user",
-			},
-		})
-		return
-	}
-
-	if !result.Success {
-		ctx.JSON(http.StatusBadRequest, result)
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"message":   "User activated successfully",
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-}
-
-// GetUserStats retrieves user statistics
-func (c *UserController) GetUserStats(ctx *gin.Context) {
-	stats, err := c.userService.GetUserStats()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "USER_ERROR",
-				"message": "Failed to retrieve user statistics",
-			},
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"data":      stats,
-		"message":   "User statistics retrieved successfully",
-		"timestamp": time.Now().Format(time.RFC3339),
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"users":       userResponses,
+			"total":       result.Total,
+			"page":        result.Page,
+			"limit":       result.Limit,
+			"total_pages": result.TotalPages,
+		},
 	})
 }

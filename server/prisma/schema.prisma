@@ -1,0 +1,1324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum MfaMethod {
+  TOTP
+  WEBAUTHN
+  EMAIL
+  SMS
+}
+
+enum MfaPolicyEnforcement {
+  OPTIONAL
+  REQUIRED
+  ADMIN_ONLY
+}
+
+enum TokenType {
+  ACCESS
+  REFRESH
+  VERIFICATION
+  PASSWORD_RESET
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  DISABLED
+  PENDING_VERIFICATION
+}
+
+enum ConnectionType {
+  DATABASE
+  SOCIAL
+  ENTERPRISE_SAML
+  ENTERPRISE_OIDC
+  ENTERPRISE_AD
+  PASSWORDLESS
+}
+
+enum ApplicationType {
+  OAUTH_CLIENT
+  API_KEY
+  SPAM_TRAINING
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum BrandedLoginType {
+  UNIVERSAL_LOGIN
+  CUSTOM_LOGIN
+}
+
+enum LoginPageType {
+  LOGIN
+  REGISTER
+  FORGOT_PASSWORD
+  MAGIC_LINK
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum LogSource {
+  API
+  AUTH
+  SECURITY
+  SYSTEM
+}
+
+enum EventType {
+  EMAIL_SENT
+  EMAIL_DELIVERED
+  EMAIL_BOUNCED
+  EMAIL_OPENED
+  EMAIL_CLICKED
+  EMAIL_SPAM_REPORTED
+  EMAIL_REJECTED
+}
+
+enum ReportType {
+  DMARC
+  ARF
+  TLS
+}
+
+enum ActionStatus {
+  DRAFT
+  DEPLOYED
+  TESTING
+  FAILED
+  DISABLED
+}
+
+enum AgentStatus {
+  ONLINE
+  OFFLINE
+  ERROR
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRY
+}
+
+enum QueueType {
+  MESSAGE
+  REPORT
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+model User {
+  id                     String               @id @default(cuid())
+  email                  String               @unique
+  passwordHash           String?
+  name                   String
+  avatar                 String?
+  status                 UserStatus           @default(ACTIVE)
+  role                   Role                  @default(USER)
+  mfaEnabled             Boolean              @default(false)
+  mfaMethod              MfaMethod?
+  totpSecret             String?
+  webauthnCredentials    WebauthnCredential[]
+  backupCodes            String[]
+  passwordResetToken     String?
+  passwordResetExpires   DateTime?
+  emailVerified          Boolean              @default(false)
+  verificationToken     String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  lastLoginAt            DateTime?
+
+  profile                Profile?
+  sessions               Session[]
+  devices                Device[]
+  activities             Activity[]
+  mfaActivities          MfaActivity[]
+  mfaPolicies             MfaPolicy[]
+  appPasswords           AppPassword[]
+  oauthApplications      OAuthApplication[]  @relation("UserApplications")
+  memberships            OrganizationMember[]
+  contacts                Contact[]
+  contactGroups          ContactGroup[]
+  bookmarks               Bookmark[]
+  histories               History[]
+  notifications           Notification[]
+  subscriptions           Subscription[]
+  articles                Article[]
+  comments                Comment[]
+  media                   Media[]
+  userReports             UserReport[]
+  actionLogs              ActionLog[]         @relation("ActorLogs")
+  targetReports           ActionLog[]         @relation("TargetLogs")
+  apiKeys                 ApiKey[]
+  connectionActivities   ConnectionActivity[]
+
+  @@index([email])
+  @@index([status])
+  @@index([role])
+}
+
+model Profile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String?
+  phone        String?
+  timezone     String   @default("UTC")
+  language     String   @default("en")
+  emailUpdates Boolean @default(true)
+  marketingOpt Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Session {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token         String    @unique
+  refreshToken  String?   @unique
+  ipAddress     String?
+  userAgent     String?
+  device        String?
+  location      String?
+  expiresAt     DateTime
+ RefreshAt     DateTime
+  createdAt     DateTime  @default(now())
+  lastActivityAt DateTime @default(now())
+  isActive      Boolean   @default(true)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model Device {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  type        String
+  os          String?
+  browser     String?
+  ipAddress   String?
+  lastUsedAt  DateTime @default(now())
+  trusted     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  ipAddress String?
+  userAgent String?
+  location String?
+  metadata Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AppPassword {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  password    String
+  lastUsedAt  DateTime?
+  lastIp      String?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  revokedAt   DateTime?
+
+  @@index([userId])
+}
+
+model MfaMethodRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  method    MfaMethod
+  identifier String
+  secret    String?
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, method])
+  @@index([userId])
+}
+
+model MfaPolicy {
+  id          String               @id @default(cuid())
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  enforcement MfaPolicyEnforcement @default(OPTIONAL)
+  methods     MfaMethod[]
+  appliesToRoles Role[]
+  exemptRoles  Role[]
+  enabled     Boolean             @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([userId])
+}
+
+model MfaActivity {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  method      MfaMethod
+  success     Boolean
+  ipAddress   String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model MfaStats {
+  id                String   @id @default(cuid())
+  totalUsers        Int      @default(0)
+  totpEnabled       Int      @default(0)
+  webauthnEnabled   Int      @default(0)
+  smsEnabled        Int      @default(0)
+  emailEnabled      Int      @default(0)
+  attemptsTotal    Int      @default(0)
+  attemptsSuccess   Int      @default(0)
+  attemptsFailed   Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SecuritySettings {
+  id                    String   @id @default(cuid())
+  bruteForceEnabled     Boolean  @default(true)
+  bruteForceMaxAttempts Int     @default(5)
+  bruteForceLockoutDuration Int  @default(900)
+  breachedPasswordCheck  Boolean @default(true)
+  breachedPasswordRetention Int @default(30)
+  maxSessionDuration     Int     @default(86400)
+  mfaGracePeriod       Int     @default(259200)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model BreachedPassword {
+  id          String   @id @default(cuid())
+  hash        String   @unique
+  addedAt     DateTime @default(now())
+
+  @@index([hash])
+}
+
+model ThreatDetected {
+  id          String   @id @default(cuid())
+  type        String
+  severity    String
+  source      String
+  ipAddress   String?
+  userId      String?
+  details     Json?
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([type])
+  @@index([resolved])
+  @@index([createdAt])
+}
+
+model SecurityAnalytics {
+  id                    String   @id @default(cuid())
+  date                  DateTime  @unique
+  totalLoginAttempts   Int       @default(0)
+  successfulLogins     Int       @default(0)
+  failedLogins          Int       @default(0)
+  mfaChallenges        Int       @default(0)
+  mfaSuccesses          Int       @default(0)
+  mfaFailures           Int       @default(0)
+  newDevicesTrusted     Int       @default(0)
+  newUsers              Int       @default(0)
+  blockedUsers         Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model Connection {
+  id          String           @id @default(cuid())
+  name        String
+  type        ConnectionType
+  status      ConnectionStatus @default(ACTIVE)
+  enabled     Boolean          @default(true)
+  order       Int              @default(0)
+  config      Json?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  databaseConnections  DatabaseConnection[]
+  socialConnections    SocialConnection[]
+  enterpriseConnections EnterpriseConnection[]
+  passwordlessConnections PasswordlessConnection[]
+  authenticationProfiles AuthenticationProfile[]
+
+  @@index([type])
+  @@index([status])
+}
+
+model DatabaseConnection {
+  id            String      @id @default(cuid())
+  connectionId  String
+  connection    Connection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  host          String
+  port          Int
+  database      String
+  username      String
+  password      String
+  sslEnabled    Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model SocialConnection {
+  id            String    @id @default(cuid())
+  connectionId String
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  provider     String
+  clientId     String
+  clientSecret String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model EnterpriseConnection {
+  id           String   @id @default(cuid())
+  connectionId String
+  connection   Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  type         String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PasswordlessConnection {
+  id            String    @id @default(cuid())
+  connectionId  String
+  connection    Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  enabled       Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model AuthenticationProfile {
+  id             String      @id @default(cuid())
+  connectionId  String
+  connection     Connection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  name          String
+  order         Int         @default(0)
+  config        Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model ConnectionActivity {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String
+  action       String
+  ipAddress     String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model OAuthApplication {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("UserApplications", fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  clientId        String   @unique
+  clientSecret   String
+  redirectUris    String[]
+  logoutUris      String[]
+  allowedOrigins String[]
+  scopes          String[]
+  grants          String[]
+  secretRotatedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  authorizations OAuthAuthorization[]
+  tokens          OAuthToken[]
+
+  @@index([clientId])
+  @@index([userId])
+}
+
+model OAuthAuthorization {
+  id              String   @id @default(cuid())
+  applicationId  String
+  application    OAuthApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId         String
+  scope          String[]
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  @@index([applicationId])
+  @@index([userId])
+}
+
+model OAuthToken {
+  id             String   @id @default(cuid())
+  applicationId String
+  application   OAuthApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId        String
+  scope         String[]
+  accessToken   String   @unique
+  refreshToken  String?  @unique
+  tokenType     String   @default("Bearer")
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([userId])
+  @@index([accessToken])
+}
+
+model OAuthConsent {
+  id              String   @id @default(cuid())
+  clientId       String
+  userId         String
+  scope          String[]
+  createdAt     DateTime @default(now())
+
+  @@unique([clientId, userId])
+  @@index([userId])
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  key         String   @unique
+  prefix      String
+  lastUsedAt  DateTime?
+  lastIp     String?
+  expiresAt   DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
+  @@index([key])
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logo        String?
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members    OrganizationMember[]
+  domains   Domain[]
+
+  @@index([slug])
+}
+
+model OrganizationMember {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          OrganizationRole  @default(MEMBER)
+  createdAt     DateTime         @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model Domain {
+  id                String    @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domain           String    @unique
+  verificationCode String?
+  verifiedAt       DateTime?
+  status          String    @default("pending")
+  dkimSelector     String?
+  dkimPrivateKey  String?
+  dkimPublicKey   String?
+  spfRecord       String?
+  dmarcPolicy     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([organizationId])
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email      String
+  name       String
+  firstName  String?
+  lastName   String?
+  company   String?
+  jobTitle  String?
+  phone     String?
+  address   String?
+  notes     String?
+  tags      String[]
+  metadata  Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([email])
+}
+
+model ContactGroup {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  description String?
+  color      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model ContactGroupMember {
+  id          String @id @default(cuid())
+  groupId     String
+  contactId  String
+
+  @@index([groupId])
+  @@index([contactId])
+}
+
+model UniversalLoginConfig {
+  id                   String   @id @default(cuid())
+  backgroundColor      String?
+  backgroundImage     String?
+  logoUrl             String?
+  primaryColor       String?
+  secondaryColor    String?
+  fontFamily        String?
+  welcomeMessage    String?
+  companyName       String?
+  companyUrl        String?
+  socialLoginEnabled Boolean @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  pages LoginPage[]
+}
+
+model LoginPage {
+  id           String          @id @default(cuid())
+  configId     String
+  loginConfig  UniversalLoginConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  type        LoginPageType
+  title       String?
+  subtitle    String?
+  content     String?
+  config      Json?
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model CustomLoginConfig {
+  id          String   @id @default(cuid())
+  name        String
+  domain     String   @unique
+  config     Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  templates Template[]
+}
+
+model Template {
+  id          String           @id @default(cuid())
+  configId    String
+  config      CustomLoginConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  html       String?
+  thumbnail  String?
+  category   String?
+  published  Boolean           @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Log {
+  id          String     @id @default(cuid())
+  level       LogLevel
+  source      LogSource
+  message     String
+  details     Json?
+  ipAddress   String?
+  userId      String?
+  sessionId   String?
+  createdAt   DateTime   @default(now())
+
+  @@index([level])
+  @@index([source])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ActionLog {
+  id          String      @id @default(cuid())
+  actorId     String
+  actor       User        @relation("ActorLogs", fields: [actorId], references: [id], onDelete: Cascade)
+  targetId   String?
+  target      User?       @relation("TargetLogs", fields: [targetId], references: [id], onDelete: Cascade)
+  action      String
+  resource    String?
+  details     Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime   @default(now())
+
+  @@index([actorId])
+  @@index([targetId])
+  @@index([createdAt])
+}
+
+model SystemStatus {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  status          String   @default("healthy")
+  lastCheckedAt  DateTime @default(now())
+  responseTime   Int?
+  uptime         Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  healthChecks HealthCheck[]
+}
+
+model HealthCheck {
+  id            String       @id @default(cuid())
+  systemStatusId String
+  systemStatus  SystemStatus @relation(fields: [systemStatusId], references: [id], onDelete: Cascade)
+  name         String
+  status        String       @default("healthy")
+  message      String?
+  checkedAt    DateTime     @default(now())
+
+  @@index([systemStatusId])
+}
+
+model ActivityStats {
+  id          String   @id @default(cuid())
+  date        DateTime @unique
+  dau         Int      @default(0)
+  mau         Int      @default(0)
+  signups     Int      @default(0)
+  logins      Int      @default(0)
+  newDevices  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RetentionStats {
+  id          String   @id @default(cuid())
+  cohortDate  DateTime @unique
+  day1       Float    @default(0)
+  day7       Float    @default(0)
+  day30      Float    @default(0)
+  day90      Float    @default(0)
+  createdAt  DateTime @default(now())
+}
+
+model SessionStats {
+  id            String   @id @default(cuid())
+  date          DateTime  @unique
+  totalSessions Int      @default(0)
+  activeSessions Int    @default(0)
+  avgDuration  Float    @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Event {
+  id          String     @id @default(cuid())
+  type        EventType
+  messageId   String?
+  from       String
+  to         String
+  subject    String?
+  status     String
+  details    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([type])
+  @@index([from])
+  @@index([to])
+  @@index([createdAt])
+}
+
+model EmailMessage {
+  id            String    @id @default(cuid())
+  messageId    String    @unique
+  from          String
+  fromName      String?
+  to            String
+  toName        String?
+  subject       String?
+  body          String?
+  htmlBody      String?
+  headers       Json?
+  status        String    @default("pending")
+ Priority     Int       @default(3)
+  scheduledAt   DateTime?
+  sentAt        DateTime?
+  deliveredAt  DateTime?
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  bouncedAt     DateTime?
+  bouncedReason String?
+  spamReports   Int       @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([status])
+  @@index([from])
+  @@index([to])
+  @@index([messageId])
+}
+
+model MarketplaceExtension {
+  id           String   @id @default(cuid())
+  name         String
+  description String?
+  version     String
+  author      String?
+  category    String?
+  repoUrl     String?
+  homepage   String?
+  installed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  installations Installation[]
+}
+
+model Installation {
+  id            String              @id @default(cuid())
+  extensionId   String
+  extension    MarketplaceExtension @relation(fields: [extensionId], references: [id], onDelete: Cascade)
+  installedAt  DateTime            @default(now())
+  enabled      Boolean             @default(true)
+  config       Json?
+
+  @@index([extensionId])
+}
+
+model ThirdPartyApp {
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  clientId    String?
+  clientSecret String?
+  accessToken String?
+  refreshToken String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PrivacySettings {
+  id               String   @id @default(cuid())
+  dataCollection   Boolean  @default(true)
+  analyticsOptIn  Boolean  @default(true)
+  marketingOptIn   Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Action {
+  id           String        @id @default(cuid())
+  name         String
+  trigger     String
+  script      String
+  description String?
+  status      ActionStatus   @default(DRAFT)
+  deployedAt  DateTime?
+  lastRunAt   DateTime?
+  lastStatus String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  runs        ActionRun[]
+  forms      Form[]
+}
+
+model ActionRun {
+  id          String   @id @default(cuid())
+  actionId    String
+  action      Action   @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  status      String
+  result      Json?
+  error       String?
+  triggeredBy String?
+  createdAt   DateTime @default(now())
+
+  @@index([actionId])
+  @@index([createdAt])
+}
+
+model Form {
+  id          String   @id @default(cuid())
+  actionId   String?
+  action     Action?  @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  name       String
+  title      String?
+  fields     Json?
+  config     Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Extension {
+  id           String   @id @default(cuid())
+  name        String
+  type        String
+  version     String
+  config      Json?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ExtensionMarketplace {
+  id           String   @id @default(cuid())
+  name         String
+  description String?
+  version     String
+  author      String?
+  category   String?
+  manifest   Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Agent {
+  id          String      @id @default(cuid())
+  name       String
+  type       String
+  config     Json?
+  status     AgentStatus @default(OFFLINE)
+  lastPingAt DateTime   @default(now())
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  metrics    AgentMetric[]
+}
+
+model AgentMetric {
+  id          String   @id @default(cuid())
+  agentId    String
+  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  metric     String
+  value      Float
+  createdAt  DateTime @default(now())
+
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+model MessageQueue {
+  id          String      @id @default(cuid())
+  type        QueueType
+  status      QueueStatus  @default(PENDING)
+  payload     Json?
+  attempts    Int         @default(0)
+  maxAttempts Int        @default(3)
+  scheduledAt DateTime?
+  startedAt  DateTime?
+  completedAt DateTime?
+  error      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([scheduledAt])
+}
+
+model ReportQueue {
+  id          String      @id @default(cuid())
+  type        QueueType
+  status      QueueStatus  @default(PENDING)
+  payload     Json?
+  attempts    Int         @default(0)
+  maxAttempts Int        @default(3)
+  scheduledAt DateTime?
+  startedAt  DateTime?
+  completedAt DateTime?
+  error      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([status])
+  @@index([type])
+}
+
+model DmarcReport {
+  id           String   @id @default(cuid())
+  periodStart  DateTime
+  periodEnd    DateTime
+  domain       String
+  reportId     String
+  reportOrg    String?
+  policy       String
+  alignment    String?
+  disposition String?
+ 报告显示 String?
+  sourceIp     String?
+  count        Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([domain])
+  @@index([periodStart])
+}
+
+model ArfReport {
+  id          String   @id @default(cuid())
+  periodStart DateTime
+  periodEnd   DateTime
+  sourceIp    String
+  reporter   String?
+  type       String?
+  createdAt  DateTime @default(now())
+
+  @@index([sourceIp])
+  @@index([createdAt])
+}
+
+model TlsReport {
+  id          String   @id @default(cuid())
+  periodStart DateTime
+  periodEnd   DateTime
+  domain      String
+  reportId    String
+  policy      String
+  summary     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([domain])
+  @@index([periodStart])
+}
+
+model DmarcPolicy {
+  id           String   @id @default(cuid())
+  domain       String   @unique
+  policy       String   @default("none")
+  subdomainPolicy String?
+  percentage   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FooterLink {
+  id        String   @id @default(cuid())
+  label     String
+  url       String
+  category  String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Article {
+  id          String        @id @default(cuid())
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String        @unique
+  excerpt     String?
+  content     String?
+  coverImage String?
+  status     ArticleStatus @default(DRAFT)
+  featured   Boolean       @default(false)
+  section    String?
+  categoryId String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  publishedAt DateTime?
+
+  comments   Comment[]
+  categories ArticleCategory[]
+  pivot      ArticleCategoryPivot[]
+
+  @@index([slug])
+  @@index([authorId])
+  @@index([status])
+}
+
+model ArticleCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  slug        String     @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  articles   Article[]
+  pivot      ArticleCategoryPivot[]
+
+  @@index([slug])
+}
+
+model ArticleCategoryPivot {
+  id          String          @id @default(cuid())
+  articleId   String
+  categoryId  String
+  article     Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category    ArticleCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, categoryId])
+  @@index([articleId])
+  @@index([categoryId])
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  articleId  String
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId  String?
+  content   String
+  status    String   @default("approved")
+  reported  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies      Comment[] @relation("CommentReplies")
+  repliesData   CommentReply[]
+
+  @@index([articleId])
+  @@index([authorId])
+}
+
+model CommentReply {
+  id          String   @id @default(cuid())
+  commentId  String
+  comment    Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([commentId])
+}
+
+model Media {
+  id          String   @id @default(cuid())
+  userId      String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename   String
+  url        String
+  type       String
+  size       Int
+  mimeType   String
+  width      Int?
+  height     Int?
+  alt        String?
+  createdAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+}
+
+model Bookmark {
+  id         String   @id @default(cuid())
+  userId     String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  articleId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, articleId])
+  @@index([userId])
+}
+
+model History {
+  id          String   @id @default(cuid())
+  userId      String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  articleId  String
+  progress   Int?
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, articleId])
+  @@index([userId])
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  userId      String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  title      String
+  body       String?
+  link       String?
+  status     NotificationStatus @default(UNREAD)
+  createdAt  DateTime          @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Subscription {
+  id          String           @id @default(cuid())
+  userId      String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier       SubscriptionTier @default(FREE)
+  status     String           @default("active")
+  startDate  DateTime         @default(now())
+  endDate   DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([userId])
+}
+
+model UserReport {
+  id          String   @id @default(cuid())
+  userId      String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  reason     String
+  details    Json?
+  status     String   @default("pending")
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model GlobalSettings {
+  id                  String   @id @default(cuid())
+  systemName          String   @default("Aether Mailer")
+  systemLogo         String?
+  supportEmail      String?
+  defaultLanguage   String   @default("en")
+  defaultTimezone   String   @default("UTC")
+  requireEmailVerification Boolean @default(true)
+  requireMfaOptional  Boolean @default(false)
+  maxUsers          Int?
+  features          Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model WebauthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String  @unique
+  name         String?
+  publicKey   String
+  signCount   Int      @default(0)
+  transports  String[]
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime?
+
+  @@index([userId])
+}
+
+model SpamTrainData {
+  id          String   @id @default(cuid())
+  content    String
+  label      String
+  model      String?
+  confidence Float?
+  createdAt  DateTime @default(now())
+
+  @@index([label])
+}
+
+model SpamModel {
+  id          String   @id @default(cuid())
+  name       String   @unique
+  version    String
+  accuracy   Float?
+  precision  Float?
+  recall    Float?
+  f1Score   Float?
+  trainedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

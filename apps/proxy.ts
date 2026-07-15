@@ -9,7 +9,7 @@ import {
 } from "@/lib/routes";
 
 const PROTECTED_PATHS = ["/dashboard", "/user"];
-const REFRESH_COOKIE_NAME = process.env.AUTH_REFRESH_COOKIE_NAME ?? "aether_account_refresh";
+const REFRESH_COOKIE_NAME = process.env.AUTH_REFRESH_COOKIE_NAME ?? "aether_mailer_refresh";
 
 function isLocalDevelopment(request: NextRequest): boolean {
   if (process.env.NODE_ENV !== "development") {

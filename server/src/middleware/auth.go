@@ -1,83 +1,118 @@
 package middleware
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
+	"github.com/skygenesisenterprise/aether-account/server/src/interfaces"
+	"github.com/skygenesisenterprise/aether-account/server/src/utils"
 )
 
-// AuthMiddleware vérifie la présence et la validité du token JWT
-func AuthMiddleware() gin.HandlerFunc {
-	cfg := config.LoadConfig()
+type contextKey string
+
+const principalKey contextKey = "principal"
+
+func Auth(provider interfaces.IdentityProvider) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Récupérer le token du header Authorization
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			// Vérifier si le token est présent dans le cookie
-			if cookie, err := c.Request.Cookie("AETHER_ACCESS_TOKEN"); err == nil {
-				authHeader = "Bearer " + cookie.Value
-				c.Request.Header.Set("Authorization", authHeader)
-			} else {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-					"error": "Authorization header is required",
-				})
-				return
+		header := c.GetHeader("Authorization")
+		if !strings.HasPrefix(header, "Bearer ") && websocketProtocolToken(c.GetHeader("Sec-WebSocket-Protocol")) == "" {
+			utils.Error(c, utils.ErrUnauthorized)
+			c.Abort()
+			return
+		}
+		token := strings.TrimPrefix(header, "Bearer ")
+		if token == header {
+			token = websocketProtocolToken(c.GetHeader("Sec-WebSocket-Protocol"))
+			if token != "" {
+				c.Header("Sec-WebSocket-Protocol", "bearer")
 			}
 		}
-
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Authorization header must be Bearer token",
-			})
+		principal, err := provider.Authenticate(c.Request.Context(), token)
+		if err != nil {
+			utils.Error(c, err)
+			c.Abort()
 			return
 		}
-
-		tokenString := parts[1]
-
-		// Valider le token JWT
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(cfg.JWTSecret), nil
-		})
-
-		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid or expired token",
-			})
-			return
-		}
-
-		// Extraire les claims du token
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token claims",
-			})
-			return
-		}
-
-		// Récupérer l'ID de l'utilisateur
-		userID, ok := claims["userId"].(float64)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid user ID in token",
-			})
-			return
-		}
-
-		// Convertir en string
-		userIDStr := fmt.Sprintf("%.0f", userID)
-
-		// Stocker l'ID de l'utilisateur dans le contexte
-		c.Set("userId", userIDStr)
-
+		c.Set(string(principalKey), *principal)
 		c.Next()
+	}
+}
+
+func websocketProtocolToken(header string) string {
+	if header == "" {
+		return ""
+	}
+
+	parts := strings.Split(header, ",")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	if strings.TrimSpace(parts[0]) != "bearer" {
+		return ""
+	}
+
+	token := strings.TrimSpace(parts[1])
+	if token == "" || strings.ContainsAny(token, " \t") {
+		return ""
+	}
+
+	return token
+}
+
+func GetPrincipal(c *gin.Context) (interfaces.Principal, bool) {
+	value, ok := c.Get(string(principalKey))
+	if !ok {
+		return interfaces.Principal{}, false
+	}
+	principal, ok := value.(interfaces.Principal)
+	return principal, ok
+}
+
+func PrincipalFromGin(c *gin.Context) (interfaces.Principal, bool) { return GetPrincipal(c) }
+
+func RequireAuth(provider interfaces.IdentityProvider) gin.HandlerFunc {
+	return Auth(provider)
+}
+
+func RequireRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		principal, ok := GetPrincipal(c)
+		if !ok {
+			utils.Error(c, utils.ErrUnauthorized)
+			c.Abort()
+			return
+		}
+		for _, current := range principal.Roles {
+			for _, allowed := range roles {
+				if current == allowed {
+					c.Next()
+					return
+				}
+			}
+		}
+		utils.Error(c, utils.ErrForbidden)
+		c.Abort()
+	}
+}
+
+func RequirePermission(permissions ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		principal, ok := GetPrincipal(c)
+		if !ok {
+			utils.Error(c, utils.ErrUnauthorized)
+			c.Abort()
+			return
+		}
+		for _, current := range principal.Permissions {
+			for _, allowed := range permissions {
+				if current == allowed {
+					c.Next()
+					return
+				}
+			}
+		}
+		utils.Error(c, utils.ErrForbidden)
+		c.Abort()
 	}
 }

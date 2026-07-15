@@ -31,7 +31,7 @@ COPY apps/package.json ./apps/
 RUN mkdir -p apps/next/fond/google && \
     printf 'module.exports = {};\n' > apps/next/fond/google/index.js && \
     printf '{"name":"google","version":"0.0.0"}\n' > apps/next/fond/google/package.json && \
-    pnpm install --filter @aether-account/apps... --ignore-scripts --no-frozen-lockfile
+    pnpm install --filter @aether-mailer/apps... --ignore-scripts --no-frozen-lockfile
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Stage final

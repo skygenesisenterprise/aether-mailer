@@ -1,161 +1,183 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
-	"runtime"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
-	"github.com/skygenesisenterprise/aether-mailer/server/src/interfaces"
-	"github.com/skygenesisenterprise/aether-mailer/server/src/routes"
-	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
+	redisclient "github.com/skygenesisenterprise/aether-account/server/internal/redis"
+	"github.com/skygenesisenterprise/aether-account/server/src/config"
+	"github.com/skygenesisenterprise/aether-account/server/src/middleware"
+	"github.com/skygenesisenterprise/aether-account/server/src/routes"
+	"github.com/skygenesisenterprise/aether-account/server/src/services"
 )
 
-func displayBanner() {
-	fmt.Printf("\n")
-	fmt.Printf("\033[1;36m    ██╗    ██╗██╗  ██╗ █████╗ ████████╗██╗  ██╗███████╗████████╗\n")
-	fmt.Printf("\033[1;36m    ██║    ██║██║  ██║██╔══██╗╚══██╔══╝██║  ██║██╔════╝╚══██╔══╝\n")
-	fmt.Printf("\033[1;36m    ██║ █╗ ██║███████║███████║   ██║   ███████║█████╗     ██║   \n")
-	fmt.Printf("\033[1;36m    ██║███╗██║██╔══██║██╔══██║   ██║   ██╔══██║██╔══╝     ██║   \n")
-	fmt.Printf("\033[1;36m    ╚███╔███╔╝██║  ██║██║  ██║   ██║   ██║  ██║███████╗   ██║   \n")
-	fmt.Printf("\033[1;36m     ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝   ╚═╝   \n")
-	fmt.Printf("\033[0;37m")
-	fmt.Printf("\n")
-	fmt.Printf("\033[1;33m    ╔══════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("\033[1;33m    ║                    AETHER MAILER SERVER                    	 ║\n")
-	fmt.Printf("\033[1;33m    ║              Enterprise Email Management                     ║\n")
-	fmt.Printf("\033[1;33m    ║                   Version 1.0.0-alpha                        ║\n")
-	fmt.Printf("\033[1;33m    ╚══════════════════════════════════════════════════════════════╝\n")
-	fmt.Printf("\033[0;37m")
-	fmt.Printf("\n")
-	fmt.Printf("\033[1;32m[✓] System Architecture: %s\033[0m\n", runtime.GOARCH)
-	fmt.Printf("\033[1;32m[✓] Operating System: %s\033[0m\n", runtime.GOOS)
-	fmt.Printf("\033[1;32m[✓] Go Version: %s\033[0m\n", runtime.Version())
-	fmt.Printf("\033[1;32m[✓] CPU Cores: %d\033[0m\n", runtime.NumCPU())
-	fmt.Printf("\033[1;32m[✓] Process ID: %d\033[0m\n", os.Getpid())
-	fmt.Printf("\n")
+type runtimeMode string
+
+const (
+	modeAPI    runtimeMode = "api"
+	modeServer runtimeMode = "server"
+)
+
+func connectDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (*services.DatabaseService, error) {
+	db, err := services.NewDatabaseService(cfg.Database.URL)
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
+
+	if err := db.Ping(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping database: %w", err)
+	}
+
+	logger.Info(
+		"database connected",
+		"service", "database",
+		"host", cfg.Database.Host,
+		"port", cfg.Database.Port,
+		"name", cfg.Database.Name,
+	)
+
+	return db, nil
+}
+
+func parseRuntimeMode(args []string) (runtimeMode, error) {
+	if len(args) == 0 {
+		return modeAPI, nil
+	}
+	switch runtimeMode(args[0]) {
+	case modeAPI, modeServer:
+		return modeAPI, nil
+	default:
+		return "", fmt.Errorf("unknown mode %q", args[0])
+	}
+}
+
+func runHTTPServer(ctx context.Context, logger *slog.Logger, cfg config.Config, handler http.Handler, serviceRole runtimeMode) error {
+	server := &http.Server{
+		Addr:    ":" + cfg.Server.Port,
+		Handler: handler,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		logger.Info("server starting", "service", "http", "port", cfg.Server.Port, "mode", string(serviceRole))
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+			return
+		}
+		errCh <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return server.Shutdown(shutdownCtx)
+	case err := <-errCh:
+		return err
+	}
 }
 
 func main() {
-	displayBanner()
+	cfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+	if cfg.App.Mode == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
-	fmt.Printf("\033[1;34m[info] Initializing identity management system...\033[0m\n")
-	time.Sleep(300 * time.Millisecond)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// Charger la configuration
-	fmt.Printf("\033[1;34m[info] Loading configuration...\033[0m\n")
-	cfg := config.LoadConfig()
-	time.Sleep(200 * time.Millisecond)
+	db, err := connectDatabase(context.Background(), logger, cfg)
+	if err != nil {
+		logger.Error("database connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+	if err := db.AutoMigrate(); err != nil {
+		logger.Error("database migration failed", "error", err)
+		os.Exit(1)
+	}
 
-	// Initialiser Gin
-	fmt.Printf("\033[1;34m[info] Setting up Gin router...\033[0m\n")
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-
-	// Disable Gin debug output
-	gin.DefaultWriter = io.Discard
-	time.Sleep(200 * time.Millisecond)
-
-	// Configurer les sessions pour OAuth
-	fmt.Printf("\033[1;34m[info] Configuring OAuth sessions...\033[0m\n")
-	store := cookie.NewStore([]byte(cfg.JWTSecret))
-	store.Options(sessions.Options{
-		Path:     "/",
-		MaxAge:   86400 * 7, // 7 jours
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+	redis, err := redisclient.New(redisclient.Config{
+		Enabled:        cfg.Redis.Enabled,
+		Required:       cfg.Redis.Required,
+		URL:            cfg.Redis.URL,
+		Host:           cfg.Redis.Host,
+		Port:           cfg.Redis.Port,
+		Password:       cfg.Redis.Password,
+		DB:             cfg.Redis.DB,
+		KeyPrefix:      cfg.Redis.KeyPrefix,
+		DefaultTTL:     cfg.Redis.DefaultTTL,
+		ConnectTimeout: cfg.Redis.ConnectTimeout,
+		ReadTimeout:    cfg.Redis.ReadTimeout,
+		WriteTimeout:   cfg.Redis.WriteTimeout,
+		MaxRetries:     cfg.Redis.MaxRetries,
 	})
-	router.Use(sessions.Sessions("aether_oauth_session", store))
-	time.Sleep(200 * time.Millisecond)
-
-	// Initialiser la base de données (optionnel)
-	fmt.Printf("\033[1;34m[info] Initializing database connection...\033[0m\n")
-	var dbService interfaces.IDatabaseService
-	var dbInitialized bool
-
-	if cfg.DatabaseURL != "" {
-		service, err := services.NewDatabaseService(cfg.DatabaseURL)
-		if err != nil {
-			fmt.Printf("\033[1;33m[warn] Failed to initialize database: %v\033[0m\n", err)
-			fmt.Printf("\033[1;33m[warn] Running in database-less mode\033[0m\n")
-		} else {
-			dbService = service
-			dbInitialized = true
-
-			// Fermeture propre à la fin
-			defer func() {
-				if err := dbService.Close(); err != nil {
-					fmt.Printf("\033[1;33m[warn] Error closing database: %v\033[0m\n", err)
-				} else {
-					fmt.Printf("\033[1;34m[info] Database connection closed\033[0m\n")
-				}
-			}()
-
-			fmt.Printf("\033[1;32m[success] Database connected successfully\033[0m\n")
+	if err != nil {
+		logger.Error("redis initialization failed", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if redis != nil {
+			_ = redis.Close()
 		}
-	} else {
-		fmt.Printf("\033[1;33m[warn] No database URL configured, running in database-less mode\033[0m\n")
+	}()
+
+	repos := services.NewRepositories(db.Gorm())
+	identityProvider := services.NewIdentityProvider(cfg.Auth, repos)
+	authLimiter := services.NewAuthRateLimiter(redis)
+	eventBus := services.NewEventBus(cfg, redis)
+	defer eventBus.Close()
+	presence := services.NewPresenceService(logger, redis, eventBus, repos.Users(), 75*time.Second)
+	defer presence.Close()
+
+	userService := services.NewUserService(repos.Users(), repos.UserSettings(), repos.NotificationPreferences(), presence)
+	workspaceService := services.NewWorkspaceService(db, cfg.Auth, repos.Users(), repos)
+	authService := services.NewAuthService(cfg.Auth, db, repos, identityProvider, authLimiter, workspaceService)
+	oauthService := services.NewOAuthService(cfg.OAuth, repos, authService, identityProvider, workspaceService, nil)
+
+	mode, err := parseRuntimeMode(os.Args[1:])
+	if err != nil {
+		logger.Error("unknown mode", "error", err)
+		os.Exit(1)
 	}
 
-	time.Sleep(300 * time.Millisecond)
-
-	// Initialiser les domaines par défaut (si la base de données est disponible)
-	if dbInitialized && dbService != nil {
-		fmt.Printf("\033[1;34m[info] Initializing default domains...\033[0m\n")
-		domainService := services.NewDomainService(dbService.GetDB())
-		if err := domainService.InitializeDefaultDomains(); err != nil {
-			fmt.Printf("\033[1;33m[warn] Failed to initialize default domains: %v\033[0m\n", err)
-		} else {
-			fmt.Printf("\033[1;32m[success] Default domains initialized\033[0m\n")
-		}
-		time.Sleep(200 * time.Millisecond)
+	router := gin.New()
+	router.Use(middleware.RequestID(), middleware.Recovery(logger), middleware.CORS(cfg.CORS.AllowedOrigins))
+	if cfg.App.AccessLogs {
+		router.Use(middleware.Logging(logger))
 	}
-
-	// Initialiser le ServiceKeyService
-	var serviceKeyService *services.ServiceKeyService
-	if dbInitialized && dbService != nil {
-		fmt.Printf("\033[1;34m[info] Initializing service key service...\033[0m\n")
-		serviceKeyService = services.NewServiceKeyService(dbService.GetDB())
-		time.Sleep(100 * time.Millisecond)
+	if len(cfg.App.TrustedProxies) > 0 {
+		_ = router.SetTrustedProxies(cfg.App.TrustedProxies)
 	}
+	routes.SetupRoutes(router, routes.Dependencies{
+		Config:           cfg,
+		Logger:           logger,
+		Database:         db,
+		Redis:            redis,
+		EventBus:         eventBus,
+		IdentityProvider: identityProvider,
+		AuthService:      authService,
+		OAuthService:     oauthService,
+		UserService:      userService,
+		WorkspaceService: workspaceService,
+		RuntimeRole:      string(mode),
+	})
 
-	// Configurer les routes
-	fmt.Printf("\033[1;34m[info] Setting up API routes...\033[0m\n")
-	routes.SetupRoutes(router, cfg.SystemKey, serviceKeyService, dbService)
-	time.Sleep(200 * time.Millisecond)
-
-	fmt.Printf("\n")
-	fmt.Printf("\033[1;32m[✓] All systems operational\033[0m\n")
-	fmt.Printf("\n")
-	fmt.Printf("\033[1;36m┌─────────────────────────────────────────────────────────────────┐\n")
-	fmt.Printf("\033[1;36m│                    🚀 AETHER MAILER SERVER READY               	│\n")
-	fmt.Printf("\033[1;36m├─────────────────────────────────────────────────────────────────┤\n")
-	fmt.Printf("\033[1;36m│  🌐 Server listening on: http://localhost:%s                   │\n", cfg.Port)
-	fmt.Printf("\033[1;36m│  🔐 OAuth2 Endpoint: http://localhost:%s/oauth/authorize       │\n", cfg.Port)
-	fmt.Printf("\033[1;36m│  📊 API Endpoint: http://localhost:%s/api/v1                  │\n", cfg.Port)
-	fmt.Printf("\033[1;36m│  ⚡ Mode: %s", gin.Mode())
-	if !dbInitialized {
-		fmt.Printf(" (Database-less)")
-	}
-	fmt.Printf("                                                    │\n")
-	fmt.Printf("\033[1;36m└─────────────────────────────────────────────────────────────────┘\n")
-	fmt.Printf("\033[0;37m\n")
-	fmt.Printf("\033[1;33m[info] Press Ctrl+C to stop the server\033[0m\n\n")
-
-	// Démarrer le serveur
-	fmt.Printf("\033[1;34m[info] Starting HTTP server...\033[0m\n")
-	if err := router.Run(":" + cfg.Port); err != nil {
-		fmt.Printf("\033[1;31m[error] Failed to start server: %v\033[0m\n", err)
-		log.Fatal(err)
+	if err := runHTTPServer(ctx, logger, cfg, router, mode); err != nil {
+		logger.Error("server stopped unexpectedly", "error", err)
+		os.Exit(1)
 	}
 }

@@ -1,203 +1,438 @@
 package services
 
 import (
-	"errors"
+	"context"
 	"strings"
+	"time"
 
-	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
+	"github.com/skygenesisenterprise/aether-account/server/src/interfaces"
+	"github.com/skygenesisenterprise/aether-account/server/src/models"
+	"github.com/skygenesisenterprise/aether-account/server/src/utils"
 )
 
-// UserService gère les opérations liées aux utilisateurs
 type UserService struct {
-	DB *gorm.DB
+	users                   interfaces.UserRepository
+	settings                interfaces.UserSettingsRepository
+	notificationPreferences interfaces.NotificationPreferenceRepository
+	presence                *PresenceService
 }
 
-// NewUserService crée une nouvelle instance de UserService
-func NewUserService(db *gorm.DB) *UserService {
-	return &UserService{DB: db}
+type UserPreferencesDTO struct {
+	Theme         string `json:"theme"`
+	Language      string `json:"language"`
+	Locale        string `json:"locale"`
+	Timezone      string `json:"timezone"`
+	StatusMessage string `json:"statusMessage,omitempty"`
+	Density       string `json:"density"`
+	Contrast      string `json:"contrast"`
+	SoundEnabled  bool   `json:"soundEnabled"`
+	SecureSession bool   `json:"secureSession"`
 }
 
-// CreateUser crée un nouvel utilisateur avec validation
-func (s *UserService) CreateUser(user *models.User, password string) error {
-	// Vérifier si l'email existe déjà
-	if user.Email != nil {
-		existingUser, _ := s.GetUserByEmail(*user.Email)
-		if existingUser != nil {
-			return errors.New("email already exists")
-		}
+type NotificationPreferencesDTO struct {
+	DirectMessages       bool `json:"directMessages"`
+	Mentions             bool `json:"mentions"`
+	ChannelMessages      bool `json:"channelMessages"`
+	MeetingReminders     bool `json:"meetingReminders"`
+	IncomingCalls        bool `json:"incomingCalls"`
+	EmailNotifications   bool `json:"emailNotifications"`
+	Sounds               bool `json:"sounds"`
+	DesktopNotifications bool `json:"desktopNotifications"`
+}
+
+func NewUserService(
+	users interfaces.UserRepository,
+	settings interfaces.UserSettingsRepository,
+	notificationPreferences interfaces.NotificationPreferenceRepository,
+	presence *PresenceService,
+) *UserService {
+	return &UserService{
+		users:                   users,
+		settings:                settings,
+		notificationPreferences: notificationPreferences,
+		presence:                presence,
 	}
+}
 
-	// Hacher le mot de passe
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
+func (s *UserService) EnsureUser(ctx context.Context, principal interfaces.Principal) (*models.User, error) {
+	user, err := s.users.GetByID(ctx, principal.UserID)
+	if err == nil {
+		return user, nil
 	}
-	hashStr := string(hashedPassword)
-	user.PasswordHash = &hashStr
-
-	// Sauvegarder dans la base de données
-	return s.DB.Create(user).Error
-}
-
-// CheckEmailExists vérifie si un email existe déjà
-func (s *UserService) CheckEmailExists(email string) bool {
-	var count int64
-	s.DB.Model(&models.User{}).Where("email = ?", email).Count(&count)
-	return count > 0
-}
-
-// GetUserByID récupère un utilisateur par son ID
-func (s *UserService) GetUserByID(id string) (*models.User, error) {
-	var user models.User
-	if err := s.DB.First(&user, "id = ?", id).Error; err != nil {
-		return nil, err
+	user = &models.User{
+		Common:          models.Common{ID: principal.UserID, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()},
+		Email:           principal.UserID + "@local.aether",
+		EmailNormalized: principal.UserID + "@local.aether",
+		DisplayName:     principal.UserID,
+		Status:          "active",
+		PresenceStatus:  "online",
 	}
-	return &user, nil
-}
-
-// GetUserByEmail récupère un utilisateur par son email
-func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
-	var user models.User
-	if err := s.DB.Where("email = ?", email).First(&user).Error; err != nil {
-		return nil, err
+	if createErr := s.users.Create(ctx, user); createErr != nil {
+		return nil, createErr
 	}
-	return &user, nil
+	return user, nil
 }
 
-// UpdateUser met à jour un utilisateur
-func (s *UserService) UpdateUser(user *models.User, newPassword *string) error {
-	// Si le mot de passe est fourni, le hacher
-	if newPassword != nil && *newPassword != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*newPassword), bcrypt.DefaultCost)
-		if err != nil {
-			return err
-		}
-		hashStr := string(hashedPassword)
-		user.PasswordHash = &hashStr
-	}
-
-	return s.DB.Save(user).Error
+func (s *UserService) GetMe(ctx context.Context, principal interfaces.Principal) (*models.User, error) {
+	return s.EnsureUser(ctx, principal)
 }
 
-// DeleteUser supprime un utilisateur
-func (s *UserService) DeleteUser(id string) error {
-	return s.DB.Delete(&models.User{}, "id = ?", id).Error
-}
-
-// AuthenticateUser authentifie un utilisateur
-func (s *UserService) AuthenticateUser(email, password string) (*models.User, error) {
-	user, err := s.GetUserByEmail(email)
+func (s *UserService) UpdateMe(ctx context.Context, principal interfaces.Principal, displayName, avatarURL, status string) (*models.User, error) {
+	user, err := s.EnsureUser(ctx, principal)
 	if err != nil {
 		return nil, err
 	}
+	if displayName != "" {
+		user.DisplayName = strings.TrimSpace(displayName)
+	}
+	if trimmed := strings.TrimSpace(avatarURL); trimmed != "" {
+		user.AvatarURL = &trimmed
+	} else {
+		user.AvatarURL = nil
+	}
+	if status != "" {
+		normalizedStatus := normalizePresenceState(status)
+		if normalizedStatus == "" {
+			return nil, utils.ErrValidationFailed
+		}
+		user.PresenceStatus = normalizedStatus
+	}
+	user.UpdatedAt = time.Now().UTC()
+	if err := s.users.Update(ctx, user); err != nil {
+		return nil, err
+	}
+	if s.presence != nil {
+		if err := s.presence.RefreshUserState(ctx, user.ID); err != nil {
+			return nil, err
+		}
+	}
+	return user, nil
+}
 
-	// Vérifier le mot de passe
-	if user.PasswordHash == nil {
-		return nil, errors.New("no password set")
+func (s *UserService) GetPreferences(ctx context.Context, principal interfaces.Principal) (*UserPreferencesDTO, error) {
+	_, err := s.EnsureUser(ctx, principal)
+	if err != nil {
+		return nil, err
+	}
+	settings, err := s.settings.GetByUserID(ctx, principal.UserID)
+	if err != nil {
+		if utils.AsAppError(err).Code != "USER_SETTINGS_NOT_FOUND" {
+			return nil, err
+		}
+		return &UserPreferencesDTO{
+			Theme: "system", Language: "fr", Locale: "fr", Timezone: "Europe/Paris",
+			Density: "comfortable", Contrast: "default", SoundEnabled: true, SecureSession: true,
+		}, nil
+	}
+	statusMessage := ""
+	if settings.StatusMessage != nil {
+		statusMessage = *settings.StatusMessage
+	}
+	return &UserPreferencesDTO{
+		Theme:         settings.Theme,
+		Language:      settings.Language,
+		Locale:        settings.Locale,
+		Timezone:      settings.TimeZone,
+		StatusMessage: statusMessage,
+		Density:       settings.Density,
+		Contrast:      settings.Contrast,
+		SoundEnabled:  settings.SoundEnabled,
+		SecureSession: settings.SecureSession,
+	}, nil
+}
+
+func (s *UserService) UpdatePreferences(ctx context.Context, principal interfaces.Principal, input UserPreferencesDTO) (*UserPreferencesDTO, error) {
+	_, err := s.EnsureUser(ctx, principal)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	statusMessage := strings.TrimSpace(input.StatusMessage)
+	settings := &models.UserSettings{
+		Common:        models.Common{ID: utils.NewID(), CreatedAt: now, UpdatedAt: now},
+		UserID:        principal.UserID,
+		Theme:         defaultString(input.Theme, "system"),
+		Language:      defaultString(input.Language, "fr"),
+		Locale:        defaultString(input.Locale, "fr"),
+		TimeZone:      defaultString(input.Timezone, "Europe/Paris"),
+		Density:       defaultString(input.Density, "comfortable"),
+		Contrast:      defaultString(input.Contrast, "default"),
+		SoundEnabled:  input.SoundEnabled,
+		SecureSession: input.SecureSession,
+	}
+	if statusMessage != "" {
+		settings.StatusMessage = &statusMessage
+	}
+	if err := s.settings.Upsert(ctx, settings); err != nil {
+		return nil, err
+	}
+	return s.GetPreferences(ctx, principal)
+}
+
+func (s *UserService) GetNotificationPreferences(ctx context.Context, principal interfaces.Principal) (*NotificationPreferencesDTO, error) {
+	_, err := s.EnsureUser(ctx, principal)
+	if err != nil {
+		return nil, err
+	}
+	prefs, err := s.notificationPreferences.GetByUserID(ctx, principal.UserID)
+	if err != nil {
+		if utils.AsAppError(err).Code != "NOTIFICATION_PREFERENCES_NOT_FOUND" {
+			return nil, err
+		}
+		return &NotificationPreferencesDTO{
+			DirectMessages: true, Mentions: true, ChannelMessages: true, MeetingReminders: true,
+			IncomingCalls: true, EmailNotifications: true, Sounds: true, DesktopNotifications: true,
+		}, nil
+	}
+	return &NotificationPreferencesDTO{
+		DirectMessages:       prefs.DirectMessageNotifications,
+		Mentions:             prefs.MentionNotifications,
+		ChannelMessages:      prefs.ChannelMessageNotifications,
+		MeetingReminders:     prefs.MeetingReminders,
+		IncomingCalls:        prefs.CallNotifications,
+		EmailNotifications:   prefs.EmailNotifications,
+		Sounds:               prefs.SoundEnabled,
+		DesktopNotifications: prefs.DesktopNotifications,
+	}, nil
+}
+
+func (s *UserService) UpdateNotificationPreferences(
+	ctx context.Context,
+	principal interfaces.Principal,
+	input NotificationPreferencesDTO,
+) (*NotificationPreferencesDTO, error) {
+	_, err := s.EnsureUser(ctx, principal)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	preference := &models.NotificationPreference{
+		Common:                      models.Common{ID: utils.NewID(), CreatedAt: now, UpdatedAt: now},
+		UserID:                      principal.UserID,
+		DirectMessageNotifications:  input.DirectMessages,
+		MentionNotifications:        input.Mentions,
+		ChannelMessageNotifications: input.ChannelMessages,
+		MeetingReminders:            input.MeetingReminders,
+		CallNotifications:           input.IncomingCalls,
+		EmailNotifications:          input.EmailNotifications,
+		SoundEnabled:                input.Sounds,
+		DesktopNotifications:        input.DesktopNotifications,
+	}
+	if err := s.notificationPreferences.Upsert(ctx, preference); err != nil {
+		return nil, err
+	}
+	return s.GetNotificationPreferences(ctx, principal)
+}
+
+func defaultString(value string, fallback string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return fallback
+	}
+	return trimmed
+}
+
+func roleAllowed(role string) bool {
+	return utils.ValidRole(role)
+}
+
+// UpdateProfileInput représente les données pour mettre à jour le profil utilisateur
+type UpdateProfileInput struct {
+	DisplayName string
+	AvatarURL  string
+}
+
+// UpdateProfile met à jour le profil utilisateur
+func (s *UserService) UpdateProfile(ctx context.Context, userID string, input UpdateProfileInput) (*models.User, error) {
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
 
-	hashToCheck := *user.PasswordHash
-	// Convertir $2b$ en $2a$ pour la compatibilité avec les hashes générés par Node.js
-	if strings.HasPrefix(hashToCheck, "$2b$") {
-		hashToCheck = "$2a$" + hashToCheck[4:]
+	if input.DisplayName != "" {
+		user.DisplayName = strings.TrimSpace(input.DisplayName)
+	}
+	if input.AvatarURL != "" {
+		user.AvatarURL = &input.AvatarURL
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(hashToCheck), []byte(password)); err != nil {
-		return nil, errors.New("invalid password")
+	user.UpdatedAt = time.Now().UTC()
+
+	if err := s.users.Update(ctx, user); err != nil {
+		return nil, err
 	}
 
 	return user, nil
 }
 
-// UserToResponse convertit un modèle User en une réponse appropriée
-func (s *UserService) UserToResponse(user *models.User) map[string]interface{} {
-	return map[string]interface{}{
-		"id":             user.ID,
-		"email":          user.Email,
-		"name":           user.Name,
-		"created_at":     user.CreatedAt,
-		"updated_at":     user.UpdatedAt,
-		"email_verified": user.EmailVerified,
-		"is_active":      user.IsActive,
-	}
+// GetByID retourne un utilisateur par son ID
+func (s *UserService) GetByID(ctx context.Context, userID string) (*models.User, error) {
+	return s.users.GetByID(ctx, userID)
 }
 
-// ListUsersFilter représente les filtres pour la liste des utilisateurs
-type ListUsersFilter struct {
-	IsActive  *bool
-	Search    string
-	SortBy    string
-	SortOrder string
+// ListContacts liste les contacts de l'utilisateur
+func (s *UserService) ListContacts(ctx context.Context, userID string) ([]*models.Contact, error) {
+	// À implémenter avec le repository des contacts
+	// Pour l'instant, retourner une liste vide
+	return []*models.Contact{}, nil
 }
 
-// ListUsersResponse représente la réponse paginée de la liste des utilisateurs
-type ListUsersResponse struct {
-	Users      []models.User `json:"users"`
-	Total      int64         `json:"total"`
-	Page       int           `json:"page"`
-	Limit      int           `json:"limit"`
-	TotalPages int           `json:"totalPages"`
+// GetContactByID retourne un contact par son ID
+func (s *UserService) GetContactByID(ctx context.Context, userID, contactID string) (*models.Contact, error) {
+	// À implémenter avec le repository des contacts
+	return nil, utils.NewError(404, "CONTACT_NOT_FOUND", "The requested contact was not found.", nil)
 }
 
-// ListUsers récupère la liste des utilisateurs avec pagination et filtres
-func (s *UserService) ListUsers(page, limit int, filter ListUsersFilter) (*ListUsersResponse, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
+// ListFamilyMembers liste les membres de la famille
+func (s *UserService) ListFamilyMembers(ctx context.Context, userID string) ([]*models.FamilyMember, error) {
+	// À implémenter avec le repository de la famille
+	return []*models.FamilyMember{}, nil
+}
+
+// InviteFamilyMemberInput représente les données pour inviter un membre de la famille
+type InviteFamilyMemberInput struct {
+	Email    string
+	Role     string
+	Message  string
+}
+
+// InviteFamilyMember invite un membre de la famille
+func (s *UserService) InviteFamilyMember(ctx context.Context, userID string, input InviteFamilyMemberInput) (*models.Invitation, error) {
+	// À implémenter avec le service d'invitation
+	// Pour l'instant, retourner une invitation de base
+	now := time.Now().UTC()
+	return &models.Invitation{
+		Common:    models.Common{ID: utils.NewID(), CreatedAt: now, UpdatedAt: now},
+		Email:     input.Email,
+		Role:      input.Role,
+		Message:   input.Message,
+		Token:     utils.NewID(),
+		Status:    "pending",
+		ExpiresAt: now.Add(7 * 24 * time.Hour).UTC(),
+	}, nil
+}
+
+// GetStorageInfo retourne les informations de stockage
+func (s *UserService) GetStorageInfo(ctx context.Context, userID string) (*models.StorageInfo, error) {
+	// À implémenter avec le service de stockage
+	return &models.StorageInfo{
+		TotalSpace:     10 * 1024 * 1024 * 1024, // 10 GB
+		UsedSpace:      2 * 1024 * 1024 * 1024, // 2 GB
+		AvailableSpace: 8 * 1024 * 1024 * 1024, // 8 GB
+		UsagePercent:   20.0,
+		MaxFileSize:    512 * 1024 * 1024, // 512 MB
+		FileCount:      150,
+	}, nil
+}
+
+// ListFiles liste les fichiers de l'utilisateur
+func (s *UserService) ListFiles(ctx context.Context, userID string, page, pageSize int) ([]*models.FileItem, int, error) {
+	// À implémenter avec le repository des fichiers
+	return []*models.FileItem{}, 0, nil
+}
+
+// UpdateSettingsInput représente les données pour mettre à jour les paramètres utilisateur
+type UpdateSettingsInput struct {
+	Theme                  string
+	Language               string
+	Timezone               string
+	NotificationPreferences NotificationPreferencesDTO
+}
+
+// UpdateSettings met à jour les paramètres utilisateur
+func (s *UserService) UpdateSettings(ctx context.Context, userID string, input UpdateSettingsInput) (*models.UserSettings, error) {
+	settings, err := s.settings.GetByUserID(ctx, userID)
+	if err != nil {
+		if utils.AsAppError(err).Code != "USER_SETTINGS_NOT_FOUND" {
+			return nil, err
+		}
+		settings = &models.UserSettings{}
 	}
 
-	offset := (page - 1) * limit
-
-	// Construire la requête de base
-	query := s.DB.Model(&models.User{})
-
-	// Appliquer les filtres
-	if filter.IsActive != nil {
-		query = query.Where("is_active = ?", *filter.IsActive)
+	if input.Theme != "" {
+		settings.Theme = input.Theme
 	}
-	if filter.Search != "" {
-		searchPattern := "%" + filter.Search + "%"
-		query = query.Where(
-			"name ILIKE ? OR email ILIKE ?",
-			searchPattern,
-			searchPattern,
-		)
+	if input.Language != "" {
+		settings.Language = input.Language
+	}
+	if input.Timezone != "" {
+		settings.TimeZone = input.Timezone
 	}
 
-	// Compter le total
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	settings.UpdatedAt = time.Now().UTC()
+
+	if err := s.settings.Upsert(ctx, settings); err != nil {
 		return nil, err
 	}
 
-	// Appliquer le tri
-	sortBy := filter.SortBy
-	if sortBy == "" {
-		sortBy = "created_at"
-	}
-	sortOrder := filter.SortOrder
-	if sortOrder != "asc" && sortOrder != "desc" {
-		sortOrder = "desc"
-	}
-	orderClause := sortBy + " " + sortOrder
+	return settings, nil
+}
 
-	// Récupérer les utilisateurs
-	var users []models.User
-	if err := query.Order(orderClause).Limit(limit).Offset(offset).Find(&users).Error; err != nil {
-		return nil, err
-	}
+// GetSettings retourne les paramètres utilisateur
+func (s *UserService) GetSettings(ctx context.Context, userID string) (*models.UserSettings, error) {
+	return s.settings.GetByUserID(ctx, userID)
+}
 
-	totalPages := int((total + int64(limit) - 1) / int64(limit))
+// GetBillingInfo retourne les informations de facturation
+func (s *UserService) GetBillingInfo(ctx context.Context, userID string) (*models.BillingInfo, error) {
+	// À implémenter avec le service de facturation
+	return &models.BillingInfo{
+		Currency: "EUR",
+	}, nil
+}
 
-	return &ListUsersResponse{
-		Users:      users,
-		Total:      total,
-		Page:       page,
-		Limit:      limit,
-		TotalPages: totalPages,
+// GetSubscriptions retourne les abonnements de l'utilisateur
+func (s *UserService) GetSubscriptions(ctx context.Context, userID string) ([]*models.Subscription, error) {
+	// À implémenter avec le service de facturation
+	return []*models.Subscription{}, nil
+}
+
+// GetTransactions retourne l'historique des transactions
+func (s *UserService) GetTransactions(ctx context.Context, userID string, limit int) ([]*models.Transaction, error) {
+	// À implémenter avec le service de facturation
+	return []*models.Transaction{}, nil
+}
+
+// GetPrivacySettings retourne les paramètres de confidentialité
+func (s *UserService) GetPrivacySettings(ctx context.Context, userID string) (*models.PrivacySettings, error) {
+	// À implémenter avec le repository des paramètres de confidentialité
+	return &models.PrivacySettings{
+		Common:          models.Common{UpdatedAt: time.Now().UTC()},
+		DataProcessing:  true,
+		MarketingEmails: true,
+		Analytics:       true,
+		PublicProfile:   false,
+	}, nil
+}
+
+// UpdatePrivacySettingsInput représente les données pour mettre à jour les paramètres de confidentialité
+type UpdatePrivacySettingsInput struct {
+	DataProcessing  bool
+	MarketingEmails bool
+	Analytics      bool
+	PublicProfile  bool
+}
+
+// UpdatePrivacySettings met à jour les paramètres de confidentialité
+func (s *UserService) UpdatePrivacySettings(ctx context.Context, userID string, input UpdatePrivacySettingsInput) (*models.PrivacySettings, error) {
+	// À implémenter avec le repository des paramètres de confidentialité
+	return &models.PrivacySettings{
+		Common:          models.Common{UpdatedAt: time.Now().UTC()},
+		DataProcessing:  input.DataProcessing,
+		MarketingEmails: input.MarketingEmails,
+		Analytics:       input.Analytics,
+		PublicProfile:   input.PublicProfile,
+	}, nil
+}
+
+// GetPersonalDataSummary retourne un résumé des données personnelles
+func (s *UserService) GetPersonalDataSummary(ctx context.Context, userID string) (*models.PersonalDataSummary, error) {
+	// À implémenter
+	return &models.PersonalDataSummary{
+		TotalFiles:    0,
+		TotalMessages: 0,
+		TotalProjects: 0,
+		TotalContacts: 0,
+		TotalStorage:  0,
 	}, nil
 }

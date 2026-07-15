@@ -5,17 +5,12 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "app",
-    "cli",
-    "services",
+    "apps",
     "tools",
-    "options",
     "package",
     "snap",
     "tests",
-    "messages",
-    "prisma",
-    "monitoring"
+    "prisma"
   ],
   "scripts": {
     "dev": "concurrently \"pnpm --filter app dev\" \"pnpm --filter server dev\"",

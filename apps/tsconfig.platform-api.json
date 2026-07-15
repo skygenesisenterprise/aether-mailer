@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "lib/api/**/*.ts",
+    "context/PlatformContext.tsx",
+    "hooks/use-platform.ts",
+    "components/platform/header.tsx",
+    "components/platform/platform-shell.tsx"
+  ],
+  "exclude": []
+}

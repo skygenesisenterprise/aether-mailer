@@ -1,7 +1,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # Stage 1 — Go + Air
 # ══════════════════════════════════════════════════════════════════════════════
-FROM golang:1.25-alpine AS go-builder
+FROM golang:1.26-alpine AS go-builder
 
 RUN apk add --no-cache gcc musl-dev
 
@@ -21,13 +21,17 @@ RUN mkdir -p /app/tmp && go build -o /app/tmp/aether-server ./server/
 # ══════════════════════════════════════════════════════════════════════════════
 FROM node:25-alpine AS node-builder
 
-WORKDIR /app/app
+WORKDIR /app
 
 RUN npm install -g corepack --force && corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-COPY app/package.json app/pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/package.json ./apps/
 
-RUN pnpm install --ignore-scripts
+RUN mkdir -p apps/next/fond/google && \
+    printf 'module.exports = {};\n' > apps/next/fond/google/index.js && \
+    printf '{"name":"google","version":"0.0.0"}\n' > apps/next/fond/google/package.json && \
+    pnpm install --filter @aether-account/apps... --ignore-scripts --no-frozen-lockfile
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Stage final
@@ -44,20 +48,10 @@ RUN apk add --no-cache \
     build-base \
     libc6-compat \
     docker-cli \
+    redis \
     postgresql \
     postgresql-client \
     openssl
-
-# ── Go (requis par Air pour recompiler à chaud) ───────────────────────────────
-RUN ARCH=$(uname -m) && \
-    case "$ARCH" in \
-        x86_64)  GOARCH="amd64" ;; \
-        aarch64) GOARCH="arm64" ;; \
-        *) echo "Unsupported arch: $ARCH" && exit 1 ;; \
-    esac && \
-    wget -q "https://go.dev/dl/go1.24.2.linux-${GOARCH}.tar.gz" -O /tmp/go.tar.gz \
-    && tar -C /usr/local -xzf /tmp/go.tar.gz \
-    && rm /tmp/go.tar.gz
 
 ENV PATH="/usr/local/go/bin:/go/bin:/root/go/bin:/root/.local/share/corepack:/usr/local/bin:/usr/bin:/bin:${PATH}"
 ENV GOPATH="/go"
@@ -75,38 +69,35 @@ COPY --from=go-builder /usr/local/go /usr/local/go
 COPY --from=go-builder /app/server/ ./server/
 COPY --from=go-builder /app/tmp/aether-server /app/tmp/aether-server
 
-# ── node_modules au bon endroit : /app/app/node_modules ──────────────────────
-COPY --from=node-builder /app/app/node_modules ./app/node_modules/
+# ── node_modules au bon endroit : /app/apps/node_modules ─────────────────────
+COPY --from=node-builder /app/node_modules ./node_modules/
+COPY --from=node-builder /app/apps/node_modules ./apps/node_modules/
 
 # ── Sources Next.js (écrasées par le volume mount en dev) ────────────────────
-COPY app/package.json         ./app/
-COPY app/pnpm-lock.yaml       ./app/
-COPY app/tsconfig.json        ./app/
-COPY app/next.config.ts       ./app/
-COPY app/postcss.config.mjs   ./app/
-COPY app/components.json      ./app/
-COPY app/eslint.config.mjs    ./app/
-COPY app/proxy.ts             ./app/
-COPY app/app/                 ./app/app/
-COPY app/components/          ./app/components/
-COPY app/config/              ./app/config/
-COPY app/context/             ./app/context/
-COPY app/hooks/               ./app/hooks/
-COPY app/i18n/                ./app/i18n/
-COPY app/lib/                 ./app/lib/
-COPY app/public/              ./app/public/
-COPY app/styles/              ./app/styles/
-COPY app/messages/            ./app/messages/
-COPY server/prisma/           ./prisma/
-COPY scripts/                 ./app/scripts/
+COPY apps/package.json         ./apps/
+COPY apps/tsconfig.json        ./apps/
+COPY apps/next.config.ts       ./apps/
+COPY apps/postcss.config.mjs   ./apps/
+COPY apps/components.json      ./apps/
+COPY apps/eslint.config.mjs    ./apps/
+COPY apps/app/                 ./apps/app/
+COPY apps/components/          ./apps/components/
+COPY apps/context/             ./apps/context/
+COPY apps/hooks/               ./apps/hooks/
+COPY apps/lib/                 ./apps/lib/
+COPY apps/public/              ./apps/public/
+COPY apps/styles/              ./apps/styles/
+COPY apps/proxy.ts             ./apps/proxy.ts
+COPY server/prisma/           ./server/prisma/
+COPY apps/scripts/            ./apps/scripts/
 
 # ── Config dev ────────────────────────────────────────────────────────────────
 COPY .air.toml   ./
-COPY .env.example ./.env
-
+COPY .env.example ./
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 3000
+EXPOSE 8080
 
 ENTRYPOINT ["/entrypoint.sh"]

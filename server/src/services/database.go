@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/skygenesisenterprise/aether-account/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -62,6 +62,38 @@ func (s *DatabaseService) AutoMigrate() error {
 		&models.AuthAccount{},
 		&models.Workspace{},
 		&models.WorkspaceMember{},
+		// Mail models
+		&models.MailAccount{},
+		&models.MailDomain{},
+		&models.MailAlias{},
+		&models.MailIdentity{},
+		&models.SieveScript{},
+		&models.FilterRule{},
+		&models.AppPassword{},
+		&models.MailSession{},
+		&models.MailGroup{},
+		&models.MailGroupMember{},
+		&models.MailGroupPermission{},
+		&models.MailRole{},
+		&models.MailRoleMember{},
+		&models.MailTenant{},
+		&models.MailingList{},
+		&models.MailingListSubscriber{},
+		&models.MailingListModeration{},
+		&models.SmtpRoute{},
+		&models.SmtpQueueEntry{},
+		&models.Certificate{},
+		&models.LogEntry{},
+		&models.ReportRecord{},
+		&models.ServerMetrics{},
+		&models.ApiKey{},
+		&models.SpamRule{},
+		&models.IpRule{},
+		&models.BlockedIp{},
+		&models.AclEntry{},
+		&models.DnsblServer{},
+		&models.PolicyRule{},
+		&models.SystemSieveScript{},
 	)
 }
 

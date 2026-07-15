@@ -141,7 +141,7 @@ func Load() (Config, error) {
 			LocalEnabled:           getEnvBool("AUTH_LOCAL_ENABLED", true),
 			Mode:                   strings.ToLower(getEnv("AUTH_MODE", "jwt")),
 			JWTSecret:              getEnv("AUTH_JWT_SECRET", getEnv("JWT_SECRET", "")),
-			JWTIssuer:              getEnv("AUTH_JWT_ISSUER", getEnv("JWT_ISSUER", "aether-account")),
+			JWTIssuer:              getEnv("AUTH_JWT_ISSUER", getEnv("JWT_ISSUER", "aether-mailer")),
 			JWTAccessTTL:           getEnvDuration("AUTH_ACCESS_TOKEN_TTL", getEnvDuration("JWT_ACCESS_TTL", 15*time.Minute)),
 			JWTRefreshTTL:          getEnvDuration("AUTH_REFRESH_TOKEN_TTL", getEnvDuration("JWT_REFRESH_TTL", 30*24*time.Hour)),
 			RefreshCookieName:      getEnv("AUTH_REFRESH_COOKIE_NAME", "aether_account_refresh"),

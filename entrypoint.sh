@@ -195,7 +195,7 @@ configure_runtime() {
     export REDIS_HOST="${REDIS_HOST:-redis}"
     export REDIS_PORT="${REDIS_PORT:-6379}"
     export REDIS_DB="${REDIS_DB:-0}"
-    export REDIS_KEY_PREFIX="${REDIS_KEY_PREFIX:-aether-meet:v1}"
+    export REDIS_KEY_PREFIX="${REDIS_KEY_PREFIX:-aether-mailer:v1}"
     export REDIS_ENABLED="${REDIS_ENABLED:-true}"
     export REDIS_REQUIRED="${REDIS_REQUIRED:-false}"
     export GIN_MODE="${GIN_MODE:-debug}"
@@ -209,7 +209,7 @@ configure_runtime() {
 
 display_header() {
     echo ""
-    echo "Aether Meet development container"
+    echo "Aether Mailer development container"
     echo ""
     log_info "Frontend: http://localhost:${FRONTEND_PORT}"
     log_info "API:      http://localhost:${API_PORT}"
@@ -220,9 +220,9 @@ display_header() {
 
 find_backend_binary() {
     for binary in \
-        /app/server/aether-meet \
+        /app/server/aether-server \
         /app/tmp/aether-server \
-        /app/server/etheriatimes-api
+        /app/server/aether-mailer
     do
         if [ -x "${binary}" ]; then
             echo "${binary}"
@@ -378,7 +378,7 @@ run_server() {
     display_header
     setup_pnpm
 
-    log_info "Aether Meet server starting"
+    log_info "Aether Mailer frontend starting"
     log_info "Frontend listening on 0.0.0.0:${FRONTEND_PORT}"
 
     if [ -d /app/apps ]; then
@@ -406,12 +406,12 @@ run_server() {
 run_worker() {
     configure_runtime
 
-    log_info "Aether Meet worker starting"
+    log_info "Aether Mailer worker starting"
     log_info "Backend runtime configured for 0.0.0.0:${SERVER_PORT}"
 
     backend_binary="$(find_backend_binary || true)"
     if [ -z "${backend_binary}" ]; then
-        log_error "Go backend binary not found at /app/server/aether-meet, /app/tmp/aether-server, or /app/server/etheriatimes-api"
+        log_error "Go backend binary not found at /app/server/aether-server, /app/tmp/aether-server, or /app/server/aether-mailer"
         return 1
     fi
 
@@ -434,11 +434,11 @@ run_worker() {
 run_api() {
     configure_runtime
 
-    log_info "Aether Meet API starting"
+    log_info "Aether Mailer API starting"
 
     backend_binary="$(find_backend_binary || true)"
     if [ -z "${backend_binary}" ]; then
-        log_error "Go backend binary not found at /app/server/aether-meet, /app/tmp/aether-server, or /app/server/etheriatimes-api"
+        log_error "Go backend binary not found at /app/server/aether-server, /app/tmp/aether-server, or /app/server/aether-mailer"
         return 1
     fi
 
@@ -461,11 +461,11 @@ run_api() {
 run_scheduler() {
     configure_runtime
 
-    log_info "Aether Meet scheduler starting"
+    log_info "Aether Mailer scheduler starting"
 
     backend_binary="$(find_backend_binary || true)"
     if [ -z "${backend_binary}" ]; then
-        log_error "Go backend binary not found at /app/server/aether-meet, /app/tmp/aether-server, or /app/server/etheriatimes-api"
+        log_error "Go backend binary not found at /app/server/aether-server, /app/tmp/aether-server, or /app/server/aether-mailer"
         return 1
     fi
 
@@ -479,11 +479,11 @@ run_scheduler() {
 run_all() {
     configure_runtime
 
-    log_info "Aether Meet combined runtime starting"
+    log_info "Aether Mailer combined runtime starting"
 
     backend_binary="$(find_backend_binary || true)"
     if [ -z "${backend_binary}" ]; then
-        log_error "Go backend binary not found at /app/server/aether-meet, /app/tmp/aether-server, or /app/server/etheriatimes-api"
+        log_error "Go backend binary not found at /app/server/aether-server, /app/tmp/aether-server, or /app/server/aether-mailer"
         return 1
     fi
 
@@ -506,7 +506,7 @@ run_all() {
 run_air() {
     configure_runtime
 
-    log_info "Aether Meet air (hot-reload) starting"
+    log_info "Aether Mailer air (hot-reload) starting"
 
     if ! run_prisma_schema_deploy; then
         if [ "${ALLOW_MIGRATION_FAILURE}" = "true" ]; then
@@ -520,6 +520,34 @@ run_air() {
     log_info "Starting air for Go hot-reload"
     cd /app
     exec air "$@"
+}
+
+run_mailer() {
+    configure_runtime
+
+    log_info "Aether Mailer starting"
+    log_info "Backend runtime configured for 0.0.0.0:${SERVER_PORT}"
+
+    backend_binary="$(find_backend_binary || true)"
+    if [ -z "${backend_binary}" ]; then
+        log_error "Go backend binary not found at /app/server/aether-server, /app/tmp/aether-server, or /app/server/aether-mailer"
+        return 1
+    fi
+
+    wait_for_database
+    log_redis_configuration
+
+    if ! run_prisma_schema_deploy; then
+        if [ "${ALLOW_MIGRATION_FAILURE}" = "true" ]; then
+            log_warn "Prisma schema deployment failed; continuing because ALLOW_MIGRATION_FAILURE=true"
+        else
+            log_error "Prisma schema deployment failed"
+            return 1
+        fi
+    fi
+
+    log_info "Starting Go mail server"
+    exec "${backend_binary}" server "$@"
 }
 
 role="${1:-server}"
@@ -548,6 +576,10 @@ case "${role}" in
     all)
         shift || true
         run_all "$@"
+        ;;
+    mailer)
+        shift || true
+        run_mailer "$@"
         ;;
         *)
         configure_runtime

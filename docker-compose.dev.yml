@@ -128,6 +128,56 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  
+  mailer:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: skygenesisenterprise/aether-mailer:latest-dev
+    pull_policy: never
+    restart: unless-stopped
+    command: mailer
+    ports:
+      - "2525:25"
+      - "2465:465"
+      - "2587:587"
+      - "2143:143"
+      - "2993:993"
+    environment:
+      API_PORT: "8080"
+      HOST: "0.0.0.0"
+      GIN_MODE: debug
+      POSTGRESQL__HOST: postgresql
+      POSTGRESQL__PORT: "5432"
+      POSTGRESQL__USER: ${PG_USER:-postgres}
+      POSTGRESQL__NAME: ${PG_DB:-postgres}
+      POSTGRESQL__PASSWORD: ${PG_PASS:-postgres}
+      DATABASE_URL: postgresql://${PG_USER:-postgres}:${PG_PASS:-postgres}@postgresql:5432/${PG_DB:-postgres}
+      REDIS_ENABLED: "true"
+      REDIS_REQUIRED: "false"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis-dev-password}
+      REDIS_DB: "1"
+      REDIS_KEY_PREFIX: aether-mail:v1
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-secret-change-me}
+      MAIL_HOSTNAME: ${MAIL_HOSTNAME:-mail.skygenesisenterprise.localhost}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-skygenesisenterprise.localhost}
+      TLS_CERT_PATH: /certs/mail.crt
+      TLS_KEY_PATH: /certs/mail.key
+    volumes:
+      - ./server:/app/server
+      - ./go.mod:/app/go.mod
+      - ./go.sum:/app/go.sum
+      - ./entrypoint.sh:/entrypoint.sh
+      - gopkg:/go/pkg
+      - mail-storage:/var/lib/aether-mail
+      - certs:/certs
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   database:
@@ -136,3 +186,4 @@ volumes:
   media:
   certs:
   custom-templates:
+  mail-storage:

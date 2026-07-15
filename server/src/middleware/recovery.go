@@ -4,7 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
-	"github.com/skygenesisenterprise/aether-account/server/src/utils"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/utils"
 )
 
 func Recovery(logger *slog.Logger) gin.HandlerFunc {

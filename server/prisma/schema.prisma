@@ -7,6 +7,10 @@ datasource db {
   relationMode = "prisma"
 }
 
+// ═══════════════════════════════════════════════════════
+// Auth & Users
+// ═══════════════════════════════════════════════════════
+
 model User {
   id                String    @id @default(uuid())
   email             String    @unique
@@ -28,12 +32,12 @@ model User {
   localCredentials        LocalCredential[]
   authAccounts            AuthAccount[]
   authSessions            AuthSession[]
-  workspacesOwned         Workspace[]            @relation("WorkspaceOwner")
+  workspacesOwned         Workspace[]             @relation("WorkspaceOwner")
   workspaceMemberships    WorkspaceMember[]
-  contacts                Contact[]              @relation("ContactOwner")
-  familyMembers           FamilyMember[]         @relation("FamilyMemberUser")
-  familyMembersInvited    FamilyMember[]         @relation("FamilyMemberInviter")
-  invitationsSent         Invitation[]           @relation("InvitationSender")
+  contacts                Contact[]               @relation("ContactOwner")
+  familyMembers           FamilyMember[]          @relation("FamilyMemberUser")
+  familyMembersInvited    FamilyMember[]          @relation("FamilyMemberInviter")
+  invitationsSent         Invitation[]            @relation("InvitationSender")
   files                   FileItem[]
   billingInfo             BillingInfo?
   subscriptions           Subscription[]
@@ -48,20 +52,20 @@ model User {
 }
 
 model UserSettings {
-  id            String  @id @default(uuid())
-  userId        String  @unique @map("user_id")
-  theme         String  @default("system")
-  language      String  @default("fr")
-  locale        String  @default("fr")
-  timeZone      String  @default("Europe/Paris") @map("time_zone")
-  statusMessage String? @map("status_message")
-  density       String  @default("comfortable")
-  contrast      String  @default("default")
-  soundEnabled  Boolean @default(true) @map("sound_enabled")
-  secureSession Boolean @default(true) @map("secure_session")
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  theme         String   @default("system")
+  language      String   @default("fr")
+  locale        String   @default("fr")
+  timeZone      String   @default("Europe/Paris") @map("time_zone")
+  statusMessage String?  @map("status_message")
+  density       String   @default("comfortable")
+  contrast      String   @default("default")
+  soundEnabled  Boolean  @default(true) @map("sound_enabled")
+  secureSession Boolean  @default(true) @map("secure_session")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
-  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
 }
@@ -205,23 +209,27 @@ model AuthAuditEvent {
   @@map("auth_audit_events")
 }
 
+// ═══════════════════════════════════════════════════════
+// Workspaces
+// ═══════════════════════════════════════════════════════
+
 model Workspace {
-  id          String      @id @default(uuid())
-  name        String
-  slug        String      @unique
-  description String?
-  visibility  String      @default("private")
-  ownerId     String      @map("owner_id")
-  archivedAt  DateTime?   @map("archived_at")
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-  owner       User        @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  members     WorkspaceMember[]
-  ssoConfig   WorkspaceSSOConfig?
+  id            String              @id @default(uuid())
+  name          String
+  slug          String              @unique
+  description   String?
+  visibility    String              @default("private")
+  ownerId       String              @map("owner_id")
+  archivedAt    DateTime?           @map("archived_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  owner         User                @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members       WorkspaceMember[]
+  ssoConfig     WorkspaceSSOConfig?
   contactGroups ContactGroup[]
-  files       FileItem[]
-  integrations Integration[]
-  activities  ActivityItem[]
+  files         FileItem[]
+  integrations  Integration[]
+  activities    ActivityItem[]
 
   @@index([ownerId])
   @@index([archivedAt])
@@ -229,26 +237,26 @@ model Workspace {
 }
 
 model WorkspaceSSOConfig {
-  id                String   @id @default(uuid())
-  workspaceId       String   @unique @map("workspace_id")
-  provider          String   @default("oidc")
-  enabled           Boolean  @default(false)
-  enforceSso        Boolean  @default(false) @map("enforce_sso")
-  allowPasswordAuth Boolean  @default(true) @map("allow_password_auth")
-  autoProvision     Boolean  @default(true) @map("auto_provision")
-  allowIdpInitiated Boolean  @default(false) @map("allow_idp_initiated")
-  domainHint        String?  @map("domain_hint")
-  issuerUrl         String?  @map("issuer_url")
-  ssoUrl            String?  @map("sso_url")
-  entityId          String?  @map("entity_id")
-  clientId          String?  @map("client_id")
-  clientSecret      String?  @map("client_secret")
+  id                String    @id @default(uuid())
+  workspaceId       String    @unique @map("workspace_id")
+  provider          String    @default("oidc")
+  enabled           Boolean   @default(false)
+  enforceSso        Boolean   @default(false) @map("enforce_sso")
+  allowPasswordAuth Boolean   @default(true) @map("allow_password_auth")
+  autoProvision     Boolean   @default(true) @map("auto_provision")
+  allowIdpInitiated Boolean   @default(false) @map("allow_idp_initiated")
+  domainHint        String?   @map("domain_hint")
+  issuerUrl         String?   @map("issuer_url")
+  ssoUrl            String?   @map("sso_url")
+  entityId          String?   @map("entity_id")
+  clientId          String?   @map("client_id")
+  clientSecret      String?   @map("client_secret")
   certificate       String?
-  allowedDomains    Json?    @map("allowed_domains")
-  defaultRole       String   @default("member") @map("default_role")
-  attributeMapping  Json?    @map("attribute_mapping")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  allowedDomains    Json?     @map("allowed_domains")
+  defaultRole       String    @default("member") @map("default_role")
+  attributeMapping  Json?     @map("attribute_mapping")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
   workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@map("workspace_sso_configs")
@@ -271,21 +279,25 @@ model WorkspaceMember {
   @@map("workspace_members")
 }
 
+// ═══════════════════════════════════════════════════════
+// Contacts & Family
+// ═══════════════════════════════════════════════════════
+
 model Contact {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
-  email       String    @map("email")
-  displayName String    @map("display_name")
-  avatarUrl   String?   @map("avatar_url")
+  id          String               @id @default(uuid())
+  userId      String               @map("user_id")
+  email       String               @map("email")
+  displayName String               @map("display_name")
+  avatarUrl   String?              @map("avatar_url")
   phone       String?
   company     String?
-  jobTitle    String?   @map("job_title")
-  isFavorite  Boolean   @default(false) @map("is_favorite")
+  jobTitle    String?              @map("job_title")
+  isFavorite  Boolean              @default(false) @map("is_favorite")
   notes       String?
   tags        String?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  user        User      @relation("ContactOwner", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+  user        User                 @relation("ContactOwner", fields: [userId], references: [id], onDelete: Cascade)
   groups      ContactGroupMember[]
 
   @@index([userId, displayName])
@@ -308,13 +320,13 @@ model ContactGroup {
 }
 
 model ContactGroupMember {
-  id        String        @id @default(uuid())
-  groupId   String        @map("group_id")
-  contactId String        @map("contact_id")
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
-  group     ContactGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  contact   Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id        String       @id @default(uuid())
+  groupId   String       @map("group_id")
+  contactId String       @map("contact_id")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  group     ContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contact   Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, contactId])
   @@index([contactId])
@@ -322,22 +334,22 @@ model ContactGroupMember {
 }
 
 model FamilyMember {
-  id           String    @id @default(uuid())
-  userId       String    @map("user_id")
-  email        String    @map("email")
-  displayName  String    @map("display_name")
-  role         String
-  status       String
-  invitedBy    String    @map("invited_by")
-  invitedAt    DateTime  @map("invited_at")
-  joinedAt     DateTime? @map("joined_at")
-  avatarUrl    String?   @map("avatar_url")
-  phone        String?
-  relationship String?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  user            User      @relation("FamilyMemberUser", fields: [userId], references: [id], onDelete: Cascade)
-  invitedByUser   User?     @relation("FamilyMemberInviter", fields: [invitedBy], references: [id], onDelete: Restrict)
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  email         String    @map("email")
+  displayName   String    @map("display_name")
+  role          String
+  status        String
+  invitedBy     String    @map("invited_by")
+  invitedAt     DateTime  @map("invited_at")
+  joinedAt      DateTime? @map("joined_at")
+  avatarUrl     String?   @map("avatar_url")
+  phone         String?
+  relationship  String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  user          User      @relation("FamilyMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  invitedByUser User?     @relation("FamilyMemberInviter", fields: [invitedBy], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([email])
@@ -366,33 +378,37 @@ model Invitation {
   @@map("invitations")
 }
 
+// ═══════════════════════════════════════════════════════
+// Files & Storage
+// ═══════════════════════════════════════════════════════
+
 model FileItem {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
-  workspaceId  String?  @map("workspace_id")
-  parentId     String?  @map("parent_id")
+  id           String     @id @default(uuid())
+  userId       String     @map("user_id")
+  workspaceId  String?    @map("workspace_id")
+  parentId     String?    @map("parent_id")
   name         String
-  path         String   @map("path")
-  type         String   @default("file")
-  mimeType     String?  @map("mime_type")
-  size         BigInt   @default(0)
+  path         String     @map("path")
+  type         String     @default("file")
+  mimeType     String?    @map("mime_type")
+  size         BigInt     @default(0)
   extension    String?
   hash         String?
   url          String?
-  thumbnailUrl String?  @map("thumbnail_url")
-  isFavorite   Boolean  @default(false) @map("is_favorite")
-  isPublic     Boolean  @default(false) @map("is_public")
-  isShared     Boolean  @default(false) @map("is_shared")
-  sharedWith   String?  @map("shared_with")
-  permissions  String?  @map("permissions")
+  thumbnailUrl String?    @map("thumbnail_url")
+  isFavorite   Boolean    @default(false) @map("is_favorite")
+  isPublic     Boolean    @default(false) @map("is_public")
+  isShared     Boolean    @default(false) @map("is_shared")
+  sharedWith   String?    @map("shared_with")
+  permissions  String?    @map("permissions")
   description  String?
   tags         String?
-  uploadStatus String?  @map("upload_status")
-  uploadedBy   String?  @map("uploaded_by")
-  version      Int      @default(1)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uploadStatus String?    @map("upload_status")
+  uploadedBy   String?    @map("uploaded_by")
+  version      Int        @default(1)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([userId, path])
@@ -401,46 +417,50 @@ model FileItem {
   @@map("file_items")
 }
 
+// ═══════════════════════════════════════════════════════
+// Billing & Subscriptions
+// ═══════════════════════════════════════════════════════
+
 model BillingInfo {
-  id               String    @id @default(uuid())
-  userId           String    @unique @map("user_id")
-  customerId       String?   @map("customer_id")
-  paymentMethodId  String?   @map("payment_method_id")
-  paymentMethod    String?   @map("payment_method")
-  billingEmail     String    @map("billing_email")
-  billingAddress   String?   @map("billing_address")
-  taxId            String?   @map("tax_id")
-  currency         String    @default("EUR")
-  nextBillingDate  DateTime? @map("next_billing_date")
-  lastPaymentDate  DateTime? @map("last_payment_date")
-  paymentStatus    String?   @map("payment_status")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  customerId      String?   @map("customer_id")
+  paymentMethodId String?   @map("payment_method_id")
+  paymentMethod   String?   @map("payment_method")
+  billingEmail    String    @map("billing_email")
+  billingAddress  String?   @map("billing_address")
+  taxId           String?   @map("tax_id")
+  currency        String    @default("EUR")
+  nextBillingDate DateTime? @map("next_billing_date")
+  lastPaymentDate DateTime? @map("last_payment_date")
+  paymentStatus   String?   @map("payment_status")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("billing_infos")
 }
 
 model Subscription {
-  id             String    @id @default(uuid())
-  userId         String    @map("user_id")
-  planId         String    @map("plan_id")
-  planName       String    @map("plan_name")
-  status         String
-  amount         Float
-  currency       String
-  interval       String
-  startDate      DateTime  @map("start_date")
-  endDate        DateTime? @map("end_date")
-  cancelAt       DateTime? @map("cancel_at")
-  canceledAt     DateTime? @map("canceled_at")
-  trialStart     DateTime? @map("trial_start")
-  trialEnd       DateTime? @map("trial_end")
-  features       String?
-  metadata       String?
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  planId     String    @map("plan_id")
+  planName   String    @map("plan_name")
+  status     String
+  amount     Float
+  currency   String
+  interval   String
+  startDate  DateTime  @map("start_date")
+  endDate    DateTime? @map("end_date")
+  cancelAt   DateTime? @map("cancel_at")
+  canceledAt DateTime? @map("canceled_at")
+  trialStart DateTime? @map("trial_start")
+  trialEnd   DateTime? @map("trial_end")
+  features   String?
+  metadata   String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -448,42 +468,46 @@ model Subscription {
 }
 
 model Transaction {
-  id             String    @id @default(uuid())
-  userId         String    @map("user_id")
-  subscriptionId String?   @map("subscription_id")
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  subscriptionId String?  @map("subscription_id")
   type           String
   amount         Float
   currency       String
   description    String
   status         String
-  date           DateTime  @map("date")
-  invoiceId      String?   @map("invoice_id")
-  invoiceUrl     String?   @map("invoice_url")
-  paymentId      String?   @map("payment_id")
+  date           DateTime @map("date")
+  invoiceId      String?  @map("invoice_id")
+  invoiceUrl     String?  @map("invoice_url")
+  paymentId      String?  @map("payment_id")
   gateway        String?
-  gatewayData    String?   @map("gateway_data")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gatewayData    String?  @map("gateway_data")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
   @@index([subscriptionId])
   @@map("transactions")
 }
 
+// ═══════════════════════════════════════════════════════
+// Privacy & Devices
+// ═══════════════════════════════════════════════════════
+
 model PrivacySettings {
-  id              String @id @default(uuid())
-  userId          String @unique @map("user_id")
-  dataProcessing  Boolean @default(true) @map("data_processing")
-  marketingEmails Boolean @default(true) @map("marketing_emails")
-  analytics       Boolean @default(true)
-  publicProfile   Boolean @default(false) @map("public_profile")
-  searchable      Boolean @default(true)
-  showOnlineStatus Boolean @default(true) @map("show_online_status")
-  dataRetention   String? @map("data_retention")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  dataProcessing   Boolean  @default(true) @map("data_processing")
+  marketingEmails  Boolean  @default(true) @map("marketing_emails")
+  analytics        Boolean  @default(true)
+  publicProfile    Boolean  @default(false) @map("public_profile")
+  searchable       Boolean  @default(true)
+  showOnlineStatus Boolean  @default(true) @map("show_online_status")
+  dataRetention    String?  @map("data_retention")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("privacy_settings")
 }
@@ -542,20 +566,24 @@ model LoginHistory {
   @@map("login_histories")
 }
 
+// ═══════════════════════════════════════════════════════
+// Activity & Integrations
+// ═══════════════════════════════════════════════════════
+
 model ActivityItem {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  workspaceId String?  @map("workspace_id")
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  workspaceId String?    @map("workspace_id")
   type        String
-  entityId    String   @map("entity_id")
+  entityId    String     @map("entity_id")
   title       String
   message     String
   icon        String?
   url         String?
-  isRead      Boolean  @default(false) @map("is_read")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRead      Boolean    @default(false) @map("is_read")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
@@ -564,17 +592,667 @@ model ActivityItem {
 }
 
 model Integration {
-  id            String   @id @default(uuid())
-  workspaceId   String   @map("workspace_id")
+  id            String    @id @default(uuid())
+  workspaceId   String    @map("workspace_id")
   provider      String
   name          String
   status        String
   configuration Json?
-  createdById   String   @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdById   String    @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
   workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, provider])
   @@map("integrations")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Tenants
+// ═══════════════════════════════════════════════════════
+
+model MailTenant {
+  id              String   @id @default(uuid())
+  name            String
+  maxAccounts     Int      @default(100) @map("max_accounts")
+  maxStorageBytes BigInt   @default(10737418240) @map("max_storage_bytes")
+  maxDomains      Int      @default(10) @map("max_domains")
+  maxGroups       Int      @default(50) @map("max_groups")
+  maxMailingLists Int      @default(20) @map("max_mailing_lists")
+  rules           Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  accounts           MailAccount[]
+  domains            MailDomain[]
+  aliases            MailAlias[]
+  identities         MailIdentity[]
+  sieveScripts       SieveScript[]
+  filterRules        FilterRule[]
+  appPasswords       AppPassword[]
+  mailSessions       MailSession[]
+  groups             MailGroup[]
+  roles              MailRole[]
+  mailingLists       MailingList[]
+  smtpRoutes         SmtpRoute[]
+  queueEntries       SmtpQueueEntry[]
+  certificates       Certificate[]
+  logEntries         LogEntry[]
+  reportRecords      ReportRecord[]
+  apiKeys            ApiKey[]
+  spamRules          SpamRule[]
+  ipRules            IpRule[]
+  aclEntries         AclEntry[]
+  dnsblServers       DnsblServer[]
+  policyRules        PolicyRule[]
+  systemSieveScripts SystemSieveScript[]
+
+  @@map("mail_tenants")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Accounts
+// ═══════════════════════════════════════════════════════
+
+model MailAccount {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  domainId          String    @map("domain_id")
+  name              String
+  displayName       String    @map("display_name")
+  passwordHash      String    @map("password_hash")
+  quotaBytes        BigInt    @default(1073741824) @map("quota_bytes")
+  usedBytes         BigInt    @default(0) @map("used_bytes")
+  isDisabled        Boolean   @default(false) @map("is_disabled")
+  disabledAt        DateTime? @map("disabled_at")
+  twoFactorSecret   String    @map("two_factor_secret")
+  twoFactorEnabled  Boolean   @default(false) @map("two_factor_enabled")
+  signature         String    @default("")
+  forwardingAddress String    @default("") @map("forwarding_address")
+  sieveScriptActive String    @default("") @map("sieve_script_active")
+  vacationSubject   String    @default("") @map("vacation_subject")
+  vacationMessage   String    @default("") @map("vacation_message")
+  vacationEnabled   Boolean   @default(false) @map("vacation_enabled")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant       MailTenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  domain       MailDomain     @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  aliases      MailAlias[]
+  identities   MailIdentity[]
+  sieveScripts SieveScript[]
+  filterRules  FilterRule[]
+  appPasswords AppPassword[]
+  mailSessions MailSession[]
+
+  @@index([tenantId])
+  @@index([domainId])
+  @@index([tenantId, domainId])
+  @@map("mail_accounts")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Domains
+// ═══════════════════════════════════════════════════════
+
+model MailDomain {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  name              String    @unique
+  isCatchAll        Boolean   @default(false) @map("is_catch_all")
+  dkimPrivateKey    String    @map("dkim_private_key")
+  dkimPublicKey     String    @map("dkim_public_key")
+  dkimSelector      String    @map("dkim_selector")
+  dmarcPolicy       String    @default("none") @map("dmarc_policy")
+  dmarcAggregateRua String    @default("") @map("dmarc_aggregate_rua")
+  spfEnabled        Boolean   @default(false) @map("spf_enabled")
+  spfIncludes       Json      @default("[]") @map("spf_includes")
+  tlsCertificateId  String    @default("") @map("tls_certificate_id")
+  verifiedAt        DateTime? @map("verified_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant   MailTenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  accounts MailAccount[]
+
+  @@index([tenantId])
+  @@map("mail_domains")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Aliases
+// ═══════════════════════════════════════════════════════
+
+model MailAlias {
+  id            String   @id @default(uuid())
+  accountId     String   @map("account_id")
+  tenantId      String   @map("tenant_id")
+  sourceAddress String   @map("source_address")
+  destination   String
+  isEnabled     Boolean  @default(true) @map("is_enabled")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  account MailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant  MailTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@map("mail_aliases")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Identities
+// ═══════════════════════════════════════════════════════
+
+model MailIdentity {
+  id        String   @id @default(uuid())
+  accountId String   @map("account_id")
+  tenantId  String   @map("tenant_id")
+  name      String
+  email     String
+  replyTo   String   @default("") @map("reply_to")
+  signature String   @default("")
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  account MailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant  MailTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@map("mail_identities")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Sieve Scripts
+// ═══════════════════════════════════════════════════════
+
+model SieveScript {
+  id         String   @id @default(uuid())
+  accountId  String   @map("account_id")
+  tenantId   String   @map("tenant_id")
+  name       String
+  scriptBody String   @default("") @map("script_body")
+  isActive   Boolean  @default(false) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  account MailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant  MailTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@map("sieve_scripts")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Filter Rules
+// ═══════════════════════════════════════════════════════
+
+model FilterRule {
+  id         String   @id @default(uuid())
+  accountId  String   @map("account_id")
+  tenantId   String   @map("tenant_id")
+  name       String
+  priority   Int      @default(0)
+  conditions Json     @default("{}")
+  actions    Json     @default("{}")
+  isEnabled  Boolean  @default(true) @map("is_enabled")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  account MailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant  MailTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@map("filter_rules")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — App Passwords
+// ═══════════════════════════════════════════════════════
+
+model AppPassword {
+  id           String    @id @default(uuid())
+  accountId    String    @map("account_id")
+  tenantId     String    @map("tenant_id")
+  name         String
+  passwordHash String    @map("password_hash")
+  lastUsedAt   DateTime? @map("last_used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  account MailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant  MailTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@map("app_passwords")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Sessions (IMAP/JMAP)
+// ═══════════════════════════════════════════════════════
+
+model MailSession {
+  id        String    @id @default(uuid())
+  accountId String    @map("account_id")
+  tenantId  String    @map("tenant_id")
+  protocol  String
+  ipAddress String    @default("") @map("ip_address")
+  userAgent String    @default("") @map("user_agent")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  account MailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant  MailTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([accountId])
+  @@map("mail_sessions")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Groups
+// ═══════════════════════════════════════════════════════
+
+model MailGroup {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  email     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant      MailTenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members     MailGroupMember[]
+  permissions MailGroupPermission[]
+
+  @@index([tenantId])
+  @@map("mail_groups")
+}
+
+model MailGroupMember {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  accountId String   @map("account_id")
+  role      String   @default("member")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  group MailGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("mail_group_members")
+}
+
+model MailGroupPermission {
+  id         String   @id @default(uuid())
+  groupId    String   @map("group_id")
+  permission String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  group MailGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("mail_group_permissions")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Roles & Permissions
+// ═══════════════════════════════════════════════════════
+
+model MailRole {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  description String   @default("")
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant  MailTenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members MailRoleMember[]
+
+  @@index([tenantId])
+  @@map("mail_roles")
+}
+
+model MailRoleMember {
+  id          String   @id @default(uuid())
+  roleId      String   @map("role_id")
+  principalId String   @map("principal_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  role MailRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@index([roleId])
+  @@map("mail_role_members")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Mailing Lists
+// ═══════════════════════════════════════════════════════
+
+model MailingList {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  name           String
+  email          String
+  isEnabled      Boolean  @default(true) @map("is_enabled")
+  moderationMode String   @default("none") @map("moderation_mode")
+  description    String   @default("")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant      MailTenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscribers MailingListSubscriber[]
+  moderation  MailingListModeration?
+
+  @@index([tenantId])
+  @@map("mailing_lists")
+}
+
+model MailingListSubscriber {
+  id        String   @id @default(uuid())
+  listId    String   @map("list_id")
+  email     String
+  isEnabled Boolean  @default(true) @map("is_enabled")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  list MailingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@index([listId])
+  @@map("mailing_list_subscribers")
+}
+
+model MailingListModeration {
+  id              String   @id @default(uuid())
+  listId          String   @unique @map("list_id")
+  moderatorEmails Json     @default("[]") @map("moderator_emails")
+  postingMode     String   @default("members_only") @map("posting_mode")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  list MailingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@map("mailing_list_moderations")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — SMTP Routes & Queue
+// ═══════════════════════════════════════════════════════
+
+model SmtpRoute {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  name       String
+  remoteHost String   @map("remote_host")
+  port       Int      @default(25)
+  requireTls Boolean  @default(true) @map("require_tls")
+  username   String   @default("")
+  password   String   @default("")
+  maxRetries Int      @default(3) @map("max_retries")
+  priority   Int      @default(0)
+  isEnabled  Boolean  @default(true) @map("is_enabled")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("smtp_routes")
+}
+
+model SmtpQueueEntry {
+  id         String    @id @default(uuid())
+  tenantId   String    @map("tenant_id")
+  from       String    @map("from_addr")
+  to         String    @map("to_addr")
+  size       BigInt    @default(0)
+  retries    Int       @default(0)
+  maxRetries Int       @default(5) @map("max_retries")
+  status     String    @default("queued")
+  nextRetry  DateTime? @map("next_retry")
+  error      String    @default("")
+  routeId    String    @default("") @map("route_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("smtp_queue")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Certificates
+// ═══════════════════════════════════════════════════════
+
+model Certificate {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  domain      String
+  certPem     String   @map("cert_pem")
+  keyPem      String   @map("key_pem")
+  issuer      String   @default("")
+  expiresAt   DateTime @map("expires_at")
+  isAutoRenew Boolean  @default(false) @map("is_auto_renew")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([domain])
+  @@map("certificates")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Logs & Reports
+// ═══════════════════════════════════════════════════════
+
+model LogEntry {
+  id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
+  level     String
+  category  String
+  message   String
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([category])
+  @@index([level])
+  @@index([createdAt])
+  @@map("log_entries")
+}
+
+model ReportRecord {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  domain    String
+  type      String
+  reporter  String
+  period    DateTime
+  summary   Json     @default("{}")
+  rawData   Bytes    @default("") @map("raw_data")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([domain])
+  @@map("report_records")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Metrics
+// ═══════════════════════════════════════════════════════
+
+model ServerMetrics {
+  id          String   @id @default(uuid())
+  timestamp   DateTime
+  imapActive  Int      @default(0) @map("imap_active")
+  jmapActive  Int      @default(0) @map("jmap_active")
+  smtpActive  Int      @default(0) @map("smtp_active")
+  queueSize   Int      @default(0) @map("queue_size")
+  storageUsed BigInt   @default(0) @map("storage_used")
+  cpuUsage    Float    @default(0) @map("cpu_usage")
+  memoryUsage Float    @default(0) @map("memory_usage")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([timestamp])
+  @@map("server_metrics")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — API Keys
+// ═══════════════════════════════════════════════════════
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  name       String
+  keyHash    String    @unique @map("key_hash")
+  prefix     String
+  tenantId   String    @map("tenant_id")
+  scopes     Json      @default("[]")
+  expiresAt  DateTime? @map("expires_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("api_keys")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Security (Spam, IP, ACL, DNSBL)
+// ═══════════════════════════════════════════════════════
+
+model SpamRule {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  condition String
+  action    String
+  score     Int      @default(1)
+  isEnabled Boolean  @default(true) @map("is_enabled")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("spam_rules")
+}
+
+model IpRule {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  cidr      String
+  action    String
+  note      String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("ip_rules")
+}
+
+model BlockedIp {
+  id        String    @id @default(uuid())
+  ip        String    @unique
+  reason    String    @default("")
+  bannedAt  DateTime  @map("banned_at")
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("blocked_ips")
+}
+
+model AclEntry {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  principal   String
+  permission  String
+  description String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("acl_entries")
+}
+
+model DnsblServer {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  hostname  String
+  isEnabled Boolean  @default(true) @map("is_enabled")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("dnsbl_servers")
+}
+
+// ═══════════════════════════════════════════════════════
+// Mail — Policies & System Sieve
+// ═══════════════════════════════════════════════════════
+
+model PolicyRule {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  name       String
+  conditions Json     @default("{}")
+  actions    Json     @default("{}")
+  priority   Int      @default(0)
+  isEnabled  Boolean  @default(true) @map("is_enabled")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("policy_rules")
+}
+
+model SystemSieveScript {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  name       String
+  scriptBody String   @default("") @map("script_body")
+  isActive   Boolean  @default(false) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant MailTenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("system_sieve_scripts")
 }

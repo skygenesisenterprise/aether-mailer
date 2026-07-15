@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	redisclient "github.com/skygenesisenterprise/aether-account/server/internal/redis"
-	"github.com/skygenesisenterprise/aether-account/server/src/interfaces"
-	"github.com/skygenesisenterprise/aether-account/server/src/utils"
+	redisclient "github.com/skygenesisenterprise/aether-mailer/server/internal/redis"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/interfaces"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/utils"
 )
 
 type PresenceRecord struct {

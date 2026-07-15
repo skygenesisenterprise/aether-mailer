@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"sync"
 
-	redisclient "github.com/skygenesisenterprise/aether-account/server/internal/redis"
-	"github.com/skygenesisenterprise/aether-account/server/src/config"
-	"github.com/skygenesisenterprise/aether-account/server/src/interfaces"
+	redisclient "github.com/skygenesisenterprise/aether-mailer/server/internal/redis"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/interfaces"
 )
 
 type InMemoryEventBus struct {

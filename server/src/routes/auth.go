@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/skygenesisenterprise/aether-account/server/src/services"
-	"github.com/skygenesisenterprise/aether-account/server/src/utils"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/utils"
 )
 
 func (h *apiHandler) register(c *gin.Context) {

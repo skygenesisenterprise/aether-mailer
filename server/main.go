@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	redisclient "github.com/skygenesisenterprise/aether-account/server/internal/redis"
-	"github.com/skygenesisenterprise/aether-account/server/src/config"
-	"github.com/skygenesisenterprise/aether-account/server/src/middleware"
-	"github.com/skygenesisenterprise/aether-account/server/src/routes"
-	"github.com/skygenesisenterprise/aether-account/server/src/services"
+	redisclient "github.com/skygenesisenterprise/aether-mailer/server/internal/redis"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/routes"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
 )
 
 type runtimeMode string
@@ -136,6 +136,7 @@ func main() {
 	}()
 
 	repos := services.NewRepositories(db.Gorm())
+	mailRepos := services.NewRepositories(db.Gorm())
 	identityProvider := services.NewIdentityProvider(cfg.Auth, repos)
 	authLimiter := services.NewAuthRateLimiter(redis)
 	eventBus := services.NewEventBus(cfg, redis)
@@ -147,6 +148,24 @@ func main() {
 	workspaceService := services.NewWorkspaceService(db, cfg.Auth, repos.Users(), repos)
 	authService := services.NewAuthService(cfg.Auth, db, repos, identityProvider, authLimiter, workspaceService)
 	oauthService := services.NewOAuthService(cfg.OAuth, repos, authService, identityProvider, workspaceService, nil)
+
+	accountService := services.NewAccountService(mailRepos)
+	domainService := services.NewDomainService(mailRepos)
+	groupService := services.NewGroupService(mailRepos)
+	roleService := services.NewRoleService(mailRepos)
+	tenantService := services.NewTenantService(mailRepos)
+	mailingListService := services.NewMailingListService(mailRepos)
+	aliasService := services.NewAliasService(mailRepos)
+	identityService := services.NewIdentityService(mailRepos)
+	sieveService := services.NewSieveService(mailRepos)
+	filterRuleService := services.NewFilterRuleService(mailRepos)
+	appPasswordService := services.NewAppPasswordService(mailRepos)
+	mailSessionService := services.NewMailSessionService(mailRepos)
+	configService := services.NewConfigService(mailRepos)
+	queueService := services.NewQueueService(mailRepos)
+	monitoringService := services.NewMonitoringService(mailRepos)
+	reportService := services.NewReportService(mailRepos)
+	liveService := services.NewLiveService()
 
 	mode, err := parseRuntimeMode(os.Args[1:])
 	if err != nil {
@@ -163,17 +182,34 @@ func main() {
 		_ = router.SetTrustedProxies(cfg.App.TrustedProxies)
 	}
 	routes.SetupRoutes(router, routes.Dependencies{
-		Config:           cfg,
-		Logger:           logger,
-		Database:         db,
-		Redis:            redis,
-		EventBus:         eventBus,
-		IdentityProvider: identityProvider,
-		AuthService:      authService,
-		OAuthService:     oauthService,
-		UserService:      userService,
-		WorkspaceService: workspaceService,
-		RuntimeRole:      string(mode),
+		Config:             cfg,
+		Logger:             logger,
+		Database:           db,
+		Redis:              redis,
+		EventBus:           eventBus,
+		IdentityProvider:   identityProvider,
+		AuthService:        authService,
+		OAuthService:       oauthService,
+		UserService:        userService,
+		WorkspaceService:   workspaceService,
+		AccountService:     accountService,
+		DomainService:      domainService,
+		GroupService:       groupService,
+		RoleService:        roleService,
+		TenantService:      tenantService,
+		MailingListService: mailingListService,
+		AliasService:       aliasService,
+		IdentityService:    identityService,
+		SieveService:       sieveService,
+		FilterRuleService:  filterRuleService,
+		AppPasswordService: appPasswordService,
+		MailSessionService: mailSessionService,
+		ConfigService:      configService,
+		QueueService:       queueService,
+		MonitoringService:  monitoringService,
+		ReportService:      reportService,
+		LiveService:        liveService,
+		RuntimeRole:        string(mode),
 	})
 
 	if err := runHTTPServer(ctx, logger, cfg, router, mode); err != nil {

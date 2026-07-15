@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/skygenesisenterprise/aether-account/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
 )
 
 type UserRepository interface {

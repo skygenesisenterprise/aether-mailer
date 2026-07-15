@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	redisclient "github.com/skygenesisenterprise/aether-account/server/internal/redis"
+	redisclient "github.com/skygenesisenterprise/aether-mailer/server/internal/redis"
 )
 
 type AuthRateLimiter struct {

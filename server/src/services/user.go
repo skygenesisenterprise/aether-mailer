@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skygenesisenterprise/aether-account/server/src/interfaces"
-	"github.com/skygenesisenterprise/aether-account/server/src/models"
-	"github.com/skygenesisenterprise/aether-account/server/src/utils"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/interfaces"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/models"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/utils"
 )
 
 type UserService struct {

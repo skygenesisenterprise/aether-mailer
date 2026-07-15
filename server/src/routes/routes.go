@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	redisclient "github.com/skygenesisenterprise/aether-account/server/internal/redis"
-	"github.com/skygenesisenterprise/aether-account/server/src/config"
-	"github.com/skygenesisenterprise/aether-account/server/src/interfaces"
-	"github.com/skygenesisenterprise/aether-account/server/src/middleware"
-	"github.com/skygenesisenterprise/aether-account/server/src/services"
-	"github.com/skygenesisenterprise/aether-account/server/src/utils"
+	redisclient "github.com/skygenesisenterprise/aether-mailer/server/internal/redis"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/config"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/interfaces"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/middleware"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/services"
+	"github.com/skygenesisenterprise/aether-mailer/server/src/utils"
 )
 
 type Dependencies struct {
@@ -28,11 +28,30 @@ type Dependencies struct {
 	OAuthService        *services.OAuthService
 	UserService         *services.UserService
 	WorkspaceService    *services.WorkspaceService
+	AccountService      *services.AccountService
+	DomainService       *services.DomainService
+	GroupService        *services.GroupService
+	RoleService         *services.RoleService
+	TenantService       *services.TenantService
+	MailingListService  *services.MailingListService
+	AliasService        *services.AliasService
+	IdentityService     *services.IdentityService
+	SieveService        *services.SieveService
+	FilterRuleService   *services.FilterRuleService
+	AppPasswordService  *services.AppPasswordService
+	MailSessionService  *services.MailSessionService
+	ConfigService       *services.ConfigService
+	QueueService        *services.QueueService
+	MonitoringService   *services.MonitoringService
+	ReportService       *services.ReportService
+	LiveService         *services.LiveService
 }
 
 func SetupRoutes(router *gin.Engine, deps Dependencies) {
 	handler := &apiHandler{deps: deps}
 	platform := &PlatformHandler{deps: deps}
+	mailHandler := NewMailHandler(deps)
+	stalwartHandler := NewStalwartHandler(deps)
 
 	router.GET("/health/live", handler.live)
 	router.GET("/health/ready", handler.ready)
@@ -107,7 +126,11 @@ func SetupRoutes(router *gin.Engine, deps Dependencies) {
 		protected.POST("/workspaces/:workspaceId/members/provision", handler.provisionWorkspaceUser)
 		protected.PATCH("/workspaces/:workspaceId/members/:userId", handler.updateWorkspaceMember)
 		protected.DELETE("/workspaces/:workspaceId/members/:userId", handler.deleteWorkspaceMember)
+
+		mailHandler.SetupMailRoutes(protected)
 	}
+
+	stalwartHandler.SetupStalwartRoutes(api)
 }
 
 type apiHandler struct {

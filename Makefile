@@ -1,6 +1,6 @@
 .PHONY: help build build-app build-server build-dev build-cloud run-app run-server run-dev run-prod stop clean prune rmi-dev dev-up dev-down dev-logs
 
-APP_NAME := aetheridentity
+APP_NAME := aethermailer
 
 help:
 	@echo "Available targets:"

@@ -7,11 +7,11 @@ const apiProxyTarget = (process.env.API_INTERNAL_URL || "http://localhost:8080/a
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
-    "account.skygenesisenterprise.com",
-    "account.skygenesisenterprise.localhost",
-    "api.account.skygenesisenterprise.localhost",
-    "account.skygenesisenterprise.lan",
-    "api.account.skygenesisenterprise.lan",
+    "mailer.skygenesisenterprise.com",
+    "mailer.skygenesisenterprise.localhost",
+    "api.mailer.skygenesisenterprise.localhost",
+    "mailer.skygenesisenterprise.lan",
+    "api.mailer.skygenesisenterprise.lan",
     "192.168.1.3",
   ],
   turbopack: {
@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
         images: {
           unoptimized: true,
           remotePatterns: [
-            { protocol: "https", hostname: "account.skygenesisenterprise.com", pathname: "/**" },
+            { protocol: "https", hostname: "mailer.skygenesisenterprise.com", pathname: "/**" },
             { protocol: "https", hostname: "api.dicebear.com", pathname: "/**" },
             { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/**" },
             { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
   ...(!isStaticWebBuild && {
     images: {
       remotePatterns: [
-        { protocol: "https", hostname: "account.skygenesisenterprise.com", pathname: "/**" },
+        { protocol: "https", hostname: "mailer.skygenesisenterprise.com", pathname: "/**" },
         { protocol: "https", hostname: "api.dicebear.com", pathname: "/**" },
         { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/**" },
         { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },

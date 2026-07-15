@@ -218,7 +218,7 @@ export default function ManagementOverviewPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-full p-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

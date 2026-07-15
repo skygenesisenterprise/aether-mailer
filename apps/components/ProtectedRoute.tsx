@@ -3,17 +3,19 @@
 import * as React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { LOGIN_ROUTE } from "@/lib/routes";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push(LOGIN_ROUTE);
+      const redirectUrl = `${LOGIN_ROUTE}?redirect=${encodeURIComponent(pathname)}`;
+      router.push(redirectUrl);
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, router, pathname]);
 
   if (isLoading) {
     return (

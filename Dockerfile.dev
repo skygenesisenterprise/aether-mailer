@@ -89,7 +89,6 @@ COPY apps/public/              ./apps/public/
 COPY apps/styles/              ./apps/styles/
 COPY apps/proxy.ts             ./apps/proxy.ts
 COPY server/prisma/           ./server/prisma/
-COPY apps/scripts/            ./apps/scripts/
 
 # ── Config dev ────────────────────────────────────────────────────────────────
 COPY .air.toml   ./

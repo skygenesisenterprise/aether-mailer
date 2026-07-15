@@ -1,5 +1,5 @@
 export const LOGIN_ROUTE = "/login";
-export const DEFAULT_PLATFORM_ROUTE = "/home";
+export const DEFAULT_PLATFORM_ROUTE = "/dash/management/overview";
 
 export const AUTH_ROUTES = [
   LOGIN_ROUTE,
@@ -10,7 +10,7 @@ export const AUTH_ROUTES = [
 export const PLATFORM_ROUTES = [
   "/contacts",
   "/data",
-  "/home",
+  "/dash",
   "/password",
   "/security",
   "/user-info",

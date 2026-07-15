@@ -3,14 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -21,11 +19,6 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Tooltip,
   TooltipContent,
@@ -69,6 +62,7 @@ import {
   ServerCog,
   FileBarChart,
   ShieldAlert as DmarcIcon,
+  Layers,
   type LucideIcon,
 } from "lucide-react";
 
@@ -317,58 +311,105 @@ function isItemActive(pathname: string, href: string): boolean {
 function NavContainerItem({
   container,
   pathname,
-  depth = 0,
 }: {
   container: NavContainer;
   pathname: string;
-  depth?: number;
 }) {
   const hasActiveChild = container.items.some((item) =>
     isItemActive(pathname, item.href),
   );
-  const [open, setOpen] = React.useState(hasActiveChild);
+  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (hasActiveChild) setOpen(true);
   }, [hasActiveChild]);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
+    <>
       <SidebarMenuItem>
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton
-            tooltip={container.label}
-            className="cursor-pointer"
+        <SidebarMenuButton
+          tooltip={container.label}
+          className="cursor-pointer"
+          isActive={hasActiveChild}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center justify-between"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(!open);
+            }}
           >
-            <container.icon className="size-4 shrink-0" />
-            <span>{container.label}</span>
-            <ChevronRight
-              className={cn(
-                "ml-auto size-3.5 shrink-0 transition-transform duration-200",
-                open && "rotate-90",
-              )}
-            />
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenuSub>
-            {container.items.map((item) => (
-              <SidebarMenuSubItem key={item.href}>
-                <SidebarMenuSubButton
-                  asChild
-                  isActive={isItemActive(pathname, item.href)}
-                >
-                  <Link href={item.href}>
-                    <item.icon className="size-3.5 shrink-0" />
-                    <span>{item.label}</span>
-                  </Link>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
-          </SidebarMenuSub>
-        </CollapsibleContent>
+            <div className="flex items-center gap-2">
+              <container.icon
+                className={cn(
+                  "size-4 shrink-0",
+                  hasActiveChild && "text-primary",
+                )}
+              />
+              <span
+                className={cn(hasActiveChild && "font-medium text-primary")}
+              >
+                {container.label}
+              </span>
+            </div>
+            <motion.div
+              animate={{ rotate: open ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+              className="size-4"
+            >
+              <ChevronRight className="size-4" />
+            </motion.div>
+          </button>
+        </SidebarMenuButton>
       </SidebarMenuItem>
-    </Collapsible>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <SidebarMenuSub>
+              {container.items.map((item) => (
+                <SidebarMenuSubItem key={item.href}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={isItemActive(pathname, item.href)}
+                  >
+                    <Link
+                      href={item.href}
+                      className="flex items-center justify-between w-full"
+                    >
+                      <div className="flex items-center gap-2">
+                        <item.icon
+                          className={cn(
+                            "size-3.5 shrink-0",
+                            isItemActive(pathname, item.href) &&
+                              "text-primary",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            isItemActive(pathname, item.href) &&
+                              "text-primary font-medium",
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                      </div>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              ))}
+            </SidebarMenuSub>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -378,40 +419,26 @@ function SidebarNavigation({ pathname }: { pathname: string }) {
 
   return (
     <SidebarContent>
-      {activeSection.groups.map((group, i) => (
-        <React.Fragment key={group.label}>
-          {i > 0 && <SidebarSeparator />}
-          <SidebarGroup>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((entry) =>
-                  isContainer(entry) ? (
-                    <NavContainerItem
-                      key={entry.label}
-                      container={entry}
-                      pathname={pathname}
-                    />
-                  ) : (
-                    <SidebarMenuItem key={entry.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isItemActive(pathname, entry.href)}
-                        tooltip={entry.label}
-                      >
-                        <Link href={entry.href}>
-                          <entry.icon className="size-4 shrink-0" />
-                          <span>{entry.label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ),
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </React.Fragment>
-      ))}
+      <SidebarMenu>
+        {activeSection.groups.map((group) => {
+          const firstItem = group.items[0];
+          return (
+            <NavContainerItem
+              key={group.label}
+              container={{
+                label: group.label,
+                icon: firstItem ? firstItem.icon : Layers,
+                items: group.items.map((item) => ({
+                  label: item.label,
+                  href: item.href,
+                  icon: item.icon,
+                })),
+              }}
+              pathname={pathname}
+            />
+          );
+        })}
+      </SidebarMenu>
     </SidebarContent>
   );
 }

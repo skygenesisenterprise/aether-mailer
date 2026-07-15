@@ -6,9 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { authApi } from '@/lib/api/auth'
+import { useAuth } from '@/context/AuthContext'
 import { loginSchema, registerSchema } from '@/lib/auth/schemas'
-import { useRouter } from 'next/navigation'
 import { toast } from '@/components/ui/use-toast'
 
 type Mode = 'login' | 'register'
@@ -28,7 +27,7 @@ interface RegisterFormData {
 }
 
 export function AuthForm() {
-  const router = useRouter()
+  const { login, register } = useAuth()
   const [mode, setMode] = useState<Mode>('login')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -66,10 +65,8 @@ export function AuthForm() {
 
     try {
       if (isRegister) {
-        // Soumission du formulaire d'inscription
         const formData = registerForm.getValues()
         
-        // Préparer le payload pour l'API
         const payload = {
           displayName: formData.displayName,
           email: formData.email,
@@ -77,38 +74,25 @@ export function AuthForm() {
           workspaceName: formData.workspaceName || undefined,
         }
 
-        const response = await authApi.register(payload)
+        await register(payload)
         
-        if (response) {
-          toast({
-            title: 'Account created',
-            description: 'Your account has been created successfully.',
-            variant: 'default',
-          })
-          router.push('/home')
-        }
+        toast({
+          title: 'Account created',
+          description: 'Your account has been created successfully.',
+          variant: 'default',
+        })
       } else {
-        // Soumission du formulaire de connexion
         const formData = loginForm.getValues()
         
-        const payload = {
-          email: formData.email,
-          password: formData.password,
-        }
-
-        const response = await authApi.login(payload)
+        await login(formData.email, formData.password)
         
-        if (response) {
-          toast({
-            title: 'Welcome back',
-            description: 'You have been logged in successfully.',
-            variant: 'default',
-          })
-          router.push('/home')
-        }
+        toast({
+          title: 'Welcome back',
+          description: 'You have been logged in successfully.',
+          variant: 'default',
+        })
       }
     } catch (error) {
-      // Gestion des erreurs
       const errorMessage = error instanceof Error ? error.message : 'An error occurred'
       toast({
         title: 'Error',

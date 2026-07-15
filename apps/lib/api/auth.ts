@@ -1,4 +1,5 @@
 import { apiListRequest, apiRequest } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/errors";
 import {
   configureAccessTokenProvider,
   getAccessTokenProvider,
@@ -259,18 +260,25 @@ export function subscribeToAuthState(listener: () => void): () => void {
   };
 }
 
-export async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(timeoutMs?: number): Promise<string | null> {
   await hydrateNativeAuthState();
 
   if (!refreshPromise) {
-    refreshPromise = doRefresh().finally(() => {
+    refreshPromise = doRefresh(timeoutMs).finally(() => {
       refreshPromise = null;
     });
   }
   return refreshPromise;
 }
 
-async function doRefresh(): Promise<string | null> {
+async function isNetworkError(error: unknown): Promise<boolean> {
+  if (error instanceof ApiError) return error.kind === "network_error";
+  if (error instanceof TypeError) return true;
+  if (error instanceof Error && error.name === "AbortError") return true;
+  return false;
+}
+
+async function doRefresh(timeoutMs?: number): Promise<string | null> {
   const storedRefreshToken = refreshToken ?? readStorageRefreshToken();
   if (storedRefreshToken) {
     try {
@@ -279,14 +287,17 @@ async function doRefresh(): Promise<string | null> {
         skipAuth: true,
         skipRefresh: true,
         body: { refreshToken: storedRefreshToken },
+        timeoutMs,
       });
       await applyRefreshResult(response);
       return response.accessToken;
-    } catch {
-      // stored refresh token failed – fall through to cookie fallback
+    } catch (error) {
       refreshToken = null;
       writeStorageRefreshToken(null);
       void writeNativeRefreshToken(null);
+      if (await isNetworkError(error)) {
+        return null;
+      }
     }
   }
   try {
@@ -294,6 +305,7 @@ async function doRefresh(): Promise<string | null> {
       method: "POST",
       skipAuth: true,
       skipRefresh: true,
+      timeoutMs,
     });
     await applyRefreshResult(response);
     return response.accessToken;
@@ -442,7 +454,7 @@ async function writeNativeUser(user: User | null): Promise<void> {
 export const authApi = {
   async bootstrap(): Promise<User | null> {
     await hydrateNativeAuthState();
-    const nextToken = await refreshAccessToken();
+    const nextToken = await refreshAccessToken(5_000);
     if (nextToken) {
       if (currentUser) {
         return currentUser;
@@ -451,13 +463,7 @@ export const authApi = {
       storeUser(user);
       return user;
     }
-    const storedToken = getStoredAccessToken();
-    const storedUser = getStoredUser();
-    if (storedToken && storedUser) {
-      accessToken = storedToken;
-      currentUser = storedUser;
-      return storedUser;
-    }
+    clearStoredTokens();
     return null;
   },
   async login(payload: LoginPayload): Promise<TokenResponse> {

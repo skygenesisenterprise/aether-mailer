@@ -44,7 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refresh = React.useCallback(async () => {
-    const nextToken = await authApi.bootstrap().then(() => authApi.getStoredToken());
+    try {
+      await authApi.bootstrap();
+    } catch {
+      // Refresh failed
+    }
+    const nextToken = authApi.getStoredToken();
     setAccessToken(nextToken);
     setUser(authApi.getStoredUser());
     setStatus(nextToken ? "authenticated" : "unauthenticated");
@@ -55,10 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     async function bootstrap() {
-      const nextToken = await authApi.bootstrap().then(() => authApi.getStoredToken());
+      try {
+        await authApi.bootstrap();
+      } catch {
+        // Bootstrap failed (network error, invalid session, etc.)
+      }
       if (cancelled) {
         return;
       }
+      const nextToken = authApi.getStoredToken();
       setAccessToken(nextToken);
       setUser(authApi.getStoredUser());
       setStatus(nextToken ? "authenticated" : "unauthenticated");
@@ -71,17 +81,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  function getRedirectTarget(): string {
+    if (typeof window === "undefined") return DEFAULT_PLATFORM_ROUTE;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("redirect") || DEFAULT_PLATFORM_ROUTE;
+  }
+
   const login = React.useCallback(
     async (email: string, password: string) => {
       const response = await authApi.login({ email, password });
       setAccessToken(response.accessToken);
       setUser(response.user);
       setStatus("authenticated");
+      const target = getRedirectTarget();
       if (typeof window !== "undefined") {
-        window.location.assign(DEFAULT_PLATFORM_ROUTE);
+        window.location.assign(target);
         return;
       }
-      router.replace(DEFAULT_PLATFORM_ROUTE);
+      router.replace(target);
     },
     [router]
   );
@@ -92,11 +109,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(response.accessToken);
       setUser(response.user);
       setStatus("authenticated");
+      const target = getRedirectTarget();
       if (typeof window !== "undefined") {
-        window.location.assign(DEFAULT_PLATFORM_ROUTE);
+        window.location.assign(target);
         return;
       }
-      router.replace(DEFAULT_PLATFORM_ROUTE);
+      router.replace(target);
     },
     [router]
   );

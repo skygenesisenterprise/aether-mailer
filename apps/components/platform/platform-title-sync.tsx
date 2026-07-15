@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 
 const PLATFORM_TITLES: Record<string, string> = {
-  "/home": "Accueil",
+  "/dash/management/overview": "Vue d'ensemble",
   "/notifications": "Activité",
   "/wallet": "Wallet et Abonnements",
   "/user-info": "Informations personnelles",
@@ -22,10 +22,10 @@ function getPlatformTitle(pathname: string): string {
   const matchedEntry = Object.entries(PLATFORM_TITLES).find(([route]) => pathname.startsWith(route));
 
   if (matchedEntry) {
-    return `${matchedEntry[1]} | Aether Account`;
+    return `${matchedEntry[1]} | Aether Mailer`;
   }
 
-  return "Aether Account";
+  return "Aether Mailer";
 }
 
 export function PlatformTitleSync() {

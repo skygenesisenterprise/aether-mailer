@@ -103,7 +103,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		App: AppConfig{
 			Env:            getEnv("APP_ENV", "development"),
-			Name:           getEnv("APP_NAME", "Aether Account"),
+			Name:           getEnv("APP_NAME", "Aether Mailer"),
 			Version:        getEnv("APP_VERSION", "dev"),
 			Mode:           getEnv("GIN_MODE", "debug"),
 			AccessLogs:     getEnvBool("API_ACCESS_LOGS", true),

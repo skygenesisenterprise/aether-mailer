@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { LOGIN_ROUTE } from "@/lib/routes";
 import { Loader2 } from "lucide-react";
 
 interface AuthGuardProps {
@@ -17,7 +18,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       console.log("[AuthGuard] Not authenticated, redirecting to login");
-      router.push("/login");
+      router.push(LOGIN_ROUTE);
     }
   }, [isLoading, isAuthenticated, router]);
 

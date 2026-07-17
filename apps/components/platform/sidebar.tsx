@@ -26,219 +26,131 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Shield,
-  Settings,
   Activity,
-  ChevronRight,
-  Users,
-  UserCog,
-  ShieldCheck,
-  Globe,
-  Building2,
-  Mail,
-  KeyRound,
-  ShieldAlert,
-  Bug,
-  UserX,
-  Network,
-  Inbox,
-  Send,
-  FileText,
-  Server,
-  HardDrive,
-  Database,
-  Search,
-  Lock,
-  FileKey,
-  Filter,
-  Clock,
-  ScrollText,
   BarChart3,
-  HeartPulse,
+  Bug,
+  ChevronRight,
+  Clock,
   Cpu,
-  Link2,
-  MailWarning,
-  Fingerprint,
-  ServerCog,
   FileBarChart,
-  ShieldAlert as DmarcIcon,
-  Layers,
+  FileKey,
+  FileText,
+  Globe,
+  HardDrive,
+  HeartPulse,
+  History,
+  Inbox,
+  KeyRound,
+  Link2,
+  ListChecks,
+  Lock,
+  Mail,
+  MailWarning,
+  Network,
+  ScrollText,
+  Send,
+  Server,
+  ServerCog,
+  Settings,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  UserCog,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
-type SectionId = "management" | "config" | "monitoring";
+// ---------- Types ----------
+
+type SectionId = "manage" | "monitoring" | "settings";
 
 interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
+  badge?: string;
 }
 
-interface NavContainer {
+interface NavGroup {
   label: string;
-  icon: LucideIcon;
   items: NavItem[];
 }
 
-type NavEntry = NavItem | NavContainer;
-
-function isContainer(entry: NavEntry): entry is NavContainer {
-  return "items" in entry;
-}
-
-const sections: {
+interface SectionConfig {
   id: SectionId;
   label: string;
   icon: LucideIcon;
-  groups: { label: string; items: NavEntry[] }[];
-}[] = [
+  /** Landing route for the section switcher, or null when disabled. */
+  rootHref: string | null;
+  enabled: boolean;
+  groups: NavGroup[];
+}
+
+// ---------- Helpers ----------
+
+/**
+ * Detect the active section by the first path segment only, so that
+ * `/manage/dash/overview` always lights "manage" and never "monitoring"
+ * or "settings" via accidental substring overlap.
+ */
+function getActiveSection(pathname: string): SectionId {
+  const segment = pathname.split("/")[1];
+  if (segment === "monitoring") return "monitoring";
+  if (segment === "settings") return "settings";
+  return "manage";
+}
+
+function isItemActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+// ---------- Navigation data ----------
+
+const sections: SectionConfig[] = [
   {
-    id: "management",
+    id: "manage",
     label: "Gestion",
     icon: Users,
+    rootHref: "/manage/dash/overview",
+    enabled: true,
     groups: [
       {
-        label: "Comptes",
+        label: "Dashboard",
         items: [
-          { label: "Utilisateurs", href: "/dash/management/accounts/users", icon: Users },
-          { label: "Créer un compte", href: "/dash/management/accounts/create", icon: UserCog },
-          { label: "Alias", href: "/dash/management/accounts/aliases", icon: Mail },
-          { label: "Mots de passe", href: "/dash/management/accounts/password", icon: KeyRound },
-          { label: "Quotas", href: "/dash/management/accounts/quotas", icon: HardDrive },
+          { label: "Overview",    href: "/manage/dash/overview",     icon: Sparkles },
+          { label: "Delivery",    href: "/manage/dash/delivery",     icon: Send },
+          { label: "Performance", href: "/manage/dash/performance",  icon: TrendingUp },
+          { label: "Network",     href: "/manage/dash/network",      icon: Network },
+          { label: "Security",    href: "/manage/dash/security",     icon: ShieldAlert },
         ],
       },
       {
-        label: "Rôles & Permissions",
+        label: "Directory",
         items: [
-          { label: "Rôles", href: "/dash/management/roles/list", icon: ShieldCheck },
-          { label: "Permissions", href: "/dash/management/roles/perms", icon: Lock },
-          { label: "Politiques d'accès", href: "/dash/management/roles/access-policies", icon: Shield },
+          { label: "Domains",       href: "/manage/directory/domains",  icon: Globe },
+          { label: "Accounts",      href: "/manage/directory/accounts", icon: Users },
+          { label: "Groups",        href: "/manage/directory/groups",   icon: UserCog },
+          { label: "Roles",         href: "/manage/directory/roles",    icon: ShieldCheck },
+          { label: "API & Tokens",  href: "/manage/directory/apis",     icon: FileKey },
+          { label: "OAuth",         href: "/manage/directory/oauth",    icon: KeyRound },
+          { label: "All Directory", href: "/manage/directory/list",     icon: ListChecks },
         ],
       },
       {
-        label: "Groupes",
+        label: "History",
         items: [
-          { label: "Liste des groupes", href: "/dash/management/groups/list", icon: Users },
-          { label: "Membres", href: "/dash/management/groups/members", icon: UserCog },
-          { label: "Permissions", href: "/dash/management/groups/perms", icon: Lock },
+          { label: "Received Messages", href: "/manage/history/received", icon: Inbox },
+          { label: "Delivery History", href: "/manage/history/delivery",  icon: History },
         ],
       },
       {
-        label: "Domaines",
+        label: "Reports",
         items: [
-          { label: "Liste des domaines", href: "/dash/management/domains/list", icon: Globe },
-          { label: "Créer un domaine", href: "/dash/management/domains/create", icon: Globe },
-          { label: "Configuration DNS", href: "/dash/management/domains/dns-config", icon: Network },
-          { label: "DKIM", href: "/dash/management/domains/dkim", icon: FileKey },
-          { label: "DMARC", href: "/dash/management/domains/dmarc", icon: ShieldAlert },
-          { label: "SPF", href: "/dash/management/domains/spf", icon: Shield },
-        ],
-      },
-      {
-        label: "Locataires",
-        items: [
-          { label: "Liste des locataires", href: "/dash/management/tenants/list", icon: Building2 },
-          { label: "Limites", href: "/dash/management/tenants/limits", icon: HardDrive },
-          { label: "Règles", href: "/dash/management/tenants/rules", icon: ScrollText },
-          { label: "Organisations", href: "/dash/management/tenants/organizations", icon: Building2 },
-        ],
-      },
-      {
-        label: "Listes de diffusion",
-        items: [
-          { label: "Listes", href: "/dash/management/mailing-lists/list", icon: Mail },
-          { label: "Abonnés", href: "/dash/management/mailing-lists/subscribers", icon: Users },
-          { label: "Modération", href: "/dash/management/mailing-lists/moderations", icon: ShieldCheck },
-        ],
-      },
-    ],
-  },
-  {
-    id: "config",
-    label: "Configuration",
-    icon: Settings,
-    groups: [
-      {
-        label: "Authentification",
-        items: [
-          { label: "LDAP", href: "/dash/config/auth/ldap", icon: ServerCog },
-          { label: "OpenID Connect", href: "/dash/config/auth/oidc", icon: KeyRound },
-          { label: "Fournisseurs", href: "/dash/config/auth/providers", icon: Globe },
-          { label: "MFA", href: "/dash/config/auth/mfa", icon: ShieldCheck },
-          { label: "Mots de passe applicatifs", href: "/dash/config/auth/app-passwords", icon: FileKey },
-          { label: "SQL", href: "/dash/config/auth/sql", icon: Database },
-        ],
-      },
-      {
-        label: "Sécurité",
-        items: [
-          { label: "Anti-spam", href: "/dash/config/security/spam", icon: MailWarning },
-          { label: "Limitation de débit", href: "/dash/config/security/rate-limits", icon: Activity },
-          { label: "Antivirus", href: "/dash/config/security/virus", icon: Bug },
-          { label: "Abus", href: "/dash/config/security/abuse", icon: UserX },
-          { label: "Contrôle d'accès", href: "/dash/config/security/access-control", icon: Shield },
-        ],
-      },
-      {
-        label: "Réseau",
-        items: [
-          { label: "IMAP", href: "/dash/config/network/imap", icon: Inbox },
-          { label: "SMTP", href: "/dash/config/network/smtp", icon: Send },
-          { label: "JMAP", href: "/dash/config/network/jmap", icon: FileText },
-          { label: "HTTP", href: "/dash/config/network/http", icon: Globe },
-          { label: "Écouteurs", href: "/dash/config/network/listeners", icon: Network },
-          { label: "WebDAV", href: "/dash/config/network/webdav", icon: Database },
-        ],
-      },
-      {
-        label: "SMTP",
-        items: [
-          { label: "File d'attente", href: "/dash/config/smtp/queue", icon: Clock },
-          {
-            label: "Entrant",
-            href: "/dash/config/smtp/incoming/receiving",
-            icon: Inbox,
-          },
-          {
-            label: "Sortant",
-            href: "/dash/config/smtp/outgoing/relay",
-            icon: Send,
-          },
-        ],
-      },
-      {
-        label: "Stockage",
-        items: [
-          { label: "Cache", href: "/dash/config/storage/cache", icon: HardDrive },
-          { label: "Recherche", href: "/dash/config/storage/search", icon: Search },
-          { label: "Blob", href: "/dash/config/storage/blob", icon: Database },
-          { label: "Magasin", href: "/dash/config/storage/store", icon: Server },
-        ],
-      },
-      {
-        label: "Serveur",
-        items: [
-          { label: "Vue d'ensemble", href: "/dash/config/server/overview", icon: Server },
-          { label: "Nom d'hôte", href: "/dash/config/server/hostname", icon: Globe },
-          { label: "Identité", href: "/dash/config/server/identity", icon: Fingerprint },
-          { label: "Paramètres", href: "/dash/config/server/system-settings", icon: Settings },
-        ],
-      },
-      {
-        label: "TLS",
-        items: [
-          { label: "Chiffrement", href: "/dash/config/tls/encryption", icon: Lock },
-          { label: "Certificats", href: "/dash/config/tls/certs", icon: FileKey },
-          { label: "ACME", href: "/dash/config/tls/acme", icon: ShieldCheck },
-        ],
-      },
-      {
-        label: "Politiques",
-        items: [
-          { label: "Filtrage", href: "/dash/config/policies/filtering", icon: Filter },
-          { label: "Règles", href: "/dash/config/policies/rules", icon: ScrollText },
-          { label: "Rétention", href: "/dash/config/policies/retention", icon: Clock },
-          { label: "Conformité", href: "/dash/config/policies/compliance", icon: ShieldCheck },
+          { label: "DMARC",            href: "/manage/reports/dmarc", icon: BarChart3 },
+          { label: "TLS",              href: "/manage/reports/tls",   icon: Lock },
+          { label: "ARF",              href: "/manage/reports/arf",   icon: FileBarChart },
         ],
       },
     ],
@@ -247,205 +159,357 @@ const sections: {
     id: "monitoring",
     label: "Monitoring",
     icon: Activity,
+    rootHref: "/monitoring/overview",
+    enabled: true,
     groups: [
       {
-        label: "Événements",
+        label: "Vue d'ensemble",
         items: [
-          { label: "Messagerie", href: "/dash/monitoring/events/mail", icon: Mail },
-          { label: "Authentification", href: "/dash/monitoring/events/auth", icon: KeyRound },
-          { label: "Sécurité", href: "/dash/monitoring/events/security", icon: ShieldAlert },
-          { label: "Système", href: "/dash/monitoring/events/system", icon: ServerCog },
+          { label: "Tableau de bord", href: "/monitoring/overview", icon: BarChart3 },
         ],
       },
       {
         label: "Diagnostics",
         items: [
-          { label: "Santé", href: "/dash/monitoring/diagnostics/health", icon: HeartPulse },
-          { label: "Système", href: "/dash/monitoring/diagnostics/system", icon: Cpu },
-          { label: "File d'attente", href: "/dash/monitoring/diagnostics/queue", icon: Clock },
-          { label: "Connexions", href: "/dash/monitoring/diagnostics/connections", icon: Link2 },
+          { label: "Santé",      href: "/monitoring/diagnostics/health",      icon: HeartPulse },
+          { label: "Système",    href: "/monitoring/diagnostics/system",      icon: Cpu },
+          { label: "File SMTP",  href: "/monitoring/diagnostics/queue",       icon: Clock },
+          { label: "Connexions", href: "/monitoring/diagnostics/connections", icon: Link2 },
+        ],
+      },
+      {
+        label: "Événements",
+        items: [
+          { label: "Messagerie",       href: "/monitoring/events/mail",     icon: Mail },
+          { label: "Authentification", href: "/monitoring/events/auth",     icon: KeyRound },
+          { label: "Sécurité",          href: "/monitoring/events/security", icon: ShieldAlert },
+          { label: "Système",           href: "/monitoring/events/system",   icon: ServerCog },
         ],
       },
       {
         label: "Métriques",
         items: [
-          { label: "IMAP", href: "/dash/monitoring/metrics/imap", icon: Inbox },
-          { label: "JMAP", href: "/dash/monitoring/metrics/jmap", icon: FileText },
-          { label: "SMTP", href: "/dash/monitoring/metrics/smtp", icon: Send },
-          { label: "Stockage", href: "/dash/monitoring/metrics/storage", icon: HardDrive },
-          { label: "Système", href: "/dash/monitoring/metrics/system", icon: BarChart3 },
+          { label: "SMTP",     href: "/monitoring/metrics/smtp",    icon: Send },
+          { label: "IMAP",     href: "/monitoring/metrics/imap",    icon: Inbox },
+          { label: "JMAP",     href: "/monitoring/metrics/jmap",    icon: FileText },
+          { label: "Stockage", href: "/monitoring/metrics/storage", icon: HardDrive },
+          { label: "Système",  href: "/monitoring/metrics/system",  icon: BarChart3 },
         ],
       },
       {
         label: "Journaux",
         items: [
-          { label: "Serveur", href: "/dash/monitoring/logs/server", icon: Server },
-          { label: "Sécurité", href: "/dash/monitoring/logs/security", icon: ShieldAlert },
-          { label: "SMTP", href: "/dash/monitoring/logs/smtp", icon: Send },
-          { label: "Authentification", href: "/dash/monitoring/logs/auth", icon: KeyRound },
-          { label: "Audit", href: "/dash/monitoring/logs/audit", icon: ScrollText },
+          { label: "Serveur",          href: "/monitoring/logs/server",   icon: Server },
+          { label: "SMTP",             href: "/monitoring/logs/smtp",     icon: Send },
+          { label: "Authentification", href: "/monitoring/logs/auth",     icon: KeyRound },
+          { label: "Sécurité",         href: "/monitoring/logs/security", icon: ShieldAlert },
+          { label: "Audit",            href: "/monitoring/logs/audit",    icon: ScrollText },
         ],
       },
       {
         label: "Rapports",
         items: [
-          { label: "DMARC", href: "/dash/monitoring/reports/dmarc", icon: DmarcIcon },
-          { label: "TLS", href: "/dash/monitoring/reports/tls", icon: Lock },
-          { label: "ARF", href: "/dash/monitoring/reports/arf", icon: FileBarChart },
+          { label: "DMARC", href: "/monitoring/reports/dmarc", icon: ShieldAlert },
+          { label: "TLS",   href: "/monitoring/reports/tls",   icon: Lock },
+          { label: "ARF",   href: "/monitoring/reports/arf",   icon: FileBarChart },
         ],
       },
     ],
   },
+  {
+    id: "settings",
+    label: "Configuration",
+    icon: Settings,
+    rootHref: null,
+    enabled: false,
+    groups: [],
+  },
 ];
 
-function getActiveSection(pathname: string): SectionId {
-  if (pathname.includes("/dash/config")) return "config";
-  if (pathname.includes("/dash/monitoring")) return "monitoring";
-  return "management";
-}
+// ---------- Components ----------
 
-function isItemActive(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(href + "/");
-}
-
-function NavContainerItem({
-  container,
-  pathname,
+function GroupHeaderLabel({
+  label,
+  open,
+  onToggle,
 }: {
-  container: NavContainer;
-  pathname: string;
+  label: string;
+  open: boolean;
+  onToggle: () => void;
 }) {
-  const hasActiveChild = container.items.some((item) =>
+  return (
+    <SidebarMenuButton
+      asChild
+      tooltip={label}
+      className="cursor-pointer"
+    >
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggle();
+        }}
+        className="flex w-full items-center justify-between"
+      >
+        <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+          {label}
+        </span>
+        <motion.div
+          animate={{ rotate: open ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="size-3.5"
+        >
+          <ChevronRight className="size-3.5" />
+        </motion.div>
+      </button>
+    </SidebarMenuButton>
+  );
+}
+
+function NavGroupBlock({
+  group,
+  pathname,
+  delay = 0,
+}: {
+  group: NavGroup;
+  pathname: string;
+  delay?: number;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const hasActiveChild = group.items.some((item) =>
     isItemActive(pathname, item.href),
   );
-  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (hasActiveChild) setOpen(true);
   }, [hasActiveChild]);
 
   return (
-    <>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, delay, ease: [0.22, 1, 0.36, 1] as const }}
+    >
       <SidebarMenuItem>
-        <SidebarMenuButton
-          tooltip={container.label}
-          className="cursor-pointer"
-          isActive={hasActiveChild}
-        >
-          <button
-            type="button"
-            className="flex w-full items-center justify-between"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setOpen(!open);
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <container.icon
-                className={cn(
-                  "size-4 shrink-0",
-                  hasActiveChild && "text-primary",
-                )}
-              />
-              <span
-                className={cn(hasActiveChild && "font-medium text-primary")}
-              >
-                {container.label}
-              </span>
-            </div>
-            <motion.div
-              animate={{ rotate: open ? 90 : 0 }}
-              transition={{ duration: 0.2 }}
-              className="size-4"
-            >
-              <ChevronRight className="size-4" />
-            </motion.div>
-          </button>
-        </SidebarMenuButton>
+        <GroupHeaderLabel
+          label={group.label}
+          open={open}
+          onToggle={() => setOpen(!open)}
+        />
       </SidebarMenuItem>
-      <AnimatePresence>
+
+      <AnimatePresence initial={false}>
         {open && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
             className="overflow-hidden"
           >
             <SidebarMenuSub>
-              {container.items.map((item) => (
-                <SidebarMenuSubItem key={item.href}>
-                  <SidebarMenuSubButton
-                    asChild
-                    isActive={isItemActive(pathname, item.href)}
-                  >
-                    <Link
-                      href={item.href}
-                      className="flex items-center justify-between w-full"
-                    >
-                      <div className="flex items-center gap-2">
-                        <item.icon
-                          className={cn(
-                            "size-3.5 shrink-0",
-                            isItemActive(pathname, item.href) &&
-                              "text-primary",
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            isItemActive(pathname, item.href) &&
-                              "text-primary font-medium",
-                          )}
-                        >
-                          {item.label}
-                        </span>
-                      </div>
-                    </Link>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              ))}
+              {group.items.map((item) => {
+                const active = isItemActive(pathname, item.href);
+                return (
+                  <SidebarMenuSubItem key={item.href}>
+                    <SidebarMenuSubButton asChild isActive={active}>
+                      <Link
+                        href={item.href}
+                        className="flex items-center justify-between w-full"
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <item.icon
+                            className={cn(
+                              "size-3.5 shrink-0",
+                              active && "text-primary",
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "truncate",
+                              active && "font-medium text-primary",
+                            )}
+                          >
+                            {item.label}
+                          </span>
+                        </div>
+                        {item.badge && (
+                          <span
+                            className={cn(
+                              "ml-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-mono text-[10px] tabular-nums",
+                              active
+                                ? "bg-primary/20 text-primary"
+                                : "bg-white/4 text-muted-foreground",
+                            )}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                );
+              })}
             </SidebarMenuSub>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </motion.div>
+  );
+}
+
+function SidebarLogo() {
+  return (
+    <SidebarHeader className="border-b px-4 py-3">
+      <Link
+        href="/manage/dash/overview"
+        className="flex items-center gap-2.5"
+      >
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <Shield className="size-4 text-primary" />
+        </div>
+        <div className="flex flex-col leading-tight">
+          <span className="text-sm font-semibold tracking-tight">
+            Aether Mailer
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            Administration
+          </span>
+        </div>
+      </Link>
+    </SidebarHeader>
+  );
+}
+
+function SectionEyebrow({
+  icon: Icon,
+  label,
+}: {
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] as const }}
+    >
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          tooltip={label}
+          className="cursor-default"
+        >
+          <div className="flex w-full items-center gap-2">
+            <Icon className="size-3.5 text-muted-foreground" />
+            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+              {label}
+            </span>
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </motion.div>
+  );
+}
+
+function SectionEmptyState() {
+  return (
+    <SidebarContent>
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+        <div className="rounded-xl border border-white/5 bg-white/2 p-6 backdrop-blur-md">
+          <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-white/4">
+            <Settings className="size-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium text-zinc-100">
+            Configuration serveur
+          </p>
+          <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">
+            Cette section arrive bientôt. Les paramètres SMTP, HTTP,
+            authentification et stockage seront accessibles depuis cet
+            espace.
+          </p>
+        </div>
+      </div>
+    </SidebarContent>
   );
 }
 
 function SidebarNavigation({ pathname }: { pathname: string }) {
-  const activeSectionId = getActiveSection(pathname);
-  const activeSection = sections.find((s) => s.id === activeSectionId)!;
+  const activeSection = sections.find((s) => s.id === getActiveSection(pathname));
+
+  if (!activeSection || !activeSection.enabled) {
+    return <SectionEmptyState />;
+  }
 
   return (
     <SidebarContent>
       <SidebarMenu>
-        {activeSection.groups.map((group) => {
-          const firstItem = group.items[0];
-          return (
-            <NavContainerItem
-              key={group.label}
-              container={{
-                label: group.label,
-                icon: firstItem ? firstItem.icon : Layers,
-                items: group.items.map((item) => ({
-                  label: item.label,
-                  href: item.href,
-                  icon: item.icon,
-                })),
-              }}
-              pathname={pathname}
-            />
-          );
-        })}
+        <SectionEyebrow icon={activeSection.icon} label={activeSection.label} />
+        {activeSection.groups.map((group, i) => (
+          <NavGroupBlock
+            key={group.label}
+            group={group}
+            pathname={pathname}
+            delay={0.05 * (i + 1)}
+          />
+        ))}
       </SidebarMenu>
     </SidebarContent>
   );
 }
 
+function SectionFooterButton({ section, active }: {
+  section: SectionConfig;
+  active: boolean;
+}) {
+  if (!section.rootHref) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            aria-disabled
+            className={cn(
+              "inline-flex h-9 w-9 items-center justify-center rounded-md opacity-50",
+              "border border-transparent cursor-not-allowed",
+            )}
+          >
+            <section.icon className="size-4 text-muted-foreground" />
+            <span className="sr-only">
+              {section.label} (bientôt disponible)
+            </span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {section.label} — bientôt disponible
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          href={section.rootHref}
+          aria-current={active ? "page" : undefined}
+          className={cn(
+            "inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors",
+            "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            active && "bg-sidebar-accent text-sidebar-accent-foreground",
+          )}
+        >
+          <section.icon className="size-4" />
+          <span className="sr-only">{section.label}</span>
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent side="top">{section.label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function SectionFooter({ pathname }: { pathname: string }) {
   const activeSectionId = getActiveSection(pathname);
-  const { isMobile, state, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const handleNav = () => {
     if (isMobile) setOpenMobile(false);
@@ -456,30 +520,17 @@ function SectionFooter({ pathname }: { pathname: string }) {
       <SidebarSeparator />
       <TooltipProvider delayDuration={0}>
         <div className="flex items-center justify-around px-2 py-2">
-          {sections.map((section) => {
-            const isActive = section.id === activeSectionId;
-            return (
-              <Tooltip key={section.id}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={`/dash/${section.id === "management" ? "management/overview" : section.id === "config" ? "config/overview" : "monitoring/overview"}`}
-                    onClick={handleNav}
-                    className={cn(
-                      "inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors",
-                      "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                      isActive &&
-                        "bg-sidebar-accent text-sidebar-accent-foreground",
-                    )}
-                    aria-current={isActive ? "page" : undefined}
-                  >
-                    <section.icon className="size-4" />
-                    <span className="sr-only">{section.label}</span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="top">{section.label}</TooltipContent>
-              </Tooltip>
-            );
-          })}
+          {sections.map((section) => (
+            <div
+              key={section.id}
+              onClickCapture={section.rootHref ? handleNav : undefined}
+            >
+              <SectionFooterButton
+                section={section}
+                active={section.id === activeSectionId}
+              />
+            </div>
+          ))}
         </div>
       </TooltipProvider>
     </SidebarFooter>
@@ -491,27 +542,8 @@ export function AdminSidebar() {
 
   return (
     <Sidebar collapsible="offcanvas" side="left" variant="sidebar">
-      <SidebarHeader className="border-b px-4 py-3">
-        <Link
-          href="/dash/management/overview"
-          className="flex items-center gap-2.5"
-        >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Shield className="size-4 text-primary" />
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold tracking-tight">
-              Aether Mailer
-            </span>
-            <span className="text-[10px] text-muted-foreground">
-              Administration
-            </span>
-          </div>
-        </Link>
-      </SidebarHeader>
-
+      <SidebarLogo />
       <SidebarNavigation pathname={pathname} />
-
       <SectionFooter pathname={pathname} />
     </Sidebar>
   );

@@ -4,7 +4,14 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 
 const PLATFORM_TITLES: Record<string, string> = {
-  "/dash/management/overview": "Vue d'ensemble",
+  "/manage/dash/overview": "Vue d'ensemble",
+  "/manage/dash/performance": "Performance",
+  "/manage/dash/security": "Sécurité",
+  "/manage/dash/network": "Réseau",
+  "/manage/dash/delivery": "Livraison",
+  "/manage/directory/accounts": "Comptes",
+  "/manage/directory/domains": "Domaines",
+  "/monitoring/overview": "Monitoring",
   "/notifications": "Activité",
   "/wallet": "Wallet et Abonnements",
   "/user-info": "Informations personnelles",

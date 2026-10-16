@@ -1,112 +1,69 @@
 {
-  "name": "aether-mailer",
-  "version": "0.1.0",
-  "description": "Modern mail server foundation with complete authentication system and monorepo architecture",
-  "private": true,
-  "type": "module",
-  "workspaces": [
-    "apps",
-    "tools",
-    "package",
-    "snap",
-    "tests",
-    "prisma"
-  ],
-  "scripts": {
-    "dev": "concurrently \"pnpm --filter app dev\" \"pnpm --filter server dev\"",
-    "dev:frontend": "pnpm --filter app dev",
-    "dev:backend": "pnpm --filter server dev",
-    "dev:cli": "pnpm --filter cli dev",
-    "build": "pnpm -r build",
-    "build:frontend": "pnpm --filter app build",
-    "build:backend": "pnpm --filter server build",
-    "build:cli": "pnpm --filter cli build",
-    "start": "concurrently \"pnpm --filter app start\" \"pnpm --filter server start\"",
-    "lint": "pnpm -r lint",
-    "lint:fix": "pnpm -r lint:fix",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "clean": "pnpm -r clean && rm -rf node_modules",
-    "reset": "pnpm clean && pnpm install",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "db:seed": "prisma db seed",
-    "cli": "pnpm --filter cli cli",
-    "docker:build": "docker build -t aether-mailer .",
-    "docker:run": "docker-compose up -d",
-    "docker:stop": "docker-compose down",
-    "prepare": "husky install",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish",
-    "build:workspace": "tsc -b tsconfig.build.json",
-    "build:all": "tsc -b",
-    "clean:build": "pnpm -r exec rm -rf dist && rm -rf packages/*/dist",
-    "install:all": "pnpm install && pnpm -r install",
-    "update:all": "pnpm update && pnpm -r update",
-    "clean:deps": "pnpm -r exec rm -rf node_modules && rm -rf node_modules pnpm-lock.yaml"
-  },
-  "devDependencies": {
-    "@changesets/cli": "^2.31.0",
-    "@prisma/client": "7.2.0",
-    "@types/node": "^25.0.3",
-    "concurrently": "^9.2.1",
-    "eslint": "^9",
-    "husky": "^9.0.11",
-    "lint-staged": "^15.2.2",
-    "prettier": "^3.2.5",
-    "prisma": "7.1.0",
-    "typescript": "^5"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=9.0.0"
-  },
-  "packageManager": "pnpm@9.0.0",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/skygenesisenterprise/aether-mailer.git"
-  },
-  "keywords": [
-    "mail-server",
-    "email",
-    "smtp",
-    "imap",
-    "nextjs",
-    "express",
-    "typescript",
-    "monorepo",
-    "authentication",
-    "jwt",
-    "workspace"
-  ],
-  "author": {
-    "name": "Sky Genesis Enterprise",
-    "email": "developer@skygenesisenterprise.com",
-    "url": "https://skygenesisenterprise.com"
-  },
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/skygenesisenterprise/aether-mailer/issues"
-  },
-  "homepage": "https://github.com/skygenesisenterprise/aether-mailer#readme",
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": [
-      "prettier --write"
-    ]
-  },
-  "dependencies": {
-    "@capacitor/core": "^8.0.0",
-    "@loglayer/transport-pino": "^3.0.2",
-    "@prisma/client": "^7.2.0",
-    "@radix-ui/react-slot": "^1.2.4",
-    "class-variance-authority": "^0.7.1",
-    "loglayer": "^8.4.0",
-    "pino": "^10.1.1"
-  }
+	"name": "notploy",
+	"private": true,
+	"scripts": {
+		"dev": "pnpm --filter=@notploy/app run dev",
+		"start": "pnpm --filter=@notploy/app run start",
+		"setup": "pnpm --filter=@notploy/app run setup",
+		"build": "pnpm -r run build",
+		"build:app": "pnpm --filter=@notploy/app run build",
+		"test": "pnpm --filter=@notploy/app run test",
+		"typecheck": "pnpm -r run typecheck",
+		"server:script": "pnpm --filter=@notploy/server run switch:dev",
+		"server:dev": "pnpm --filter=@notploy/server run dev",
+		"server:build": "pnpm --filter=@notploy/server run build",
+		"web:dev": "pnpm --filter=@notploy/website run dev",
+		"web:build": "pnpm --filter=@notploy/website run build",
+		"docs:dev": "pnpm --filter=@notploy/docs run dev",
+		"docs:build": "pnpm --filter=@notploy/docs run build",
+		"desktop:dev": "pnpm --filter=@notploy/app run desktop:dev",
+		"desktop:build": "pnpm --filter=@notploy/app run desktop:build",
+		"desktop:start": "pnpm --filter=@notploy/app run desktop:start",
+		"desktop:package": "pnpm --filter=@notploy/app run desktop:package",
+		"desktop:typecheck": "pnpm --filter=@notploy/app run desktop:typecheck",
+		"desktop:test": "pnpm --filter=@notploy/app run desktop:test",
+		"docker:build:canary": "./apps/notploy/docker/build.sh canary",
+		"lint": "biome check .",
+		"format-and-lint": "biome check .",
+		"check": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
+		"format-and-lint:fix": "biome check . --write",
+		"generate:openapi": "pnpm --filter=@notploy/app run generate:openapi",
+		"changeset": "changeset",
+		"changeset:add": "changeset add",
+		"changeset:status": "changeset status",
+		"changeset:version": "changeset version"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.15",
+		"@changesets/changelog-github": "^1.0.1",
+		"@changesets/cli": "^2.29.7",
+		"@commitlint/cli": "^19.3.0",
+		"@commitlint/config-conventional": "^19.2.2",
+		"@tryghost/content-api": "^1.12.12",
+		"@types/node": "^24.4.0",
+		"@types/tryghost__content-api": "^1.3.17",
+		"dotenv": "16.4.5",
+		"esbuild": "0.28.2",
+		"lint-staged": "^15.5.2",
+		"tsx": "4.22.4"
+	},
+	"packageManager": "pnpm@10.22.0",
+	"engines": {
+		"node": "^24.4.0",
+		"pnpm": ">=9.12.0"
+	},
+	"lint-staged": {
+		"*": [
+			"biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
+		]
+	},
+	"resolutions": {
+		"@types/react": "18.3.5",
+		"@types/react-dom": "18.3.0"
+	},
+	"dependencies": {
+		"@skygenesisenterprise/react-sds": "^1.0.0",
+		"ldapts": "^9.2.0",
+		"node-forge": "^1.4.0"
+	}
 }

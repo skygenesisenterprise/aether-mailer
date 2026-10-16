@@ -28,7 +28,7 @@ We do not tolerate behavior that is discriminatory, abusive, or otherwise harmfu
 
 ## Reporting and Enforcement
 
-If you experience or witness any violations of this Code of Conduct, please report it to the project maintainers as soon as possible. The project team will review reports and take appropriate action. Reports should be made privately by email to **conduct@skygenesisenterprise.com** to ensure the confidentiality of sensitive information.
+If you experience or witness any violations of this Code of Conduct, please report it to the project maintainers as soon as possible. The project team will review reports and take appropriate action. Reports should be made privately by email to **conduct@etheriatimes.com** to ensure the confidentiality of sensitive information.
 
 The following actions may be taken in response to unacceptable behavior:
 

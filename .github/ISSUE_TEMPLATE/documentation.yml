@@ -1,0 +1,93 @@
+name: 📖 Documentation
+description: Fix, clarify, or add product documentation, API or CLI reference, guides, tutorials, or examples.
+title: "[Docs]: "
+labels: ["documentation"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Documentation sources live in `web/apps/docs/content/docs/`:
+
+        - `core/` — product documentation
+        - `cli/` — CLI reference
+        - `api/` — **generated** from the OpenAPI specification. Never hand-edit these files:
+          the source of truth is the tRPC router and its `.meta` in
+          `apps/notploy/server/api/routers/`. For a problem in the API reference, pick
+          "API reference" below and say so in the details — it routes to a different fix.
+
+        Docs changes are very welcome and are reviewed like any other contribution.
+
+  - type: dropdown
+    id: location
+    attributes:
+      label: Where is the documentation?
+      description: Which part of the documentation needs work?
+      options:
+        - Product documentation — `content/docs/core/`
+        - API reference — generated from the OpenAPI specification
+        - CLI reference — `content/docs/cli/`
+        - Tutorials and guides — `content/docs/core/guides/`
+        - Troubleshooting — `content/docs/core/troubleshooting/`
+        - Examples — `content/docs/core/(examples)/` or the `examples/` directory
+        - Templates gallery blueprint
+        - README or repository documentation
+        - Code comments, JSDoc, or inline help text
+        - Marketing website — `web/apps/website/`
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: page
+    attributes:
+      label: Page or file
+      description: The URL on docs.notploy.com, or the file path in the repository.
+      placeholder: ex. https://docs.notploy.com/docs/core/backups
+    validations:
+      required: false
+
+  - type: dropdown
+    id: problem
+    attributes:
+      label: What is the problem?
+      options:
+        - Incorrect — the documented behavior is wrong
+        - Incomplete — a step or option is missing
+        - Ambiguous — unclear wording, or two valid readings
+        - Outdated — it no longer matches the current version
+        - Missing entirely — the page does not exist
+        - Broken link or formatting
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What is wrong, incomplete, ambiguous, or missing — and what should it say instead?
+      placeholder: >-
+        The restore section says backups are written to /backups, but the current default
+        destination is configurable per S3 destination. The wording is also ambiguous about
+        whether an existing volume is overwritten.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Proposed wording or structure
+      description: Optional. A rewritten paragraph or an outline is enough; you do not have to write the whole page.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the current documentation and the current Notploy version before reporting this.
+          required: true
+        - label: I searched the existing issues for the same documentation problem.
+          required: true

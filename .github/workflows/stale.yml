@@ -1,51 +1,78 @@
-name: "Close stale issues and PRs"
+name: Stale
+
 on:
   schedule:
-    - cron: "30 1 * * *" # Every Day at 1h30
+    # Daily, 01:37 UTC. Off the hour on purpose: the top of the hour is when every
+    # other scheduled workflow on GitHub runs.
+    - cron: "37 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
 
 jobs:
   stale:
+    name: Close stale issues and pull requests
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
+    timeout-minutes: 15
     steps:
-      - uses: actions/stale@v10
+      # Input names below are verified against actions/stale action.yml: the
+      # per-type messages are `stale-issue-message` / `stale-pr-message` /
+      # `close-issue-message` / `close-pr-message`, and there is no
+      # `exempt-all-pull-requests` or `messages`/`prMessage` input.
+      - uses: actions/stale@v11
         with:
-          # General
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-          # Issues
-          stale-issue-message: |
-            This issue has been automatically marked as stale because it has not had recent activity.
-            It will be closed in 7 days if no further activity occurs.
-            Thank you for your contributions!
-          close-issue-message: |
-            This issue has been automatically closed due to inactivity.
-            Please feel free to reopen it if you still need assistance.
-          stale-issue-label: "stale"
-          exempt-issue-labels: "pinned,security,bug,help wanted"
-          days-before-issue-stale: 60
-          days-before-issue-close: 7
+          # 60 days without activity before the label, 14 more before closing.
+          # Both messages are required: without them actions/stale does not mark
+          # anything stale at all.
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          close-issue-label: stale
+          close-pr-label: stale
 
-          # Pull Requests
-          stale-pr-message: |
-            This pull request has been automatically marked as stale because it has not had recent activity.
-            It will be closed in 7 days if no further activity occurs.
-            Thank you for your contributions!
-          close-pr-message: |
-            This pull request has been automatically closed due to inactivity.
-            Please feel free to reopen it if you are still working on it.
-          stale-pr-label: "stale"
-          exempt-pr-labels: "pinned,security,WIP"
-          days-before-pr-stale: 30
-          days-before-pr-close: 7
+          stale-issue-message: >
+            This issue has been automatically marked as stale because it has not
+            had recent activity. It will be closed in 14 days if no further
+            activity occurs. If you believe this is still relevant, leave a
+            comment, or add the `help-wanted` label to keep it open.
 
-          # Remove stale label on activity
+            Thank you for your contributions to Notploy.
+          close-issue-message: >
+            This issue was closed because it has been stale for 14 days with no
+            activity. It is not a judgement on the validity of the request. If
+            it is still relevant, please reopen it or open a new issue with any
+            new information.
+
+          stale-pr-message: >
+            This pull request has been automatically marked as stale because it
+            has not had recent activity. It will be closed in 14 days if no
+            further activity occurs. Leave a comment if you are still working on
+            it — for example to explain the current blocker or to request a
+            review.
+          close-pr-message: >
+            This pull request was closed because it has been stale for 14 days
+            with no activity. Comment on the pull request (or reopen it) if you
+            would like to continue the work.
+
+          # Pinned, discussion-exempt, and anything a maintainer is still working
+          # on. Labels are comma separated with no spaces — "help wanted" (with a
+          # space) silently never matched anything.
+          exempt-issue-labels: pinned,security,bug,help-wanted,wontfix,"good first issue"
+          exempt-pr-labels: pinned,security,bug,help-wanted,wontfix,"good first issue"
+
+          # Anything with a milestone is being tracked somewhere already.
+          exempt-all-milestones: true
+
+          # A commented-on issue/PR is by definition not abandoned.
           remove-stale-when-updated: true
 
-          # Don't close if there are assigned reviewers
-          exempt-all-pr-assignees: false
-
-          # Debug mode (set to false in production)
+          # Oldest first so the long-tail backlog drains instead of whatever the
+          # API happens to return first.
+          ascending: true
+          operations-per-run: 200
           debug-only: false

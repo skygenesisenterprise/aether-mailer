@@ -1,47 +1,109 @@
-name: Feature Request
-description: Suggest an idea or improvement for Aether Mailer
+name: ✨ Feature request
+description: Suggest a new capability that Notploy does not have today.
 title: "[Feature]: "
-labels: [enhancement]
-assignees: []
+labels: ["enhancement"]
 
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for suggesting a new feature! Please complete the following form to help us understand your idea.
+        Use this form for something Notploy **cannot do yet**. If the capability already exists
+        and you want it to be faster, clearer, or less error-prone, use
+        [Improvement](https://github.com/skygenesisenterprise/notploy/issues/new?template=improvement.yml) instead.
+
+        Describe the need, not the patch. A clear use case is enough — you do not have to
+        propose an implementation.
 
   - type: input
     id: summary
     attributes:
-      label: Feature Summary
-      description: Give a short title or summary of your idea.
-      placeholder: ex. Dark Mode for Webmail
+      label: Summary
+      description: One line describing the capability you are missing.
+      placeholder: ex. Restrict a registry to specific private networks
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where would it live
+      description: Which part of Notploy would this belong to?
+      options:
+        - Applications — builds, deployments, auto-deploy, sources, rollbacks, patches
+        - Docker Compose / Swarm stacks
+        - Databases — PostgreSQL, MySQL, MariaDB, MongoDB, Redis, libSQL
+        - Backups and restore — database backups, volume backups, S3 destinations
+        - Networking — Traefik, domains, DNS providers, certificates, ports, networks
+        - Servers and clusters — local server, remote servers, SSH keys, Swarm nodes
+        - Docker — containers, images, volumes, disk usage
+        - Git providers — GitHub, GitLab, Bitbucket, Gitea
+        - Dashboard (web UI)
+        - Authentication and access — users, sessions, organizations, roles, permissions
+        - API — REST/OpenAPI surface, SDK, MCP server
+        - CLI — the `notploy` command-line client
+        - Self-hosting and installation — Docker image, Compose stack, upgrades
+        - Automation — monitors, schedule jobs, notifications
+        - Secrets — environment variables, secret/vault providers
+        - Templates gallery — blueprints at templates.notploy.com
+        - Something else
+    validations:
+      required: true
 
   - type: textarea
-    id: description
+    id: problem
     attributes:
-      label: Detailed Description
-      description: Describe the feature you'd like to see implemented.
-      placeholder: ex. It would be great to have a dark mode toggle that remembers user preference...
+      label: What problem does this solve?
+      description: What are you unable to do today? What breaks or forces a manual workaround?
+      placeholder: >-
+        I cannot keep a private registry reachable only from my internal network, so I have to
+        expose it publicly and rely on Docker credentials alone.
+    validations:
+      required: true
 
   - type: textarea
-    id: rationale
+    id: usecase
     attributes:
-      label: Why is this needed?
-      description: Explain the value this feature adds to Aether Mail.
-      placeholder: ex. Many users work at night and dark mode would reduce eye strain.
+      label: How would you use it?
+      description: Describe the concrete workflow, including who does what and how often.
+      placeholder: |
+        As the platform owner I would set an allowlist of CIDR ranges once per registry.
+        Notploy would then refuse pulls from outside that list, in the dashboard and in
+        scheduled backups.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should Notploy do?
+      description: >-
+        Optional. Describe the behaviour you expect. A use case on its own is enough —
+        a specific technical solution is welcome but not required.
+    validations:
+      required: false
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives considered
-      description: Are there any other workarounds or solutions you've tried?
-      placeholder: ex. Currently using a browser extension to invert colors...
+      label: Alternatives or workarounds
+      description: >-
+        What have you tried instead today? Scripting, a reverse proxy, a different tool,
+        a manual process?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Scale, number of affected users, related issues or discussions, links.
+    validations:
+      required: false
 
   - type: checkboxes
     id: checks
     attributes:
-      label: Checks
+      label: Before submitting
       options:
-        - label: I have searched for similar feature requests
+        - label: I searched the existing issues and this has not been requested yet.
           required: true

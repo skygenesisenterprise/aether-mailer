@@ -1,0 +1,18 @@
+# Chooser configuration for the issue templates in this directory.
+#
+# `blank_issues_enabled: false` makes the four templates (bug, feature, improvement,
+# documentation) the only way to open an issue, so the type of contribution and the
+# functional area are recorded at submission time instead of being reconstructed
+# during triage. The two contact links below cover the reports that are not one of
+# those four types.
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: ❓ Question or need help
+    url: https://discord.gg/2tBnJ3jDJc
+    about: Configuration help, "how do I…", deployment questions, and troubleshooting go to the Notploy Discord.
+
+  - name: 🔐 Report a security vulnerability
+    url: https://github.com/skygenesisenterprise/notploy/security/advisories/new
+    about: Report privately. Do not open a public issue for a vulnerability — see SECURITY.md.

@@ -1,0 +1,123 @@
+# Label taxonomy
+#
+# Documentation, not automation: no tool reads this file, and labels cannot be
+# created from a repository. Create or update them in
+# Settings -> Issues -> Labels, keeping the names, colors, and descriptions
+# below. The issue forms in `.github/ISSUE_TEMPLATE/` apply the `type:` labels
+# automatically; `area:` and `status:` labels are applied by maintainers.
+#
+# Three independent dimensions, never combined:
+#
+#   type:    one per issue, set by the template the reporter used
+#   area:    at most one, the functional domain the issue belongs to
+#   status:  orthogonal, applied and removed by maintainers over time
+#
+# Rules that keep the set small:
+#
+#   * No `github-bug` / `cloud-feature` style labels. The area dimension already
+#     separates surfaces, so the type dimension stays at four labels.
+#   * `enhancement` and `improvement` are not synonyms here. `enhancement` is a
+#     capability that does not exist yet; `improvement` is a capability that
+#     exists and should get better. The issue template chosen by the reporter is
+#     what decides between them.
+#   * The `area:` values match the "Affected area" dropdown in the issue forms,
+#     one to one. If you add an area, add it to the dropdown too.
+
+type:
+  - name: bug
+    color: "d73a4a"
+    description: Something behaves incorrectly. A regression, an error, or an unexpected result.
+    auto_applied_by: .github/ISSUE_TEMPLATE/bug_report.yml
+
+  - name: enhancement
+    color: "a2eeef"
+    description: A new capability Notploy does not have today.
+    auto_applied_by: .github/ISSUE_TEMPLATE/feature_request.yml
+
+  - name: improvement
+    color: "0e8a16"
+    description: An existing capability that should get better — performance, DX, reliability, errors, ergonomics.
+    auto_applied_by: .github/ISSUE_TEMPLATE/improvement.yml
+
+  - name: documentation
+    color: "0075ca"
+    description: Documentation only — product docs, API or CLI reference, guides, examples.
+    auto_applied_by: .github/ISSUE_TEMPLATE/documentation.yml
+
+area:
+  # Derived from the tRPC routers in apps/notploy/server/api/routers, the CLI
+  # command groups in packages/cli, and the navigation in
+  # web/apps/docs/content/docs/*/meta.json.
+  - name: "area: applications"
+    color: "c5def5"
+    description: Application lifecycle — builds, deployments, auto-deploy, sources, rollbacks, patches, preview deployments.
+  - name: "area: compose"
+    color: "c5def5"
+    description: Docker Compose projects and Swarm stacks.
+  - name: "area: databases"
+    color: "c5def5"
+    description: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, libSQL.
+  - name: "area: backups"
+    color: "c5def5"
+    description: Database backups, volume backups, restore, S3 destinations.
+  - name: "area: networking"
+    color: "c5def5"
+    description: Traefik, routing, domains, DNS providers, certificates, ports, networks, redirects.
+  - name: "area: servers"
+    color: "c5def5"
+    description: Local server, remote servers, SSH keys, clusters and Swarm nodes.
+  - name: "area: docker"
+    color: "c5def5"
+    description: Containers, images, volumes, networks, disk usage, cleanup.
+  - name: "area: git-providers"
+    color: "c5def5"
+    description: GitHub, GitLab, Bitbucket, Gitea — repository selection, webhooks, deploy triggers.
+  - name: "area: dashboard"
+    color: "c5def5"
+    description: The web dashboard UI.
+  - name: "area: auth"
+    color: "c5def5"
+    description: Users, sessions, organizations, teams, roles, permissions.
+  - name: "area: api"
+    color: "c5def5"
+    description: The REST/OpenAPI surface, plus the generated SDK and MCP server.
+  - name: "area: cli"
+    color: "c5def5"
+    description: The `notploy` command-line client.
+  - name: "area: selfhost"
+    color: "c5def5"
+    description: Self-hosting — Docker image, Compose stack, entrypoint, installation and upgrades.
+  - name: "area: automation"
+    color: "c5def5"
+    description: Monitors and metrics, schedule jobs, notification providers.
+  - name: "area: secrets"
+    color: "c5def5"
+    description: Environment variables and secret/vault providers.
+  - name: "area: templates"
+    color: "c5def5"
+    description: The templates gallery and the blueprints it publishes.
+
+status:
+  # All of these already exist: `pinned`, `security`, `help-wanted`, `wontfix`
+  # and `good first issue` are referenced by .github/workflows/stale.yml, and
+  # `stale` is applied by that workflow. They are listed here so the taxonomy is
+  # complete, and `security` is the label to reach for instead of opening a
+  # public issue for a vulnerability.
+  - name: security
+    color: "b60205"
+    description: Security-sensitive. Exempt from stale-bot closing.
+  - name: help-wanted
+    color: "008672"
+    description: Open to outside contributors. Exempt from stale-bot closing.
+  - name: good first issue
+    color: "7057ff"
+    description: Small, well-scoped, approachable. Exempt from stale-bot closing.
+  - name: wontfix
+    color: "ffffff"
+    description: Will not be worked on. State the reason in a comment. Exempt from stale-bot closing.
+  - name: pinned
+    color: "f9d0c4"
+    description: Pinned by maintainers. Exempt from stale-bot closing.
+  - name: stale
+    color: "ededed"
+    description: Applied by .github/workflows/stale.yml after 60 days without activity. Removed by any new activity.

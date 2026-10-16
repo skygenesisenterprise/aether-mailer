@@ -1,0 +1,125 @@
+name: 🔧 Improvement
+description: Make something Notploy already does better — performance, DX, reliability, error messages, or ergonomics.
+title: "[Improvement]: "
+labels: ["improvement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the capability **already exists** and you want it to be better:
+        slower than it should be, harder to use than it should be, unreliable, or badly
+        explained when it fails.
+
+        If Notploy cannot do this at all, use
+        [Feature request](https://github.com/skygenesisenterprise/notploy/issues/new?template=feature_request.yml).
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One line describing what should be better.
+      placeholder: ex. Deployment logs are truncated, so long builds cannot be diagnosed
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Which part of Notploy are you talking about?
+      options:
+        - Applications — builds, deployments, auto-deploy, sources, rollbacks, patches
+        - Docker Compose / Swarm stacks
+        - Databases — PostgreSQL, MySQL, MariaDB, MongoDB, Redis, libSQL
+        - Backups and restore — database backups, volume backups, S3 destinations
+        - Networking — Traefik, domains, DNS providers, certificates, ports, networks
+        - Servers and clusters — local server, remote servers, SSH keys, Swarm nodes
+        - Docker — containers, images, volumes, disk usage
+        - Git providers — GitHub, GitLab, Bitbucket, Gitea
+        - Dashboard (web UI)
+        - Authentication and access — users, sessions, organizations, roles, permissions
+        - API — REST/OpenAPI surface, SDK, MCP server
+        - CLI — the `notploy` command-line client
+        - Self-hosting and installation — Docker image, Compose stack, upgrades
+        - Automation — monitors, schedule jobs, notifications
+        - Secrets — environment variables, secret/vault providers
+        - Templates gallery — blueprints at templates.notploy.com
+        - Something else
+    validations:
+      required: true
+
+  - type: dropdown
+    id: dimension
+    attributes:
+      label: What kind of improvement?
+      description: This is the main axis maintainers triage on — pick the closest one.
+      options:
+        - Performance — it works, but it is too slow or too heavy
+        - Developer experience — local setup, debugging, contribution workflow
+        - CLI ergonomics — commands, flags, output of the `notploy` client
+        - API design — routes, payloads, error responses of the REST/OpenAPI surface
+        - Architecture and maintainability — structure, duplication, coupling
+        - Reliability and error handling — failures, retries, partial states
+        - Error messages and logging — what a user sees when something goes wrong
+        - Compatibility — version support, upgrade path, breaking changes
+        - Configuration — options, defaults, environment variables
+        - Extensibility — provider integrations, plugins, hooks
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior
+      description: What Notploy does today. Include measurements, timings, or a snippet if you have them.
+      placeholder: >-
+        The application log viewer requests the last 500 lines and refetches the whole
+        payload on every scroll; a 10 MB build log takes ~8 s to display.
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired
+    attributes:
+      label: What should be better, and why?
+      description: Describe the target behavior and the reason behind it.
+      placeholder: >-
+        Fetch logs incrementally as the user scrolls, so opening a large log is immediate.
+        This matters because diagnosing a failed build currently requires reproducing it
+        locally with a long `docker build`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Expected impact
+      description: Who benefits and how you would notice the change worked.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to reach the same outcome, and why they are worse.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Measurements, traces, related issues, or a profile.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this has not been proposed yet.
+          required: true

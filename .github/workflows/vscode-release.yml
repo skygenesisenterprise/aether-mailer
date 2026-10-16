@@ -1,99 +1,334 @@
-name: Aether Identity VSCode Release
+name: VS Code Release
+
+# Publishes the official Notploy extension to the Visual Studio Marketplace.
+#
+#   git tag v0.2.0-vscode
+#   git push origin v0.2.0-vscode      -> verify, package, publish, GitHub Release
+#
+#   Actions -> VS Code Release -> Run workflow
+#                                      -> verify and package only, never publishes
+#
+# Publishing is **tag only**. A tag is the one thing that cannot be pushed to a
+# branch by accident, it carries the version, and it is durable evidence of who
+# released what. The workflow enforces that in both directions: the trigger
+# below only matches `v<major>.<minor>.<patch>-vscode`, and the resolved version
+# must equal `packages/vscode/package.json`, so a release can never be cut from a
+# branch or from a tag that disagrees with the tree it points at. A manual
+# dispatch deliberately has no `publish` input for the same reason.
+#
+# The other tag workflows ignore this tag on purpose: `v1.2.3-vscode` names no
+# image in docker-publish.yml's catalog and no package in node-release.yml, so
+# `v1.2.3-vscode` reaches the registry and npm nowhere and only this file acts
+# on it.
+#
+# Prerequisites, configured once by whoever owns the `notploy` publisher:
+#
+#   * An Entra ID app registration with a federated credential trusting
+#     `repo:skygenesisenterprise/notploy:ref:refs/tags/v*.*.*-vscode`
+#     (or `...:environment:` if a GitHub environment is added later), and that
+#     identity added to the Marketplace publisher with the Contributor role.
+#     Marketplace access does not require an Azure subscription.
+#   * Repository secrets AZURE_CLIENT_ID and AZURE_TENANT_ID. With both set the
+#     workflow publishes without storing any long-lived credential.
+#   * Only as a stopgap, secret VSCE_PAT: Azure DevOps retires global personal
+#     access tokens on 2026-12-01, so the PAT path exists to unblock a release
+#     before the Entra ID setup is finished, and warns every time it is used.
 
 on:
   push:
     tags:
       - "v*.*.*-vscode"
+  workflow_dispatch:
+
+concurrency:
+  group: vscode-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24.4.0"
+  PNPM_VERSION: "10.22.0"
+  EXTENSION_DIR: packages/vscode
+  # The workspace directory holding the extension is `notploy`, the same name as
+  # the repository root package, so every pnpm command targets it by path
+  # instead of by name.
+  EXTENSION_FILTER: ./packages/vscode
+  # Never let the Azure CLI echo command output: `az account get-access-token`
+  # writes the Entra ID access token to stdout and vsce reads it from there.
+  # vsce passes an explicit `--output json` where it needs to parse the reply,
+  # so suppressing the default output costs nothing.
+  AZURE_CORE_OUTPUT: none
 
 jobs:
-  build:
+  release:
+    name: Package and publish
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Creating the GitHub Release that carries the .vsix.
+      contents: write
+      # The Marketplace is reached with an Entra ID token minted from this
+      # workflow's OIDC identity, so no PAT has to be stored.
+      id-token: write
     steps:
-      - name: Checkout code
+      - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Setup pnpm
+      - name: Set up pnpm
         uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
       - name: Install dependencies
-        working-directory: package/vscode
-        run: pnpm install --frozen-lockfile
-
-      - name: Compile extension
-        working-directory: package/vscode
-        run: pnpm compile
-
-      - name: Lint code
-        working-directory: package/vscode
-        run: pnpm lint
-
-      - name: Package Extension
-        working-directory: package/vscode
-        run: |
-          npm install -g @vscode/vsce
-          vsce package --out aether-identity-vscode.vsix
-
-      - name: Upload VSIX artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: vscode-extension
-          path: package/vscode/aether-identity-vscode.vsix
-
-  publish-marketplace:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Download VSIX artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: vscode-extension
-          path: package/vscode
-
-      - name: Install VSCE
-        run: npm install -g @vscode/vsce
-
-      - name: Publish to VSCode Marketplace
-        working-directory: package/vscode
-        run: vsce publish --packagePath aether-identity-vscode.vsix -p ${{ secrets.VSCE_PAT }}
-
-      - name: Generate Release Notes
-        id: release_notes
-        run: |
-          VERSION=${GITHUB_REF_NAME}
-          printf '%s\n' "# Aether Identity VSCode Extension $VERSION" "" "## Extension Information" "- Extension Name: Aether Identity for VS Code" "- Publisher: skygenesisenterprise" "- Version: $VERSION" "- Marketplace: Visual Studio Code Marketplace" "" "## Installation" "" "### From VSCode Marketplace" "1. Open VS Code" "2. Go to Extensions (Ctrl+Shift+X)" "3. Search for 'Aether Identity'" "4. Click Install" "" "### From VSIX" "\`\`\`bash" "code --install-extension aether-identity-vscode.vsix" "\`\`\`" "" "## Features" "- Enterprise OAuth2/OIDC authentication" "- Secure account management within VS Code" "- Multi-factor authentication support" "- Automatic token refresh" "- Status bar integration" "- Configuration management" "" "## Commands" "- \`Aether Identity: Sign In with Aether\` - Authenticate with your Aether Identity server" "- \`Aether Identity: Sign Out\` - Sign out and clear credentials" "- \`Aether Identity: Refresh Token\` - Manually refresh authentication token" "- \`Aether Identity: Get Authentication Status\` - Check current authentication status" "" "## Configuration" "Configure the extension in VS Code settings:" "- \`aether.serverUrl\` - Aether Identity server URL" "- \`aether.clientId\` - OAuth2 client ID" "- \`aether.redirectUri\` - OAuth2 redirect URI" "- \`aether.autoRefresh\` - Automatically refresh tokens" "- \`aether.refreshThreshold\` - Time before token expiry to refresh" "" "## Documentation" "- README: https://github.com/skygenesisenterprise/aether-identity/blob/main/package/vscode/README.md" "- Repository: https://github.com/skygenesisenterprise/aether-identity" "" "## Bug Reports & Feature Requests" "Please report issues on GitHub Issues: https://github.com/skygenesisenterprise/aether-identity/issues" "" "---" "Note: Automated release." > release_notes.md
-          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        # Scoped to the extension and the SDK it bundles: the two projects are
+        # the whole build, and installing the rest of the monorepo would only
+        # slow the release down.
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXTENSION_FILTER: ${{ env.EXTENSION_FILTER }}
+        run: pnpm install --frozen-lockfile --filter "$EXTENSION_FILTER" --filter "@notploy/sdk..."
+
+      - name: Resolve the release version
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          EXTENSION_DIR: ${{ env.EXTENSION_DIR }}
+        run: |
+          set -euo pipefail
+
+          manifest_version="$(node -p "require('./$EXTENSION_DIR/package.json').version")"
+          publish=false
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            # A manual run exercises the same build without publishing: the
+            # version is simply what the manifest already says.
+            version="$manifest_version"
+          else
+            if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-vscode$ ]]; then
+              echo "::error::Unsupported release tag: $RELEASE_TAG"
+              exit 1
+            fi
+
+            version="${RELEASE_TAG#v}"
+            version="${version%-vscode}"
+
+            if [[ "$version" != "$manifest_version" ]]; then
+              echo "::error::$EXTENSION_DIR/package.json is $manifest_version but $RELEASE_TAG announces $version. Bump the manifest, commit it, then re-tag."
+              exit 1
+            fi
+
+            publish=true
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Releasing $EXTENSION_DIR@$version (publish=$publish)"
+
+      - name: Warn about missing Marketplace documents
+        env:
+          EXTENSION_DIR: ${{ env.EXTENSION_DIR }}
+        run: |
+          set -euo pipefail
+
+          # vsce packages without either file, but the Marketplace page renders
+          # a README and users read the changelog, so their absence is worth a
+          # warning rather than a silent release.
+          for document in README.md CHANGELOG.md; do
+            if [[ ! -f "$EXTENSION_DIR/$document" ]]; then
+              echo "::warning::$EXTENSION_DIR/$document is missing; the Marketplace listing will render without it."
+            fi
+          done
+
+      - name: Build the SDK
+        # The extension imports @notploy/sdk, whose export map points at dist/:
+        # with no compiled SDK the typecheck cannot even resolve the module, so
+        # this has to run before anything that reads the extension's source.
+        run: pnpm --filter "@notploy/sdk" run build
+
+      - name: Verify the extension
+        id: verify
+        env:
+          EXTENSION_FILTER: ${{ env.EXTENSION_FILTER }}
+        run: |
+          set -euo pipefail
+
+          # Nothing else in the repository gates on these, and a published
+          # version cannot be replaced: run the checks here rather than trust
+          # that they passed somewhere upstream.
+          pnpm --filter "$EXTENSION_FILTER" run typecheck
+          pnpm --filter "$EXTENSION_FILTER" run lint
+          pnpm --filter "$EXTENSION_FILTER" run test
+
+      - name: Package the extension
+        id: package
+        env:
+          EXTENSION_FILTER: ${{ env.EXTENSION_FILTER }}
+          EXTENSION_DIR: ${{ env.EXTENSION_DIR }}
+        run: |
+          set -euo pipefail
+
+          # `package` is the same script a maintainer runs locally, so CI and
+          # a hand-built .vsix cannot drift apart. It bundles the extension
+          # (vscode:prepublish) and runs `vsce package --no-dependencies`,
+          # every runtime dependency being inlined into dist/extension.js.
+          pnpm --filter "$EXTENSION_FILTER" run package
+
+          vsix="$(find "$EXTENSION_DIR" -maxdepth 1 -name '*.vsix' -print -quit)"
+          if [[ -z "$vsix" ]]; then
+            echo "::error::No .vsix was produced in $EXTENSION_DIR"
+            exit 1
+          fi
+
+          echo "vsix=$vsix" >> "$GITHUB_OUTPUT"
+          echo "Contents of $vsix:"
+          unzip -l "$vsix" | sed 's/^/  /'
+
+      - name: Detect the publishing credential
+        id: credentials
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -euo pipefail
+
+          # Secrets cannot be read from an `if:` expression, so the method is
+          # chosen here and read back from an output by the steps below.
+          if [[ -n "$AZURE_CLIENT_ID" && -n "$AZURE_TENANT_ID" ]]; then
+            echo "method=entra" >> "$GITHUB_OUTPUT"
+            echo "::notice::Publishing with Microsoft Entra ID (no stored credential)"
+          elif [[ -n "$VSCE_PAT" ]]; then
+            echo "method=pat" >> "$GITHUB_OUTPUT"
+            echo "::warning::Publishing with VSCE_PAT. Azure DevOps retires global PATs on 2026-12-01; set up the Entra ID federated credential before then."
+          else
+            echo "method=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in with Microsoft Entra ID
+        if: steps.credentials.outputs.method == 'entra'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          # Reaching the Marketplace needs no Azure subscription: the federated
+          # credential and the publisher role grant are what authorize the
+          # identity.
+          allow-no-subscriptions: true
+
+      - name: Publish to the Marketplace
+        id: publish
+        if: steps.release.outputs.publish == 'true'
+        env:
+          METHOD: ${{ steps.credentials.outputs.method }}
+          VSIX: ${{ steps.package.outputs.vsix }}
+          EXTENSION_FILTER: ${{ env.EXTENSION_FILTER }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -euo pipefail
+
+          # --skip-duplicate turns a re-run of an already published version into
+          # a no-op instead of a failure, so re-tagging or re-dispatching a
+          # release is safe to repeat.
+          case "$METHOD" in
+            entra)
+              # azure/login leaves the Azure CLI authenticated for the rest of
+              # the job; that session is what vsce's AzureCliCredential reads,
+              # hence --azure-credential.
+              pnpm --filter "$EXTENSION_FILTER" exec vsce publish \
+                --packagePath "$VSIX" \
+                --azure-credential \
+                --skip-duplicate
+              ;;
+            pat)
+              pnpm --filter "$EXTENSION_FILTER" exec vsce publish \
+                --packagePath "$VSIX" \
+                --pat "$VSCE_PAT" \
+                --skip-duplicate
+              ;;
+            *)
+              echo "::error::No Marketplace credential found. Set the AZURE_CLIENT_ID and AZURE_TENANT_ID secrets (recommended) or VSCE_PAT."
+              exit 1
+              ;;
+          esac
+
+      - name: Upload the VSIX
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: notploy-vscode-${{ steps.release.outputs.version }}
+          path: ${{ steps.package.outputs.vsix }}
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Create the GitHub Release
+        if: steps.release.outputs.publish == 'true' && steps.publish.outcome == 'success'
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Aether Identity VSCode Extension ${{ github.ref_name }}
-          body: ${{ steps.release_notes.outputs.release_notes }}
-          draft: false
-          prerelease: false
-          files: |
-            package/vscode/aether-identity-vscode.vsix
-            package/vscode/README.md
-            package/vscode/LICENSE
+          name: Notploy for VS Code ${{ steps.release.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: ${{ steps.package.outputs.vsix }}
+          body: |
+            ## Notploy for VS Code
+
+            Version `${{ steps.release.outputs.version }}` is published to the
+            Visual Studio Marketplace as `notploy.notploy`, and installed from
+            there with:
+
+            ```bash
+            code --install-extension notploy.notploy
+            ```
+
+            The `.vsix` attached below is the exact artifact that was published,
+            for air-gapped machines or a pinned install:
+
+            ```bash
+            code --install-extension notploy-vscode.vsix
+            ```
+
+      - name: Summarize the release
+        if: always()
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          PUBLISH_REQUESTED: ${{ steps.release.outputs.publish }}
+          METHOD: ${{ steps.credentials.outputs.method }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          PACKAGE_OUTCOME: ${{ steps.package.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+        run: |
+          result_for() {
+            case "$1" in
+              success) printf 'success' ;;
+              failure) printf 'failed' ;;
+              skipped) printf 'skipped' ;;
+              cancelled) printf 'cancelled' ;;
+              *) printf 'not run' ;;
+            esac
+          }
+
+          case "${METHOD:-}" in
+            entra) method="Microsoft Entra ID" ;;
+            pat) method="VSCE_PAT (retired on 2026-12-01)" ;;
+            *) method="none" ;;
+          esac
+
+          {
+            echo "### Notploy for VS Code ${VERSION:-unresolved}"
+            echo
+            echo "| Step | Result |"
+            echo "| --- | --- |"
+            echo "| Verify (typecheck, lint, tests) | $(result_for "$VERIFY_OUTCOME") |"
+            echo "| Package | $(result_for "$PACKAGE_OUTCOME") |"
+            echo "| Publish | $([ "$PUBLISH_REQUESTED" = "true" ] && result_for "$PUBLISH_OUTCOME" || printf 'not requested (manual run)') |"
+            echo
+            echo "Credential: $method"
+          } >> "$GITHUB_STEP_SUMMARY"

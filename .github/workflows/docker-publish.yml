@@ -1,401 +1,380 @@
-name: Docker
+name: Docker Publish
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
+# Publishes the product container images to the GitHub Container Registry.
+#
+#   GitHub Actions -> Buildx -> GHCR -> cosign (keyless)
+#
+# Publishing is tag-only. Each package has its own `v<major>.<minor>.<patch>`
+# tag suffix (for example, `v1.2.3-cloud` publishes only `notploy-cloud`).
+#
+# Every suffix also publishes a GitHub Release, titled `Notploy {Suffix}
+# v{major}.{minor}.{patch}` (`Notploy App v1.2.3`, `Notploy Cloud v1.2.3`,
+# `Notploy Console v1.2.3`, `Notploy Status v1.2.3`, `Notploy MCP v1.2.3`, ...),
+# so a release always reads the same way whatever image it advertises. The
+# suffix label and the assets a release carries come from the catalog in
+# `select`, which is the single place to add an image.
+#
+# Only the self-hosted `-app` release is published as GitHub's `latest`: a
+# running server discovers its updates through the Releases API and pulls the
+# image whose tag is that release tag, and install.sh resolves
+# `/releases/latest` to pick a version. The other releases therefore carry
+# `make_latest: false` so they never take that place. `-app`, `-cloud` and
+# `-console` additionally ship the install scripts, which install those products.
+#
+# The `select` job filters the catalog down to the images the pushed tag
+# actually publishes, so `v1.0.2-app` shows one job instead of the whole
+# catalog (the other entries stay disabled). Adding an image means adding it to
+# the catalog in `select` and adding its suffix to the tag filters above. The
+# build context is always the repository root because the whole monorepo is a
+# single pnpm workspace.
+#
+# Pull requests do not run this workflow at all: ci.yml's `docker` job already
+# builds the images (amd64, no push) so a pull request stays fast and this job
+# can hold `packages: write` without ever being reachable from a fork. That is
+# also why the permissions below are granted to the job rather than to the
+# workflow.
 on:
   push:
-    # Publish Docker images only for tags ending with -docker
-    tags: ["v*.*.*-docker"]
-  pull_request:
-    branches: ["main"]
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to build (e.g., 1.0.0)"
-        required: true
-        type: string
+    tags:
+      - "v*.*.*-app"
+      - "v*.*.*-cloud"
+      - "v*.*.*-console"
+      - "v*.*.*-status"
+      - "v*.*.*-mcp"
+      - "v*.*.*-github"
+      - "v*.*.*-website"
+      - "v*.*.*-docs"
+      - "v*.*.*-templates"
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 env:
-  # GitHub Container Registry
-  REGISTRY: ghcr.io
-  # Use skygenesisenterprise/aether-identity as the full image path
-  IMAGE_NAME: skygenesisenterprise/aether-identity
-  # Docker Hub Registry
-  DOCKERHUB_REGISTRY: docker.io
-  DOCKERHUB_IMAGE_NAME: skygenesisenterprise/aether-identity
+  # ghcr.io/<owner>/<image>. Override with the IMAGE_PREFIX repository variable
+  # to publish under a different owner (or a mirror on forks).
+  IMAGE_PREFIX: ${{ vars.IMAGE_PREFIX || format('ghcr.io/{0}', github.repository_owner) }}
 
 jobs:
-  build:
+  # The pushed tag selects exactly one image (`v1.0.2-app` publishes only
+  # `notploy`). The matrix is filtered here rather than letting every job
+  # disable itself, so a tag push shows a single job in the run instead of
+  # seven, six of them no-ops.
+  select:
+    name: Select images for the tag
     runs-on: ubuntu-latest
-    # Only run on tags ending with -docker or on PRs for testing
-    if: startsWith(github.ref, 'refs/tags/') && endsWith(github.ref, '-docker') || github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
-      id-token: write
-
+    timeout-minutes: 5
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      package_version: ${{ steps.version.outputs.package_version }}
-
+      matrix: ${{ steps.select.outputs.matrix }}
+      any: ${{ steps.select.outputs.any }}
+      version: ${{ steps.select.outputs.version }}
+      release_title: ${{ steps.select.outputs.release_title }}
+      release_assets: ${{ steps.select.outputs.release_assets }}
+      release_latest: ${{ steps.select.outputs.release_latest }}
     steps:
-      - name: Print trigger information
+      - name: Select the images published by ${{ github.ref_name }}
+        id: select
+        env:
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Ref name: ${{ github.ref_name }}"
-          echo "Ref type: ${{ github.ref_type }}"
-          echo "Repository: ${{ github.repository }}"
-          echo "Workflow: ${{ github.workflow }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Is tag: ${{ startsWith(github.ref, 'refs/tags/') }}"
-          echo "Ends with -docker: ${{ endsWith(github.ref, '-docker') }}"
-          echo "Should run: ${{ startsWith(github.ref, 'refs/tags/') && endsWith(github.ref, '-docker') || github.event_name == 'pull_request' }}"
-          echo "Registry: ${{ env.REGISTRY }}"
-          echo "Image name: ${{ env.IMAGE_NAME }}"
-          echo "Full image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          set -euo pipefail
 
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Extract version from tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            INPUT_VERSION="${{ github.event.inputs.version }}"
-            # Remove -docker suffix if present for the clean version
-            CLEAN_VERSION="${INPUT_VERSION%-docker}"
-            VERSION="v${CLEAN_VERSION#v}"
-            PACKAGE_VERSION="${VERSION#v}"
-          else
-            TAG="${{ github.ref_name }}"
-            # Remove -docker suffix and keep v prefix for clean version
-            CLEAN_VERSION="${TAG%-docker}"
-            VERSION="${CLEAN_VERSION}"
-            PACKAGE_VERSION="${CLEAN_VERSION#v}"
+          if [[ ! "$TAG_NAME" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-(app|cloud|console|status|mcp|github|website|docs|templates)$ ]]; then
+            echo "::error::Unsupported Docker image tag: $TAG_NAME"
+            exit 1
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
-          echo "Tag version: $VERSION"
-          echo "Package version: $PACKAGE_VERSION"
+          version="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          variant="${BASH_REMATCH[4]}"
 
-      - name: Verify Dockerfile exists
-        run: |
-          echo "Checking for Dockerfile..."
-          if [ -f "server/infra/Dockerfile.dev" ]; then
-            echo "✅ Dockerfile found at server/infra/Dockerfile.dev"
-            echo "Dockerfile content preview:"
-            head -20 server/infra/Dockerfile.dev
-          else
-            echo "❌ No Dockerfile found at server/infra/Dockerfile.dev"
-            echo "Available files:"
-            find . -name "Dockerfile*" -type f
+          # Catalog of publishable images. Adding an image means adding it here
+          # and adding its suffix to the tag filters above.
+          #
+          # `release_name` is the label the GitHub Release is titled with
+          # (`Notploy {release_name} {version}`) and `release_assets` says
+          # whether that release carries the install scripts.
+          #
+          # `platforms` defaults to linux/amd64,linux/arm64 when omitted.
+          read -r -d '' CATALOG <<'JSON' || true
+          [
+            {
+              "image": "notploy",
+              "file": "./Dockerfile",
+              "target": "selfhosted",
+              "platforms": "linux/amd64",
+              "tag_suffix": "-app",
+              "description": "Notploy self-hosted (dashboard, server and build tooling)",
+              "release_name": "App",
+              "release_assets": true
+            },
+            {
+              "image": "notploy-cloud",
+              "file": "./Dockerfile",
+              "target": "cloud",
+              "tag_suffix": "-cloud",
+              "description": "Notploy Cloud (dashboard + server)",
+              "release_name": "Cloud",
+              "release_assets": true
+            },
+            {
+              "image": "notploy-console",
+              "file": "./Dockerfile",
+              "target": "console",
+              "tag_suffix": "-console",
+              "description": "Notploy Console (instance and fleet management)",
+              "release_name": "Console",
+              "release_assets": true
+            },
+            {
+              "image": "notploy-status",
+              "file": "./Dockerfile",
+              "target": "status",
+              "tag_suffix": "-status",
+              "description": "Notploy Status (status page, incidents and uptime history)",
+              "release_name": "Status",
+              "release_assets": false
+            },
+            {
+              "image": "notploy-mcp",
+              "file": "./packages/mcp/Dockerfile",
+              "tag_suffix": "-mcp",
+              "description": "Notploy MCP server",
+              "release_name": "MCP",
+              "release_assets": false
+            },
+            {
+              "image": "notploy-github",
+              "file": "./packages/github/Dockerfile",
+              "tag_suffix": "-github",
+              "description": "Notploy GitHub integration",
+              "release_name": "GitHub",
+              "release_assets": false
+            },
+            {
+              "image": "notploy-website",
+              "file": "./web/Dockerfile.website",
+              "platforms": "linux/amd64",
+              "tag_suffix": "-website",
+              "description": "Notploy official website",
+              "release_name": "Website",
+              "release_assets": false
+            },
+            {
+              "image": "notploy-docs",
+              "file": "./web/Dockerfile.docs",
+              "tag_suffix": "-docs",
+              "description": "Notploy documentation",
+              "release_name": "Docs",
+              "release_assets": false
+            },
+            {
+              "image": "notploy-templates",
+              "file": "./templates/Dockerfile",
+              "tag_suffix": "-templates",
+              "description": "Notploy templates gallery",
+              "release_name": "Templates",
+              "release_assets": false
+            }
+          ]
+          JSON
+
+          selected=$(jq -c --arg suffix "-$variant" '[ .[] | select(.tag_suffix == $suffix) ]' <<< "$CATALOG")
+
+          if [ "$(jq 'length' <<< "$selected")" -eq 0 ]; then
+            echo "::error::No image publishes the '$variant' variant"
             exit 1
           fi
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "20"
+          release_name="$(jq -r '.[0].release_name' <<< "$selected")"
+          if [ -z "$release_name" ] || [ "$release_name" = "null" ]; then
+            echo "::error::The '$variant' image has no release_name in the catalog"
+            exit 1
+          fi
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 9
+          echo "any=true" >> "$GITHUB_OUTPUT"
+          # The release fields are for the `release` job only: the build matrix
+          # does not need them.
+          echo "matrix=$(jq -c 'map(del(.release_name, .release_assets))' <<< "$selected")" >> "$GITHUB_OUTPUT"
+          echo "release_title=Notploy $release_name $version" >> "$GITHUB_OUTPUT"
+          echo "release_assets=$(jq -r '.[0].release_assets' <<< "$selected")" >> "$GITHUB_OUTPUT"
 
-      - name: Build cross-platform binaries
+          # The self-hosted release is the one a running server and install.sh
+          # resolve through `/releases/latest`; no other suffix may take it.
+          if [ "$variant" = "app" ]; then
+            echo "release_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          jq -r '.[] | "::notice::publishing \(.image) from \(.file)"' <<< "$selected"
+
+  publish:
+    name: ${{ matrix.image }}
+    needs: select
+    if: needs.select.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+      # Keyless cosign signing mints a short-lived OIDC token to Fulcio; without
+      # this the sign step fails with "no OIDC token found".
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # cosign (keyless signing) needs the full tag history to resolve the
+          # commit that an image was built from.
+          fetch-depth: 0
+
+      - name: Check the image can be built
+        id: select
+        env:
+          IMAGE: ${{ matrix.image }}
+          DOCKERFILE: ${{ matrix.file }}
         run: |
-          echo "🔨 Building cross-platform binaries for Aether Identity..."
+          set -euo pipefail
 
-          # Create dist directory
-          mkdir -p dist
+          # An image can be listed before its Dockerfile lands; it is then
+          # reported and left out instead of failing the whole matrix.
+          if [ ! -f "$DOCKERFILE" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::skipping $IMAGE: '$DOCKERFILE' does not exist yet"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
 
-          # Define platforms
-          platforms=(
-            "linux/amd64"
-            "linux/arm64" 
-            "windows/amd64"
-            "darwin/amd64"
-            "darwin/arm64"
-          )
-
-          # Build Go server binary
-          echo "Building Go server..."
-          cd server
-          for platform in "${platforms[@]}"; do
-            IFS='/' read -r GOOS GOARCH <<< "$platform"
-            
-            output_name="aether-identity-server"
-            if [ "$GOOS" = "windows" ]; then
-              output_name+=".exe"
-            fi
-            
-            echo "Building server for $GOOS/$GOARCH..."
-            GOOS=$GOOS GOARCH=$GOARCH go build \
-              -ldflags="-s -w -X main.version=${{ steps.version.outputs.package_version }}" \
-              -o "../dist/${GOOS}-${GOARCH}-${output_name}" \
-              .
-          done
-          cd ..
-
-          # Build Next.js frontend (platform-independent)
-          echo "Building Next.js frontend..."
-          cd app
-          pnpm install
-          pnpm build
-
-          # Create frontend package
-          mkdir -p ../dist/frontend
-          cp -r .next/standalone ../dist/frontend/
-          cp -r .next/static ../dist/frontend/
-          cp package.json ../dist/frontend/
-          cd ..
-
-          echo "✅ Cross-platform binaries built successfully!"
-          ls -la dist/
-
-      - name: Create platform-specific archives
-        run: |
-          echo "📦 Creating platform-specific archives..."
-
-          VERSION="${{ steps.version.outputs.package_version }}"
-
-          # Create archives for each platform
-          platforms=("linux/amd64" "linux/arm64" "windows/amd64" "darwin/amd64" "darwin/arm64")
-
-          for platform in "${platforms[@]}"; do
-            IFS='/' read -r GOOS GOARCH <<< "$platform"
-            
-            # Create archive directory
-            archive_dir="aether-identity-${VERSION}-${GOOS}-${GOARCH}"
-            mkdir -p "dist/${archive_dir}"
-            
-            # Copy binaries
-            if [ "$GOOS" = "windows" ]; then
-              cp "dist/${GOOS}-${GOARCH}-aether-identity-server.exe" "dist/${archive_dir}/"
-            else
-              cp "dist/${GOOS}-${GOARCH}-aether-identity-server" "dist/${archive_dir}/"
-            fi
-            
-            # Copy frontend
-            cp -r dist/frontend/* "dist/${archive_dir}/"
-            
-            # Copy configuration files
-            cp docker-compose.yml docker-entrypoint.sh "dist/${archive_dir}/" 2>/dev/null || true
-            cp -r prisma/ "dist/${archive_dir}/" 2>/dev/null || true
-            
-          # Create README for the archive
-            cat > "dist/${archive_dir}/README.md" << EOF
-          # Aether Identity v${VERSION}
-
-          Platform: ${GOOS}/${GOARCH}
-
-          ## Installation
-
-          1. Extract the archive
-          2. Run the server: \`\`\`./aether-identity-server\`\`\`
-
-          ## Components
-
-          - **aether-identity-server**: Main backend server (Go)
-          - **frontend/**: Next.js web application
-
-          ## Configuration
-
-          See \`prisma/\` directory for database configuration.
-          EOF
-
-            # Create the archive
-            cd dist
-            if [ "$GOOS" = "windows" ]; then
-              zip -r "${archive_dir}.zip" "${archive_dir}"
-            else
-              tar -czf "${archive_dir}.tar.gz" "${archive_dir}"
-            fi
-            cd ..
-            
-            # Clean up archive directory
-            rm -rf "dist/${archive_dir}"
-          done
-
-          echo "✅ Platform archives created!"
-          ls -la dist/*.tar.gz dist/*.zip 2>/dev/null || true
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v6
+      - name: Derive tags
+        id: meta
+        if: steps.select.outputs.enabled == 'true'
+        uses: docker/metadata-action@v6
         with:
-          name: aether-identity-binaries
-          path: |
-            dist/*.tar.gz
-            dist/*.zip
-          retention-days: 30
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{major}}.{{minor}}.{{patch}},prefix=v,suffix=${{ matrix.tag_suffix }},value=${{ needs.select.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},prefix=v,suffix=${{ matrix.tag_suffix }},value=${{ needs.select.outputs.version }}
+            type=sha,format=short
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+          flavor: |
+            latest=auto
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.vendor=skygenesisenterprise
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/setup-buildx-action@v4
+        if: steps.select.outputs.enabled == 'true'
 
-      # Login against GitHub Container Registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      - name: Log in to ${{ env.IMAGE_PREFIX }}
+        if: steps.select.outputs.enabled == 'true'
+        uses: docker/login-action@v4
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.IMAGE_PREFIX }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Login against Docker Hub except on PR
-      # https://github.com/docker/login-action
-      - name: Log into Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      - name: Build and push ${{ matrix.image }}
+        id: build
+        if: steps.select.outputs.enabled == 'true'
+        uses: docker/build-push-action@v7
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata for GHCR
-        id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
-            type=raw,value=latest,enable={{is_default_branch}}
-          flavor: |
-            latest=auto
-
-      # Extract metadata for Docker Hub
-      - name: Extract Docker metadata for Docker Hub
-        id: meta-dockerhub
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
-        with:
-          images: ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
-            type=raw,value=latest,enable={{is_default_branch}}
-          flavor: |
-            latest=auto
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # Uses configuration from infrastructure/docker/docker-compose.dev.yml
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image to GHCR
-        id: build-and-push
-        uses: docker/build-push-action@64c9b141502b80dbbd71e008a0130ad330f480f8 # v6.18.0
-        with:
-          context: ./server
-          file: ./server/infra/Dockerfile.dev
-          push: ${{ github.event_name != 'pull_request' }}
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          platforms: ${{ matrix.platforms || 'linux/amd64,linux/arm64' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: false
 
-      # Build and push Docker image to Docker Hub
-      - name: Build and push Docker image to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@64c9b141502b80dbbd71e008a0130ad330f480f8 # v6.18.0
-        with:
-          context: ./server
-          file: ./server/infra/Dockerfile.dev
-          push: true
-          tags: ${{ steps.meta-dockerhub.outputs.tags }}
-          labels: ${{ steps.meta-dockerhub.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          provenance: false
+      - name: Install cosign
+        if: steps.select.outputs.enabled == 'true'
+        uses: sigstore/cosign-installer@v3
 
-      # Sign the resulting Docker image digest except on PRs.
-      # This will only write to the public Rekor transparency log when the Docker
-      # repository is public to avoid leaking data.  If you would like to publish
-      # transparency data even for private images, pass --force to cosign below.
-      # https://github.com/sigstore/cosign
-      - name: Sign the published Docker image
-        if: ${{ github.event_name != 'pull_request' }}
+      - name: Sign image (keyless)
+        if: steps.select.outputs.enabled == 'true'
         env:
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-          TAGS: ${{ steps.meta.outputs.tags }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
-        # This step uses the identity token to provision an ephemeral certificate
-        # against the sigstore community Fulcio instance.
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          # Signing every tag would burn a Fulcio/OIDC certificate per tag; the
+          # digest is what consumers actually pin to, so sign that once.
+          cosign sign --yes \
+            "${{ env.IMAGE_PREFIX }}/${{ matrix.image }}@${DIGEST}"
+
+      - name: Upload image metadata
+        if: steps.select.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-metadata-${{ matrix.image }}
+          path: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ steps.meta.outputs.labels }}
+          if-no-files-found: ignore
+          retention-days: 30
 
   release:
-    name: Create GitHub Release
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/') && endsWith(github.ref, '-docker') && github.event_name != 'pull_request'
+    name: Publish the ${{ needs.select.outputs.release_title }} release
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The image must be pullable before the release advertises it, otherwise a
+    # server that already sees the release could be offered a missing tag.
+    needs: [select, publish]
     permissions:
       contents: write
-      packages: write
-
     steps:
-      - name: Checkout repository
+      # Only the releases that ship the install scripts need the sources; the
+      # action resolves the tag through the API.
+      - name: Checkout
+        if: needs.select.outputs.release_assets == 'true'
         uses: actions/checkout@v6
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v7
         with:
-          path: artifacts
+          fetch-depth: 0
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+      - name: Prepare release assets
+        id: assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ASSETS: ${{ needs.select.outputs.release_assets }}
+        run: |
+          set -euo pipefail
+
+          # install.sh installs the self-hosted, cloud and console products, so
+          # it rides along with those three releases.
+          if [ "$RELEASE_ASSETS" != "true" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          cp install.sh install-notploy.sh
+          chmod +x install.sh install-notploy.sh
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      # Idempotent: re-running the workflow updates the existing release instead
+      # of failing on a tag that already has one.
+      - name: Publish the ${{ needs.select.outputs.release_title }} release
+        id: create
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Aether Identity v${{ needs.build.outputs.package_version }}
-          body: |
-            ## Aether Identity v${{ needs.build.outputs.package_version }}
-
-            🐳 **Docker Images**:
-            - **GitHub Container Registry**: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}`
-            - **Docker Hub**: `${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}:${{ needs.build.outputs.version }}`
-
-            📦 **Platform Binaries**:
-            - Linux (x86_64, ARM64)
-            - Windows (x86_64)
-            - macOS (x86_64, ARM64)
-
-            ### 🚀 Quick Start
-
-            #### Docker (Recommended):
-            ```bash
-            # From GitHub Container Registry
-            docker run -p 3000:3000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}
-
-            # From Docker Hub
-            docker run -p 3000:3000 ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}:${{ needs.build.outputs.version }}
-            ```
-
-            #### Binary:
-            Download the appropriate archive for your platform and extract.
-            Then run:
-            ```bash
-            ./aether-identity-server
-            ```
-
-            ### 📋 Components
-
-            - **aether-identity-server**: Main backend server
-            - **frontend**: Next.js web application
-
-            ---
-
-            🐛 **Report Issues**: [GitHub Issues](https://github.com/skygenesisenterprise/aether-identity/issues)
-            💡 **Get Help**: [GitHub Discussions](https://github.com/skygenesisenterprise/aether-identity/discussions)
-
-            📦 **Made with ❤️ by [Sky Genesis Enterprise](https://skygenesisenterprise.com)**
-          draft: false
-          prerelease: false
+          name: ${{ needs.select.outputs.release_title }}
+          generate_release_notes: true
+          # Keeps `/releases/latest` (what install.sh and the running servers
+          # resolve) on the self-hosted release.
+          make_latest: ${{ needs.select.outputs.release_latest }}
+          fail_on_unmatched_files: ${{ steps.assets.outputs.enabled == 'true' }}
+          # The blank lines collapse to nothing, so a release without assets
+          # publishes no file instead of failing on an unmatched glob.
           files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.zip
+            ${{ steps.assets.outputs.enabled == 'true' && 'install.sh' || '' }}
+            ${{ steps.assets.outputs.enabled == 'true' && 'install-notploy.sh' || '' }}

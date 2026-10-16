@@ -1,143 +1,246 @@
-name: Aether Identity Node Release
+name: Node Release
 
 on:
   push:
     tags:
+      - "v*.*.*-cli"
+      - "v*.*.*-sdk"
+      - "v*.*.*-trpc-openapi"
       - "v*.*.*-node"
+  workflow_dispatch:
+
+concurrency:
+  group: node-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24.4.0"
+  PNPM_VERSION: "10.22.0"
+  NPMJS_REGISTRY: https://registry.npmjs.org
 
 jobs:
-  build:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Select packages from trigger
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$REF" != "refs/heads/master" ]]; then
+              echo "::error::Manual releases can only be run from master"
+              exit 1
+            fi
+            suffix=node
+          else
+            if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-(cli|sdk|trpc-openapi|node)$ ]]; then
+              echo "::error::Unsupported release tag: $RELEASE_TAG"
+              exit 1
+            fi
+            suffix="${BASH_REMATCH[1]}"
+          fi
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          case "$suffix" in
+            cli)
+              matrix="$(jq -cn '{include:[{package:"@notploy/cli",dir:"packages/cli"}]}')"
+              ;;
+            sdk)
+              matrix="$(jq -cn '{include:[{package:"@notploy/sdk",dir:"packages/sdk"}]}')"
+              ;;
+            trpc-openapi)
+              matrix="$(jq -cn '{include:[{package:"@notploy/trpc-openapi",dir:"packages/trpc-openapi"}]}')"
+              ;;
+            node)
+              matrix="$(jq -cn '{include:[{package:"@notploy/cli",dir:"packages/cli"},{package:"@notploy/sdk",dir:"packages/sdk"},{package:"@notploy/trpc-openapi",dir:"packages/trpc-openapi"}]}')"
+              ;;
+          esac
 
-      - name: Install dependencies
-        working-directory: package/node
-        run: pnpm install --frozen-lockfile
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
-      - name: Build package
-        working-directory: package/node
-        run: pnpm build
-
-      - name: Lint code
-        working-directory: package/node
-        run: pnpm lint
-
-  publish-npm:
-    needs: build
+  publish:
+    name: Publish ${{ matrix.package }}
+    needs: prepare
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
-      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
-      - name: Checkout code
+      - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org/
-
-      - name: Setup pnpm
+      - name: Set up pnpm
         uses: pnpm/action-setup@v6
-
-      - name: Configure npmjs authentication
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
-          echo "registry=https://registry.npmjs.org/" >> ~/.npmrc
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Prepare npm publish
-        working-directory: package/node
-        run: |
-          jq '.name = "aether-identity"' package.json > package.tmp.json
-          mv package.tmp.json package.json
-
-      - name: Publish to npm
-        working-directory: package/node
-        run: pnpm publish --access public --no-git-checks --registry https://registry.npmjs.org/
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Revert package.json
-        working-directory: package/node
-        run: git checkout package.json
-
-  publish-gpr:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
         with:
-          node-version: 20
-          registry-url: https://npm.pkg.github.com/
+          version: ${{ env.PNPM_VERSION }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          registry-url: ${{ env.NPMJS_REGISTRY }}
 
-      - name: Prepare GitHub Packages publish
-        working-directory: package/node
-        run: |
-          jq '.name = "@skygenesisenterprise/aether-identity"' package.json > package.tmp.json
-          mv package.tmp.json package.json
-
-      - name: Configure GitHub Packages authentication
-        run: |
-          echo "@skygenesisenterprise:registry=https://npm.pkg.github.com/" > ~/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+      - name: Enable npm trusted publishing
+        run: npm install --global npm@^11.5.1
 
       - name: Install dependencies
-        working-directory: package/node
-        run: pnpm install --frozen-lockfile
-
-      - name: Publish to GitHub Packages
-        working-directory: package/node
-        run: pnpm publish --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE: ${{ matrix.package }}
+        run: pnpm install --frozen-lockfile --filter "$PACKAGE..."
 
-      - name: Revert package.json
-        working-directory: package/node
-        run: git checkout package.json
+      - name: Build package
+        id: build
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: pnpm --filter "$PACKAGE" run build
 
-      - name: Generate Release Notes
-        id: release_notes
+      - name: Resolve release version
+        id: release
+        env:
+          PACKAGE_DIR: ${{ matrix.dir }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          VERSION=${GITHUB_REF_NAME}
-          printf '%s\n' "# Aether Identity Node.js SDK $VERSION" "" "## Package Information" "- Package Name npmjs: aether-identity" "- Package Name GitHub: @skygenesisenterprise/aether-identity" "- Version: $VERSION" "- Registry: npm and GitHub Packages" "" "## Installation" "" "### From npm" "\`\`\`bash" "npm install aether-identity" "\`\`\`" "" "### From GitHub Packages" "\`\`\`bash" "npm install @skygenesisenterprise/aether-identity" "\`\`\`" "" "## Quick Start" "\`\`\`typescript" "import { CreateIdentityClient } from 'aether-identity';" "" "const client = new CreateIdentityClient({" "  endpoint: 'https://your-identity-endpoint'," "  token: 'your-token'" "});" "\`\`\`" "" "## Features" "- OAuth2/OIDC support" "- Multi-factor authentication" "- Identity and access management" "- Secure account management" "- TypeScript support" "- Node.js 18+ compatible" "" "## Documentation" "- README: https://github.com/skygenesisenterprise/aether-identity/blob/main/package/node/README.md" "- API Documentation: https://github.com/skygenesisenterprise/aether-identity/tree/main/package/node/docs" "- Examples: https://github.com/skygenesisenterprise/aether-identity/tree/main/package/node/examples" "" "## Bug Reports & Feature Requests" "Please report issues on GitHub Issues: https://github.com/skygenesisenterprise/aether-identity/issues" "" "---" "Note: Automated release." > release_notes.md
-          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          set -euo pipefail
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+          version="$(node -p "require('./$PACKAGE_DIR/package.json').version")"
+          if [[ "$EVENT_NAME" != "workflow_dispatch" && "$RELEASE_TAG" != *-node ]]; then
+            tag_version="${RELEASE_TAG#v}"
+            package_suffix="${PACKAGE_DIR##*/}"
+            tag_version="${tag_version%-${package_suffix}}"
+            if [[ "$tag_version" != "$version" ]]; then
+              echo "::error::Tag $RELEASE_TAG does not match $PACKAGE_DIR version $version"
+              exit 1
+            fi
+          fi
+
+          case "$version" in
+            *-*) dist_tag="${version##*-}" ;;
+            *) dist_tag=latest ;;
+          esac
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$dist_tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing $PACKAGE_DIR@$version"
+
+      - name: Pack package
+        id: pack
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -euo pipefail
+
+          pack_dir="${RUNNER_TEMP}/pack"
+          mkdir -p "$pack_dir"
+          pnpm --filter "$PACKAGE" pack --pack-destination "$pack_dir"
+
+          tarball="$(find "$pack_dir" -name '*.tgz' -print -quit)"
+          if [[ -z "$tarball" ]]; then
+            echo "::error::pnpm pack produced no tarball for $PACKAGE"
+            exit 1
+          fi
+
+          artifact_name="${PACKAGE#@}"
+          artifact_name="${artifact_name//\//-}"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"
+          echo "Contents of $(basename "$tarball"):"
+          tar -tzf "$tarball" | sed 's/^/  /'
+
+      - name: Publish to npmjs
+        id: publish-npmjs
+        if: steps.release.outcome == 'success' && steps.pack.outcome == 'success'
+        env:
+          PACKAGE: ${{ matrix.package }}
+          VERSION: ${{ steps.release.outputs.version }}
+          DIST_TAG: ${{ steps.release.outputs.dist_tag }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${NODE_AUTH_TOKEN:-}" ]]; then
+            echo "::error::Repository secret NPM_TOKEN is required to publish to npmjs"
+            exit 1
+          fi
+
+          if lookup="$(npm view "$PACKAGE@$VERSION" version --registry "$NPMJS_REGISTRY" 2>&1)"; then
+            echo "::notice::$PACKAGE@$VERSION is already on npmjs"
+            exit 0
+          elif [[ "$lookup" == *E404* || "$lookup" == *"404 Not Found"* || "$lookup" == *"Not Found - GET"* ]]; then
+            echo "::notice::$PACKAGE@$VERSION is not on npmjs yet"
+          else
+            echo "$lookup"
+            echo "::error::Could not check whether $PACKAGE@$VERSION exists on npmjs"
+            exit 1
+          fi
+
+          if npm publish "$TARBALL" \
+            --registry "$NPMJS_REGISTRY" \
+            --access public \
+            --tag "$DIST_TAG"; then
+            exit 0
+          else
+            publish_status=$?
+          fi
+
+          if npm view "$PACKAGE@$VERSION" version --registry "$NPMJS_REGISTRY" > /dev/null 2>&1; then
+            echo "::notice::$PACKAGE@$VERSION is now on npmjs; treating the publish as already completed"
+            exit 0
+          fi
+
+          exit "$publish_status"
+
+      - name: Upload package tarball
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Aether Identity Node.js SDK ${{ github.ref_name }}
-          body: ${{ steps.release_notes.outputs.release_notes }}
-          draft: false
-          prerelease: false
-          files: |
-            package/node/dist/**
-            package/node/README.md
-            package/node/LICENSE
+          name: ${{ steps.pack.outputs.artifact-name }}-${{ steps.release.outputs.version }}
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Summarize publication
+        if: always()
+        env:
+          PACKAGE: ${{ matrix.package }}
+          VERSION: ${{ steps.release.outputs.version }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          RELEASE_OUTCOME: ${{ steps.release.outcome }}
+          PACK_OUTCOME: ${{ steps.pack.outcome }}
+          NPMJS_OUTCOME: ${{ steps.publish-npmjs.outcome }}
+        run: |
+          result_for() {
+            case "$1" in
+              success) printf 'success (published or already present)' ;;
+              failure) printf 'failed' ;;
+              skipped) printf 'skipped' ;;
+              cancelled) printf 'cancelled' ;;
+              *) printf 'not run' ;;
+            esac
+          }
+
+          {
+            echo "### $PACKAGE@${VERSION:-unresolved}"
+            echo
+            echo "| Registry | Result |"
+            echo "| --- | --- |"
+            echo "| Build | $(result_for "$BUILD_OUTCOME") |"
+            echo "| Version resolution | $(result_for "$RELEASE_OUTCOME") |"
+            echo "| Pack | $(result_for "$PACK_OUTCOME") |"
+            echo "| npmjs | $(result_for "$NPMJS_OUTCOME") |"
+          } >> "$GITHUB_STEP_SUMMARY"

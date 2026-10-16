@@ -1,0 +1,473 @@
+# Notploy — root Docker Compose stack.
+#
+# This is the single entry point for running Notploy from the repository root.
+# It builds the root `Dockerfile` and exposes the dashboard in the browser.
+#
+#   docker compose up -d          # self-hosted (build + run)  -> http://localhost:3000
+#   docker compose logs -f
+#   docker compose down
+#
+# Switching modes (three products, one Dockerfile):
+#
+#   self-hosted  docker compose up -d                                (default)
+#   cloud        NOTPLOY_FLAVOR=cloud NOTPLOY_IMAGE=ghcr.io/skygenesisenterprise/notploy-cloud docker compose up -d --build
+#   console      NOTPLOY_FLAVOR=console NOTPLOY_IMAGE=ghcr.io/skygenesisenterprise/notploy-console docker compose up -d --build
+#   pinned image NOTPLOY_IMAGE=ghcr.io/skygenesisenterprise/notploy NOTPLOY_VERSION=v0.30.6 docker compose up -d
+#   development  docker compose --profile dev up --watch notploy-dev  -> http://localhost:3000
+#
+# Cloud and console are protected products: their container entrypoint requires
+# a Notploy-signed entitlement (see the identity section) and fails closed without
+# one. `make docker-up -- --<product>` sets the flavor, image and product for you.
+#
+# The `dev` service bind-mounts `apps/notploy` and `packages` from the host and
+# restores the image's node_modules through anonymous volumes, so the dev
+# server always runs the sources on disk (and hot-reloads them) while keeping
+# the dependencies resolved from pnpm-lock.yaml.
+#
+# Both `notploy` and `notploy-dev` declare `depends_on: [postgres, redis, traefik]`,
+# so a single command (even a service-scoped one such as
+# `docker compose --profile dev up --watch notploy-dev`) always brings up the
+# whole support stack: PostgreSQL, Redis, Traefik and Notploy itself.
+#
+# `notploy` (production) and `notploy-dev` (development) both publish the
+# dashboard on ${NOTPLOY_PORT:-3000}, so the app is always reachable at
+# http://localhost:3000 whatever the mode. They are mutually exclusive: only
+# one of them can own the port at a time.
+#
+# Both also bind-mount `templates/blueprints` read-only and point
+# NOTPLOY_TEMPLATES_DIR at it, so the template gallery keeps working when
+# https://templates.notploy.com is unreachable (the production image ships
+# without the blueprints, only the dev image carries the repo sources).
+#
+# Or use the Makefile wrappers: `make docker-up`, `make docker-up NOTPLOY_FLAVOR=cloud`,
+# `make docker-dev`.
+#
+# Architecture: Notploy talks to the *host* Docker Engine through the mounted
+# socket — it is not Docker-in-Docker. Traefik is declared natively below and
+# shares the `notploy-config` volume with the app, so Notploy writes its
+# Traefik/dynamic config where the Compose-managed Traefik can read it even when
+# Notploy itself runs in a container (NOTPLOY_CONFIG_PATH points there).
+
+name: notploy
+
+services:
+  # -------------------------------------------------------------------------
+  # PostgreSQL 16 — the database Notploy stores its state in.
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-notploy}
+      POSTGRES_DB: ${POSTGRES_DB:-notploy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notploy}
+    volumes:
+      - notploy-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-notploy} -d ${POSTGRES_DB:-notploy}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - notploy
+
+  # -------------------------------------------------------------------------
+  # Redis 7 — queues and cache for the control plane (deployment queue,
+  # scheduled jobs, background work). Declared here (like `postgres` and
+  # `traefik`) so Compose owns its lifecycle instead of the app creating it on
+  # demand. It is internal only: no host port is published, so only services on
+  # the `notploy` network can reach it at redis://redis:6379. Persistence is
+  # enabled (append-only file) and kept in the `notploy-redis-data` volume.
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: notploy-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    volumes:
+      - notploy-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - notploy
+
+  # -------------------------------------------------------------------------
+  # Traefik — the edge router for every deployed application. Declared here so
+  # Compose creates it alongside Notploy (like `postgres`), instead of the app
+  # creating its own container on demand: bind sources created from inside a
+  # container resolve on the host and would not exist there. It reads its static
+  # config and dynamic files from the shared `notploy-config` volume.
+  # -------------------------------------------------------------------------
+  traefik:
+    image: traefik:v${TRAEFIK_VERSION:-3.6.25}
+    container_name: notploy-traefik
+    restart: unless-stopped
+    command:
+      - --configFile=/etc/notploy/traefik/traefik.yml
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+      # Traefik dashboard/API (api.insecure is enabled in the generated config).
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - notploy-config:/etc/notploy
+    networks:
+      - notploy
+
+  # -------------------------------------------------------------------------
+  # Notploy — the application. Flavor is selected by NOTPLOY_FLAVOR
+  # (selfhosted | cloud), which maps to a Dockerfile target.
+  # -------------------------------------------------------------------------
+  notploy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${NOTPLOY_FLAVOR:-selfhosted}
+    image: ${NOTPLOY_IMAGE:-ghcr.io/skygenesisenterprise/notploy}:${NOTPLOY_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Same support stack in production and in development: the Compose-managed
+      # Traefik is always started, never left to be created on demand by the app.
+      traefik:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      # Internal service name — never localhost from inside the container.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgres://${POSTGRES_USER:-notploy}:${POSTGRES_PASSWORD:-notploy}@postgres:5432/${POSTGRES_DB:-notploy}
+      # Redis backs the control plane queues and cache (see the `redis` service).
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-notploy-insecure-default-change-me}
+      # Cloud flavor (FLAVOR=cloud / NOTPLOY_FLAVOR=cloud) sets this to true.
+      IS_CLOUD: ${IS_CLOUD:-false}
+      # --- Instance identity (PKI) ------------------------------------------
+      # The entrypoint bootstraps the local identity into the notploy-config
+      # volume before the app starts, using the same code as install.sh.
+      # Product defaults to self-hosted, or cloud when IS_CLOUD=true above;
+      # set NOTPLOY_PRODUCT=console to override. Cloud/console additionally
+      # require a signed entitlement (NOTPLOY_ENTITLEMENT / _FILE) verified
+      # against NOTPLOY_ENTITLEMENT_PUBLIC_KEY_FILE and fail closed without it.
+      # NOTPLOY_FLAVOR is the single mode switch: selfhosted (default), cloud or
+      # console. It also selects the Dockerfile build target above.
+      NOTPLOY_FLAVOR: ${NOTPLOY_FLAVOR:-selfhosted}
+      NOTPLOY_PRODUCT: ${NOTPLOY_PRODUCT:-}
+      NOTPLOY_SKIP_IDENTITY: ${NOTPLOY_SKIP_IDENTITY:-0}
+      NOTPLOY_ENTITLEMENT: ${NOTPLOY_ENTITLEMENT:-}
+      NOTPLOY_ENTITLEMENT_FILE: ${NOTPLOY_ENTITLEMENT_FILE:-}
+      NOTPLOY_ENTITLEMENT_PUBLIC_KEY_FILE: ${NOTPLOY_ENTITLEMENT_PUBLIC_KEY_FILE:-/etc/notploy/identity/entitlement-ca.pub}
+      TZ: ${TZ:-UTC}
+      # Internal DNS: serves the Notploy Internal DNS zones (e.g.
+      # gitlab.notploy.lan) to the LAN and forwards the rest upstream.
+      NOTPLOY_DNS_SERVER: ${NOTPLOY_DNS_SERVER:-true}
+      NOTPLOY_DNS_PORT: 53
+      NOTPLOY_DNS_UPSTREAM: ${NOTPLOY_DNS_UPSTREAM:-1.1.1.1,8.8.8.8}
+      # Share the Traefik config with the Compose-managed `traefik` service.
+      NOTPLOY_CONFIG_PATH: /etc/notploy
+      # Blueprints bind-mounted read-only below: they are served locally
+      # instead of https://templates.notploy.com, so templates still resolve
+      # when that domain is down (same setup as `notploy-dev`).
+      NOTPLOY_TEMPLATES_DIR: /app/templates/blueprints
+    ports:
+      # Host port is configurable; the container always listens on 3000.
+      - "${NOTPLOY_PORT:-3000}:3000"
+      # DNS for LAN clients. Point your router/DHCP DNS at this host. The host
+      # side defaults to 53, so it must be free: systemd-resolved, dnsmasq or
+      # Pi-hole hold it on most distros and the container then fails with
+      # "listen tcp4 0.0.0.0:53: bind: address already in use". Shift the host
+      # port with NOTPLOY_DNS_HOST_PORT in .env (the container always stays 53).
+      - "${NOTPLOY_DNS_HOST_PORT:-53}:53/udp"
+      - "${NOTPLOY_DNS_HOST_PORT:-53}:53/tcp"
+    volumes:
+      # Host Docker Engine access (required: Notploy deploys and manages
+      # containers). Socket access, not Docker-in-Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent Notploy state: Traefik config, applications, compose files,
+      # SSH keys, certificates, logs.
+      - notploy-config:/etc/notploy
+      # Docker registry/credential state used by the deployment pipeline.
+      - notploy-docker:/root/.docker
+      # Templates gallery blueprints from the checkout, read-only: the app
+      # reads them through NOTPLOY_TEMPLATES_DIR (above) so template browsing
+      # and deployment fall back to local files when
+      # https://templates.notploy.com is unavailable.
+      - ./templates:/app/templates:ro
+    networks:
+      - notploy
+
+  # -------------------------------------------------------------------------
+  # Notploy in development mode (hot reload). Opt-in via the `dev` profile and
+  # run explicitly so it never races the production service for the port:
+  #   docker compose --profile dev up --watch notploy-dev
+  #
+  # It publishes the very same URL as `notploy` (http://localhost:3000) so the
+  # dashboard behaves identically in dev and in production.
+  # -------------------------------------------------------------------------
+  notploy-dev:
+    profiles:
+      - dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    image: notploy-dev:local
+    working_dir: /usr/src/app
+    # entrypoint.sh waits for PostgreSQL, applies migrations and starts the dev
+    # server (Next client + tRPC API).
+    environment:
+      NODE_ENV: development
+      NOTPLOY_MODE: development
+      PORT: 3000
+      HOST: 0.0.0.0
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgres://${POSTGRES_USER:-notploy}:${POSTGRES_PASSWORD:-notploy}@postgres:5432/${POSTGRES_DB:-notploy}
+      # Redis backs the control plane queues and cache (see the `redis` service).
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-notploy-insecure-default-change-me}
+      # Explicit base URL so better-auth does not warn (and derive origins
+      # from the request) in the dev stack, which always runs on localhost.
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      # Keep the dev logs free of Next.js' telemetry opt-out reminder.
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Same flavor switch as production, so `NOTPLOY_FLAVOR=cloud make docker-dev`
+      # exercises the cloud code paths.
+      IS_CLOUD: ${IS_CLOUD:-false}
+      # --- Instance identity (PKI) ------------------------------------------
+      # The entrypoint bootstraps the local identity into the notploy-config
+      # volume before the app starts, using the same code as install.sh.
+      # Product defaults to self-hosted, or cloud when IS_CLOUD=true above;
+      # set NOTPLOY_PRODUCT=console to override. Cloud/console additionally
+      # require a signed entitlement (NOTPLOY_ENTITLEMENT / _FILE) verified
+      # against NOTPLOY_ENTITLEMENT_PUBLIC_KEY_FILE and fail closed without it.
+      # NOTPLOY_FLAVOR is the single mode switch: selfhosted (default), cloud or
+      # console. It also selects the Dockerfile build target above.
+      NOTPLOY_FLAVOR: ${NOTPLOY_FLAVOR:-selfhosted}
+      NOTPLOY_PRODUCT: ${NOTPLOY_PRODUCT:-}
+      NOTPLOY_SKIP_IDENTITY: ${NOTPLOY_SKIP_IDENTITY:-0}
+      NOTPLOY_ENTITLEMENT: ${NOTPLOY_ENTITLEMENT:-}
+      NOTPLOY_ENTITLEMENT_FILE: ${NOTPLOY_ENTITLEMENT_FILE:-}
+      NOTPLOY_ENTITLEMENT_PUBLIC_KEY_FILE: ${NOTPLOY_ENTITLEMENT_PUBLIC_KEY_FILE:-/etc/notploy/identity/entitlement-ca.pub}
+      # Development-only: lets this dev stack boot a protected product (cloud or
+      # console) without a Notploy-signed entitlement. Ignored when
+      # NODE_ENV=production, so it can never unlock the production service above.
+      # Set NOTPLOY_ALLOW_UNLICENSED_DEV=0 to exercise the real entitlement gate.
+      NOTPLOY_ALLOW_UNLICENSED_DEV: ${NOTPLOY_ALLOW_UNLICENSED_DEV:-1}
+      TZ: ${TZ:-UTC}
+      # Serve templates from the bind-mounted blueprints directory instead of
+      # https://templates.notploy.com, so dev never depends on that domain.
+      NOTPLOY_TEMPLATES_DIR: /usr/src/app/templates/blueprints
+      # Inotify works through bind mounts on Linux. On Docker Desktop
+      # (macOS/Windows) set DEV_POLLING=true to use polling instead.
+      CHOKIDAR_USEPOLLING: ${DEV_POLLING:-false}
+      WATCHPACK_POLLING: ${DEV_POLLING:-false}
+      # Internal DNS server (see the production service above).
+      NOTPLOY_DNS_SERVER: ${NOTPLOY_DNS_SERVER:-true}
+      NOTPLOY_DNS_PORT: 53
+      NOTPLOY_DNS_UPSTREAM: ${NOTPLOY_DNS_UPSTREAM:-1.1.1.1,8.8.8.8}
+      # Share the Traefik config with the Compose-managed `traefik` service.
+      NOTPLOY_CONFIG_PATH: /etc/notploy
+    ports:
+      # Same host port as production: the app is always on
+      # http://localhost:${NOTPLOY_PORT:-3000}.
+      - "${NOTPLOY_PORT:-3000}:3000"
+      # DNS for LAN clients, but on 5300 in development instead of 53: port 53
+      # is taken on most developer machines (systemd-resolved, dnsmasq/libvirt,
+      # Pi-hole) and publishing it aborts the whole dev stack with "Error
+      # starting userland proxy: listen tcp4 0.0.0.0:53: bind: address already
+      # in use" before a single container starts. Test the dev DNS server with
+      # `dig @127.0.0.1 -p 5300`; production keeps 53 (see the service above).
+      - "${NOTPLOY_DNS_DEV_HOST_PORT:-5300}:53/udp"
+      - "${NOTPLOY_DNS_DEV_HOST_PORT:-5300}:53/tcp"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      traefik:
+        condition: service_started
+    volumes:
+      # The sources are bind-mounted from the host so that editing a file
+      # hot-reloads the dev server. `develop.watch` is deliberately not used for
+      # the sources: its `action: sync` is a no-op on several Compose releases
+      # (it silently leaves the image's baked sources in place).
+      - ./apps/notploy:/usr/src/app/apps/notploy
+      - ./packages:/usr/src/app/packages
+      - ./templates:/usr/src/app/templates
+      # Those bind mounts shadow the node_modules installed in the dev image.
+      # Anonymous volumes restore them from the image every time the container
+      # is created — unlike named volumes, they are never stale after a
+      # `docker compose build`. `make docker-dev` passes --build so the image
+      # always matches pnpm-lock.yaml.
+      - /usr/src/app/node_modules
+      - /usr/src/app/apps/notploy/node_modules
+      # Next's build output stays inside the container: the dev server runs as
+      # root, so a bind-mounted .next would leave root-owned files in the
+      # repository and break `make clean`.
+      - /usr/src/app/apps/notploy/.next
+      - /usr/src/app/packages/cli/node_modules
+      - /usr/src/app/packages/github/node_modules
+      - /usr/src/app/packages/mcp/node_modules
+      - /usr/src/app/packages/sdk/node_modules
+      - /usr/src/app/packages/server/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
+      - notploy-config:/etc/notploy
+      - notploy-docker:/root/.docker
+    develop:
+      # Rebuilding on a lockfile change refreshes the node_modules anonymous
+      # volumes above as soon as a dependency is added or updated.
+      watch:
+        - action: rebuild
+          path: pnpm-lock.yaml
+    networks:
+      notploy:
+        # The control-plane Traefik router targets `notploy:3000` (the production
+        # service name). In dev that service is `notploy-dev`, so alias it as
+        # `notploy` too and the same generated config routes in both modes.
+        aliases:
+          - notploy
+
+  # -------------------------------------------------------------------------
+  # Notploy Status — the standalone status page (Notploy Cloud, API, MCP
+  # Server, GitHub App, Website, Docs). Opt-in via the `status` profile so it
+  # never starts with the control plane, and independent from it: no
+  # PostgreSQL, no Redis, no Traefik, no Docker socket. The engine keeps its
+  # state in a SQLite file inside the `status-data` volume.
+  #
+  #   docker compose --profile status up -d status   -> http://localhost:4100
+  #   make docker-up status / make docker-dev status
+  # -------------------------------------------------------------------------
+  status:
+    profiles:
+      - status
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: status
+    image: ${STATUS_IMAGE:-ghcr.io/skygenesisenterprise/notploy-status}:${NOTPLOY_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Selects the status application in the shared entrypoint.
+      NOTPLOY_APP: status
+      PORT: 4100
+      HOSTNAME: 0.0.0.0
+      # SQLite database, snapshot and backups all live in the mounted volume.
+      STATUS_DATA_DIR: /data
+      # Canonical public origin, used for absolute links and the RSS feed.
+      STATUS_PUBLIC_URL: ${STATUS_PUBLIC_URL:-http://localhost:4100}
+      # Slug rendered at `/`; empty falls back to the first status page.
+      STATUS_DEFAULT_PAGE: ${STATUS_DEFAULT_PAGE:-}
+      STATUS_LOG_LEVEL: ${STATUS_LOG_LEVEL:-info}
+      # Empty disables webhook signing (the channel is then reported as
+      # disabled instead of pretending deliveries succeeded).
+      STATUS_SECRET_KEY: ${STATUS_SECRET_KEY:-}
+      TZ: ${TZ:-UTC}
+    ports:
+      - "${STATUS_PORT:-4100}:4100"
+    volumes:
+      - status-data:/data
+
+  # -------------------------------------------------------------------------
+  # Notploy Status in development mode (hot reload). Opt-in via the `status`
+  # and `dev` profiles, and run explicitly so it never races the production
+  # service for the port:
+  #   docker compose --profile status --profile dev up --watch status-dev
+  # -------------------------------------------------------------------------
+  status-dev:
+    profiles:
+      - status
+      - dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: status-dev
+    image: notploy-status-dev:local
+    working_dir: /usr/src/app
+    environment:
+      NODE_ENV: development
+      NOTPLOY_APP: status
+      PORT: 4100
+      STATUS_DATA_DIR: /data
+      STATUS_PUBLIC_URL: ${STATUS_PUBLIC_URL:-http://localhost:4100}
+      STATUS_DEFAULT_PAGE: ${STATUS_DEFAULT_PAGE:-}
+      STATUS_LOG_LEVEL: ${STATUS_LOG_LEVEL:-debug}
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Inotify works through bind mounts on Linux. On Docker Desktop
+      # (macOS/Windows) set DEV_POLLING=true to use polling instead.
+      CHOKIDAR_USEPOLLING: ${DEV_POLLING:-false}
+      WATCHPACK_POLLING: ${DEV_POLLING:-false}
+      TZ: ${TZ:-UTC}
+    ports:
+      - "${STATUS_PORT:-4100}:4100"
+    volumes:
+      # The sources are bind-mounted from the host so that editing a file
+      # hot-reloads the dev server.
+      - ./apps/status:/usr/src/app/apps/status
+      - ./packages/status:/usr/src/app/packages/status
+      # Those bind mounts shadow the node_modules installed in the image;
+      # anonymous volumes restore them from the image every time the container
+      # is created. `make docker-dev status` passes --build so the image always
+      # matches pnpm-lock.yaml.
+      - /usr/src/app/node_modules
+      - /usr/src/app/apps/status/node_modules
+      - /usr/src/app/packages/status/node_modules
+      # Keep Next's output inside the container: the dev server runs as root,
+      # so a bind-mounted .next would leave root-owned files in the repository.
+      - /usr/src/app/apps/status/.next
+      - status-dev-data:/data
+    develop:
+      watch:
+        - action: rebuild
+          path: pnpm-lock.yaml
+
+# Shared deployment network. It is a long-lived, host-wide resource that
+# outlives this stack: deployed applications attach to it as
+# `external: notploy-network`, and Notploy creates it when missing (install.sh
+# and the server setup run `docker network create --driver overlay --attachable
+# notploy-network`). It is therefore declared `external` here so Compose never
+# tries to delete it — otherwise `docker compose down` fails with
+# "Network notploy-network Resource is still in use" as soon as a deployed app
+# is still attached. The Makefile's docker-up/docker-dev create it first when it
+# is absent. Its real name must stay `notploy-network`: the installer, the
+# Traefik config and the domain labels Notploy generates all hardcode it.
+networks:
+  notploy:
+    name: notploy-network
+    external: true
+
+volumes:
+  notploy-postgres-data:
+    name: notploy-postgres-data
+  notploy-redis-data:
+    name: notploy-redis-data
+  notploy-config:
+    name: notploy-config
+  notploy-docker:
+    name: notploy-docker
+  # Status engine state: SQLite database, last-known-public snapshot and
+  # backups. One volume, one file — the whole product is stateless otherwise.
+  status-data:
+    name: notploy-status-data
+  status-dev-data:
+    name: notploy-status-dev-data

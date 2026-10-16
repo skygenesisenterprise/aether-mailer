@@ -1,3 +1,0 @@
-[submodule "package/action"]
-	path = package/action
-	url = https://github.com/skygenesisenterprise/aether-identity-action

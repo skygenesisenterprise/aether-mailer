@@ -1,0 +1,488 @@
+name: Desktop Release
+
+# Builds the Notploy desktop client for Windows, macOS and Linux and attaches
+# every installer and archive to a GitHub Release.
+#
+#   git tag v0.1.0-desktop
+#   git push origin v0.1.0-desktop   -> verify, build 3 platforms, GitHub Release
+#
+#   Actions -> Desktop Release -> Run workflow
+#                                    -> verify and build only, never releases
+#
+# Nothing is published to a store or a package registry: no Microsoft Store, no
+# Mac App Store, no Snap Store, no Flatpak repository, no winget or Homebrew
+# manifest. The GitHub Release *is* the distribution channel — the assets below
+# are what a user downloads. That is also why the Linux builds stop at `.deb`,
+# `.rpm`, `.pacman`, `.AppImage` and `.tar.gz`: snap and flatpak are store
+# formats whose usefulness depends on a hosted store, so they are out of scope
+# here rather than half-built.
+#
+# Releasing is **tag only**, for the same reasons as the VS Code workflow: a tag
+# cannot be pushed to a branch by accident, it carries the version, and the
+# workflow refuses to run when the tag and apps/desktop/package.json disagree.
+# `v1.2.3-desktop` names no image in docker-publish.yml's catalog and no package
+# in node-release.yml, so only this file acts on it, and a manual dispatch
+# deliberately has no `publish` input.
+#
+# Each platform is built on its own runner — ubuntu-latest, macos-latest,
+# windows-latest — because electron-builder produces what its host can actually
+# package: cross-compiling an NSIS installer or a signed macOS app is not a
+# supported path. The three jobs run in parallel and the release job merges their
+# outputs into a single release.
+#
+# Everything is unsigned unless the signing secrets are configured. That is
+# deliberate: an unsigned build is what lets a fork, or a maintainer on a laptop,
+# exercise this workflow end to end. macOS Gatekeeper and Windows SmartScreen
+# both warn on an unsigned download, so a real release is expected to sign.
+#
+# Optional secrets, using electron-builder's own variable names:
+#
+#   CSC_LINK, CSC_KEY_PASSWORD       Windows and macOS signing certificate
+#   APPLE_ID, APPLE_APP_SPECIFIC_    macOS notarization; with all three set the
+#   PASSWORD, APPLE_TEAM_ID          build is notarized as well as signed
+#
+# Without CSC_LINK the macOS build is told to stop looking for a certificate, so
+# it fails neither on the runner's keychain nor at Gatekeeper assessment.
+
+on:
+  push:
+    tags:
+      - "v*.*.*-desktop"
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24.4.0"
+  PNPM_VERSION: "10.22.0"
+  DESKTOP_DIR: apps/desktop
+  # The workspace directory is selected by path, not by name, because the
+  # package name `@notploy/desktop` and the directory `apps/desktop` are two
+  # different things and every command below should survive either changing.
+  DESKTOP_FILTER: ./apps/desktop
+  # Where the distributables are staged, per platform, before they are uploaded
+  # as one artifact and merged into the release.
+  ASSET_DIR: release-assets
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      publish: ${{ steps.release.outputs.publish }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        # The client and the SDK it bundles are the whole build. Electron's
+        # install script is allowed by the root pnpm-workspace.yaml
+        # (onlyBuiltDependencies), so the runner gets a real Electron binary
+        # rather than a package with no path to one.
+        env:
+          DESKTOP_FILTER: ${{ env.DESKTOP_FILTER }}
+        run: pnpm install --frozen-lockfile --filter "$DESKTOP_FILTER" --filter "@notploy/sdk..."
+
+      - name: Resolve the release version
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          DESKTOP_DIR: ${{ env.DESKTOP_DIR }}
+        run: |
+          set -euo pipefail
+
+          manifest_version="$(node -p "require('./$DESKTOP_DIR/package.json').version")"
+          publish=false
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            # A manual run exercises the same build without releasing: the
+            # version is simply what the manifest already says.
+            version="$manifest_version"
+          else
+            if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-desktop$ ]]; then
+              echo "::error::Unsupported release tag: $RELEASE_TAG"
+              exit 1
+            fi
+
+            version="${RELEASE_TAG#v}"
+            version="${version%-desktop}"
+
+            if [[ "$version" != "$manifest_version" ]]; then
+              echo "::error::$DESKTOP_DIR/package.json is $manifest_version but $RELEASE_TAG announces $version. Bump the manifest, commit it, then re-tag."
+              exit 1
+            fi
+
+            publish=true
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Releasing $DESKTOP_DIR@$version (publish=$publish)"
+
+      - name: Build the SDK
+        # The client imports @notploy/sdk, whose export map points at dist/: with
+        # no compiled SDK neither the typecheck nor the esbuild step can resolve
+        # the module, so this runs before anything that reads the source.
+        run: pnpm --filter "@notploy/sdk" run build
+
+      - name: Verify the client
+        id: verify
+        env:
+          DESKTOP_FILTER: ${{ env.DESKTOP_FILTER }}
+        run: |
+          set -euo pipefail
+
+          # Nothing else gates on these, and a release cannot be un-downloaded
+          # cleanly: run the checks here rather than trust that they passed
+          # somewhere upstream. The unit tests never touch Electron or a real
+          # instance — they drive the bundled client against an in-process
+          # stand-in for the Notploy API.
+          pnpm --filter "$DESKTOP_FILTER" run typecheck
+          pnpm --filter "$DESKTOP_FILTER" run lint
+          pnpm --filter "$DESKTOP_FILTER" run test
+
+      - name: Summarize verification
+        if: always()
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          case "${VERIFY_OUTCOME:-}" in
+            success) result='success' ;;
+            failure) result='failed' ;;
+            cancelled) result='cancelled' ;;
+            *) result='not run' ;;
+          esac
+
+          {
+            echo "### Notploy Desktop ${VERSION:-unresolved}"
+            echo
+            echo "Verify (typecheck, lint, tests): $result"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        # Every platform builds under the same shell. `windows-latest` ships Git
+        # Bash, and PowerShell is what broke this job the first time it ran:
+        # `pnpm install --frozen-lockfile --filter …` reached pnpm with its
+        # command token lost, so pnpm fell back to `add` and rejected
+        # `--frozen-lockfile` as an option that command does not have. The Linux
+        # job proves the command itself is right, so Windows gets the same shell
+        # rather than a second dialect of the same build.
+        shell: bash
+    strategy:
+      # One platform failing must not hide whether the other two built: a
+      # release can be assembled from the two that worked once the third is
+      # fixed, and the log of the failure is what the fix needs.
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+          - platform: macos
+            os: macos-latest
+          - platform: windows
+            os: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          DESKTOP_FILTER: ${{ env.DESKTOP_FILTER }}
+        run: pnpm install --frozen-lockfile --filter "$DESKTOP_FILTER" --filter "@notploy/sdk..."
+
+      - name: Build the SDK
+        run: pnpm --filter "@notploy/sdk" run build
+
+      - name: Generate the application identity
+        # `assets/icon.png` and `assets/notploy.svg` are generated from the same
+        # geometry the VS Code extension uses. Regenerating them here keeps the
+        # installers, the window icon and the extension carrying one identity
+        # even if the committed files ever drift, and the generator is
+        # dependency-free, so it needs no image toolchain on the runner.
+        env:
+          DESKTOP_FILTER: ${{ env.DESKTOP_FILTER }}
+        run: pnpm --filter "$DESKTOP_FILTER" run generate:icon
+
+      - name: Install the Linux packaging tools
+        # electron-builder shells out to `fpm` for `.deb`, `.rpm` and `.pacman`.
+        # Each of those wants a host tool that the runner image does not ship:
+        # `rpm` and `fakeroot` for `.deb` and `.rpm`, and `bsdtar` — from
+        # `libarchive-tools` — for `.pacman`, which fpm calls to write the
+        # package's `.MTREE` metadata. Without it the target dies as
+        # `/bin/bash failed (exit code 127)`, which is a missing command, not a
+        # packaging bug. Only the AppImage target needs nothing installed.
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fakeroot rpm libarchive-tools
+
+      - name: Package the client
+        id: package
+        env:
+          DESKTOP_FILTER: ${{ env.DESKTOP_FILTER }}
+          # Notarization is opt-in in electron-builder.yml, and only when an
+          # Apple ID is actually configured — enabling it without credentials
+          # would turn a build into a hard failure.
+          NOTARIZE: ${{ matrix.platform == 'macos' && secrets.APPLE_ID != '' && '--config.mac.notarize=true' || '' }}
+          # An absent secret arrives here as an empty string, which is why the
+          # script unsets these instead of passing them through.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          # electron-builder reads CSC_LINK itself and does not treat an empty
+          # value as "no certificate": it takes the string as a certificate path
+          # and resolves it against the packager's own directory, which is how
+          # the first macOS run died with "⨯ …/apps/desktop not a file" right
+          # after logging "empty password will be used for code signing". An
+          # absent secret has to mean an absent variable, so it is removed
+          # rather than exported empty — and certificate auto-discovery is
+          # switched off at the same time, so nothing goes looking for an
+          # identity in the runner's keychain that was never configured.
+          if [[ -z "${CSC_LINK:-}" ]]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+
+          # Same two steps as `pnpm package`, but spelled out: CI needs
+          # `--publish never` (the release job below attaches the assets, and a
+          # build job holds no token that could publish anything) and the
+          # conditional notarization flag, neither of which belongs in the
+          # script a maintainer runs locally.
+          pnpm --filter "$DESKTOP_FILTER" run build
+          pnpm --filter "$DESKTOP_FILTER" exec electron-builder \
+            --config electron-builder.yml \
+            --publish never \
+            $NOTARIZE
+
+      - name: Stage the release assets
+        id: stage
+        env:
+          DESKTOP_FILTER: ${{ env.DESKTOP_FILTER }}
+          DESKTOP_DIR: ${{ env.DESKTOP_DIR }}
+          ASSET_DIR: ${{ env.ASSET_DIR }}
+        run: |
+          set -euo pipefail
+
+          # electron-builder also writes auto-update metadata (`latest*.yml`) and
+          # `*.blockmap` delta files next to the artifacts. There is no updater,
+          # so those are not released: a GitHub Release carries installers and
+          # archives, and a stray YAML file next to them reads as a promise the
+          # client does not keep.
+          rm -rf "$ASSET_DIR"
+          mkdir -p "$ASSET_DIR"
+
+          # Tripwire for the failure the staging step could not see. On Linux
+          # every target but AppImage builds its artifact name from `${name}`,
+          # so the scope of `@notploy/desktop` made the artifact a *path* —
+          # `release/@notploy/desktop-<version>.deb` — a directory rather than a
+          # file, which a loop over `release/*` skipped without a word, and the
+          # release shipped one asset out of ten. electron-builder.yml now names
+          # them; this makes a regression loud instead of silent.
+          #
+          # A package scope is the one thing that can put a directory in an
+          # artifact name, and it is always spelled with a leading `@`. No working
+          # directory electron-builder leaves in `release/` ever is: `mac`,
+          # `win-unpacked`, `linux-unpacked`, the `.icon-icns` and `.icon-ico`
+          # conversion caches, and whatever else a future version decides to
+          # stage an app into. Enumerating those instead is how this step once
+          # failed two platforms that had built perfectly, so the check names the
+          # defect rather than the symptom.
+          scoped="$(find "$DESKTOP_DIR/release" -mindepth 1 -type d -name '@*' -print -quit)"
+          if [[ -n "$scoped" ]]; then
+            echo "::error::$scoped is a package scope used as a directory, so an artifact name contains a path. Fix artifactName in electron-builder.yml."
+            exit 1
+          fi
+
+          count=0
+          # Only the top level, because `release/` also holds the trees
+          # electron-builder stages an app in — `linux-unpacked`, `win-unpacked`,
+          # `mac/…` — which are hundreds of files that are not distributables and
+          # must never be uploaded. The check above is the one thing allowed to
+          # look below it.
+          while IFS= read -r -d '' file; do
+            base="$(basename "$file")"
+            case "$base" in
+              *.yml|*.yaml|*.blockmap) continue ;;
+            esac
+            if [[ -e "$ASSET_DIR/$base" ]]; then
+              echo "::error::Two artifacts are both named $base"
+              exit 1
+            fi
+            cp "$file" "$ASSET_DIR/$base"
+            count=$((count + 1))
+          done < <(find "$DESKTOP_DIR/release" -maxdepth 1 -type f -print0)
+
+          if [[ "$count" -eq 0 ]]; then
+            echo "::error::electron-builder produced no artifacts in $DESKTOP_DIR/release"
+            exit 1
+          fi
+
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          ls -lh "$ASSET_DIR"
+
+      - name: Upload the ${{ matrix.platform }} assets
+        if: ${{ !cancelled() && steps.stage.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: notploy-desktop-${{ needs.verify.outputs.version }}-${{ matrix.platform }}
+          path: ${{ env.ASSET_DIR }}/*
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Summarize the ${{ matrix.platform }} build
+        if: always()
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          ASSET_COUNT: ${{ steps.stage.outputs.count }}
+          SIGNED: ${{ secrets.CSC_LINK != '' && 'signed' || 'unsigned' }}
+          PACKAGE_OUTCOME: ${{ steps.package.outcome }}
+          STAGE_OUTCOME: ${{ steps.stage.outcome }}
+        run: |
+          result_for() {
+            case "$1" in
+              success) printf 'success' ;;
+              failure) printf 'failed' ;;
+              skipped) printf 'skipped' ;;
+              cancelled) printf 'cancelled' ;;
+              *) printf 'not run' ;;
+            esac
+          }
+
+          {
+            echo "### Notploy Desktop $VERSION — $PLATFORM"
+            echo
+            echo "| Step | Result |"
+            echo "| --- | --- |"
+            echo "| Package | $(result_for "$PACKAGE_OUTCOME") |"
+            echo "| Stage assets | $(result_for "$STAGE_OUTCOME") |"
+            echo
+            echo "Artifacts: ${ASSET_COUNT:-0} ($SIGNED)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publish the release
+    needs: [verify, build]
+    # A tag is the only way into this job: a manual run builds the assets and
+    # leaves them as workflow artifacts, so a release can be rehearsed without
+    # creating one.
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # Creating the release that carries the assets.
+      contents: write
+    steps:
+      - name: Download every platform's assets
+        uses: actions/download-artifact@v8
+        with:
+          # Merging into one directory is safe because each platform's file
+          # names carry their own platform and architecture: nothing is
+          # overwritten, and a download says what it is.
+          pattern: notploy-desktop-${{ needs.verify.outputs.version }}-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List the release assets
+        run: ls -lh release-assets
+
+      - name: Create the GitHub Release
+        id: create
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Notploy Desktop ${{ needs.verify.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: release-assets/*
+          body: |
+            ## Notploy Desktop
+
+            Version `${{ needs.verify.outputs.version }}` of the Notploy desktop
+            client: a native control centre for one or several Notploy
+            instances. Installers and archives are attached below, for
+            Windows, macOS and Linux.
+
+            | Platform | Formats |
+            | --- | --- |
+            | Windows | NSIS installer (`.exe`), portable `.exe` |
+            | macOS | `.dmg`, `.zip` |
+            | Linux | `.AppImage`, `.deb`, `.rpm`, `.pacman`, `.tar.gz` |
+
+            Intel/AMD (`x64`) and ARM (`arm64`) builds are provided for all
+            three platforms. On Linux the `.AppImage` needs no installation;
+            `.deb`, `.rpm` and `.pacman` fit the matching distribution.
+
+            The client is not distributed through any app store, so these
+            assets are the only download. Unless this release was built with
+            signing configured, macOS Gatekeeper and Windows SmartScreen will
+            warn on first launch: open the app from the context menu
+            (**Open**) on macOS, or choose **More info → Run anyway** on
+            Windows.
+
+            On a Wayland session, Chromium's native Wayland path and its Vulkan
+            backend can conflict and leave the window unpainted. Launch with
+            `ELECTRON_OZONE_PLATFORM_HINT=x11` to force the X11 path through
+            XWayland if that happens.
+
+      - name: Summarize the release
+        if: always()
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          TAG: ${{ github.ref_name }}
+          RELEASE_OUTCOME: ${{ steps.create.outcome }}
+        run: |
+          case "${RELEASE_OUTCOME:-}" in
+            success) result='published' ;;
+            failure) result='failed' ;;
+            cancelled) result='cancelled' ;;
+            *) result='not run' ;;
+          esac
+
+          {
+            echo
+            echo "Release $TAG ($VERSION): $result"
+          } >> "$GITHUB_STEP_SUMMARY"

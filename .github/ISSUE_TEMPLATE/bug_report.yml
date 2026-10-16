@@ -1,68 +1,138 @@
-name: Bug Report
-description: Report a reproducible bug or issue in Aether Mailer
+name: 🐛 Bug report
+description: Something in Notploy behaves incorrectly — a regression, an error, or an unexpected result.
 title: "[Bug]: "
-labels: [bug]
-assignees: []
+labels: ["bug"]
 
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a bug! Please fill out the form below as clearly as possible.
+        Something is broken. The more precisely you describe it, the faster it gets fixed.
+
+        - Not sure this is a bug? Check the [troubleshooting docs](https://docs.notploy.com/docs/core/troubleshooting) and the [Notploy Discord](https://discord.gg/2tBnJ3jDJc).
+        - Already reported? Close your issue and add a comment to the existing one — duplicates are closed.
+
+        > **Do not paste secrets, tokens, API keys, database credentials, `.env` contents, private hostnames or personal data into this issue.**
+        > Never include real values from a production instance. Redact hostnames, IPs, emails and paths.
+        >
+        > If the problem **is** a security vulnerability, do not report it here at all: open a
+        > [private security advisory](https://github.com/skygenesisenterprise/notploy/security/advisories/new)
+        > or use the private address in
+        > [SECURITY.md](https://github.com/skygenesisenterprise/notploy/blob/master/SECURITY.md).
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Which part of Notploy is involved?
+      options:
+        - Applications — builds, deployments, auto-deploy, sources, rollbacks, patches
+        - Docker Compose / Swarm stacks
+        - Databases — PostgreSQL, MySQL, MariaDB, MongoDB, Redis, libSQL
+        - Backups and restore — database backups, volume backups, S3 destinations
+        - Networking — Traefik, domains, DNS providers, certificates, ports, networks
+        - Servers and clusters — local server, remote servers, SSH keys, Swarm nodes
+        - Docker — containers, images, volumes, disk usage
+        - Git providers — GitHub, GitLab, Bitbucket, Gitea
+        - Dashboard (web UI)
+        - Authentication and access — users, sessions, organizations, roles, permissions
+        - API — REST/OpenAPI surface, SDK, MCP server
+        - CLI — the `notploy` command-line client
+        - Self-hosting and installation — Docker image, Compose stack, upgrades
+        - Automation — monitors, schedule jobs, notifications
+        - Secrets — environment variables, secret/vault providers
+        - Templates gallery — blueprints at templates.notploy.com
+        - Something else
+    validations:
+      required: true
 
   - type: input
     id: environment
     attributes:
       label: Environment
-      description: Which OS, browser, or version are you using?
-      placeholder: ex. Ubuntu 22.04, Chrome 124, Node.js 18.x
+      description: >-
+        Which Notploy are you running, how is it installed, on what host? For a build
+        problem, also give the build type (Dockerfile, Nixpacks, Railpack, buildpacks,
+        static) and the source type.
+      placeholder: >-
+        Self-hosted v0.30.6 via Docker Compose on Ubuntu 24.04 (Docker Engine 27)
     validations:
       required: true
 
   - type: textarea
-    id: description
+    id: summary
     attributes:
-      label: Bug Description
-      description: A clear and concise description of what the bug is.
-      placeholder: ex. The inbox page crashes when switching folders quickly.
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to Reproduce
-      description: How can we reproduce the issue?
-      placeholder: |
-        1. Go to Inbox
-        2. Click on Folder X
-        3. Switch quickly to Folder Y
-        4. See error
+      label: What happened
+      description: Describe the problem, not the diagnosis. What did you observe?
+      placeholder: >-
+        Redeploying an application leaves the previous container running, so the domain keeps
+        serving the old version.
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: Expected Behavior
-      description: What did you expect to happen instead?
+      label: Expected behavior
+      description: What should have happened instead?
+      placeholder: >-
+        The old container is stopped and removed during the redeploy, and the domain serves
+        the new version within a few seconds.
     validations:
-      required: false
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence that shows the problem, from a clean state.
+      placeholder: |
+        1. Create an application from a GitHub repository.
+        2. Deploy it and confirm it works.
+        3. Push a new commit and let auto-deploy run.
+        4. Open the domain — the old version is still served.
+    validations:
+      required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Relevant logs or screenshots
-      description: Paste any error messages or include screenshots to help us understand the issue.
+      label: Logs, error output, or screenshots
+      description: >-
+        Paste the relevant error or the tail of the deployment / container logs. Redact
+        tokens, credentials, hostnames and personal data first.
+      placeholder: |
+        Deployment log excerpt or the exact error message returned by the API.
+    validations:
+      required: false
+
+  - type: input
+    id: regression
+    attributes:
+      label: Did this work before?
+      description: If you know the last version that behaved correctly, name it.
+      placeholder: ex. Worked on v0.30.4, broken since v0.30.5
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: >-
+        Workarounds you found, related issues, relevant configuration (structure only,
+        no values), or a screen recording.
     validations:
       required: false
 
   - type: checkboxes
     id: checks
     attributes:
-      label: Checks
+      label: Before submitting
       options:
-        - label: I have tested the latest version
+        - label: I searched the existing issues and this is not a duplicate.
           required: true
-        - label: I have checked for duplicate issues
+        - label: I am on the latest available version (or the canary build), and this still happens.
+          required: true
+        - label: I read the logs and removed anything sensitive from what I pasted above.
           required: true

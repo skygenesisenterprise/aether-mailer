@@ -364,7 +364,7 @@ jobs:
       # of failing on a tag that already has one.
       - name: Publish the ${{ needs.select.outputs.release_title }} release
         id: create
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ needs.select.outputs.release_title }}

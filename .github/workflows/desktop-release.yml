@@ -431,7 +431,7 @@ jobs:
 
       - name: Create the GitHub Release
         id: create
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: Notploy Desktop ${{ needs.verify.outputs.version }}

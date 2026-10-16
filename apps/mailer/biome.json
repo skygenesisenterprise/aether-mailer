@@ -1,0 +1,61 @@
+{
+	"$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"**",
+			"!**/node_modules/**",
+			"!**/.next/**",
+			"!**/dist/**",
+			"!**/build/**",
+			"!**/out/**",
+			"!**/coverage/**",
+			"!**/drizzle/**",
+			"!**/release/**",
+			"!__test__/**"
+		],
+		"maxSize": 2097152
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
+	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"linter": {
+		"rules": {
+			"recommended": true,
+			"security": {
+				"noDangerouslySetInnerHtml": "off"
+			},
+			"complexity": {
+				"noUselessCatch": "off",
+				"noBannedTypes": "off"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "off",
+				"noUnsafeOptionalChaining": "off",
+				"noUnusedImports": "error",
+				"noUnusedFunctionParameters": "error",
+				"noUnusedVariables": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"useTemplate": "off",
+				"noParameterAssign": "off"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "off",
+				"noConfusingVoidType": "off",
+				"noExplicitAny": "off",
+				"noRedeclare": "off",
+				"noTsIgnore": "off"
+			},
+			"a11y": {
+				"noSvgWithoutTitle": "off",
+				"useKeyWithClickEvents": "off",
+				"useAriaPropsForRole": "off"
+			}
+		}
+	}
+}

@@ -21,8 +21,6 @@ onlyBuiltDependencies:
   - better-sqlite3
   - core-js-pure
   - cpu-features
-  - electron
-  - electron-winstaller
   - esbuild
   - msgpackr-extract
   - node-pty

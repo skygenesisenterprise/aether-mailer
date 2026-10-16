@@ -1,0 +1,13 @@
+http:
+  routers:
+    notploy-router-app:
+      rule: Host(`notploy.docker.localhost`) && PathPrefix(`/`)
+      service: notploy-service-app
+      entryPoints:
+        - web
+  services:
+    notploy-service-app:
+      loadBalancer:
+        servers:
+          - url: http://notploy:3000
+        passHostHeader: true

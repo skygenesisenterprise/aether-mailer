@@ -1,0 +1,21 @@
+{
+	"name": "@notploy/emails",
+	"version": "0.0.19",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "email build",
+		"dev": "email dev",
+		"export": "email export"
+	},
+	"dependencies": {
+		"@react-email/components": "^1.0.12",
+		"react-email": "^6.6.5",
+		"react": "^19.2.7",
+		"react-dom": "^19.2.7"
+	},
+	"devDependencies": {
+		"@types/react": "^19.2.0",
+		"@types/react-dom": "^19.2.0"
+	}
+}

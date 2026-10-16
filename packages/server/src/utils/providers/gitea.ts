@@ -1,0 +1,671 @@
+import { join } from "node:path";
+import { paths } from "@notploy/server/constants";
+import {
+	findGiteaById,
+	type Gitea,
+	updateGitea,
+} from "@notploy/server/services/gitea";
+import type { InferResultType } from "@notploy/server/types/with";
+import { TRPCError } from "@trpc/server";
+import { quote } from "shell-quote";
+import {
+	type GitProviderAdapter,
+	type GitProviderRepository,
+	type GitProviderRepositoryRef,
+	GIT_PROVIDER_REQUEST_TIMEOUT_MS,
+	noGitCapabilities,
+} from "./types";
+
+export const getErrorCloneRequirements = (entity: {
+	giteaRepository?: string | null;
+	giteaOwner?: string | null;
+	giteaBranch?: string | null;
+}) => {
+	const reasons: string[] = [];
+	const { giteaBranch, giteaOwner, giteaRepository } = entity;
+
+	if (!giteaRepository) reasons.push("1. Repository not assigned.");
+	if (!giteaOwner) reasons.push("2. Owner not specified.");
+	if (!giteaBranch) reasons.push("3. Branch not defined.");
+
+	return reasons;
+};
+
+export const refreshGiteaToken = async (giteaProviderId: string) => {
+	try {
+		const giteaProvider = await findGiteaById(giteaProviderId);
+
+		if (
+			!giteaProvider?.clientId ||
+			!giteaProvider?.clientSecret ||
+			!giteaProvider?.refreshToken
+		) {
+			return giteaProvider?.accessToken || null;
+		}
+
+		// Check if token is still valid (add some buffer time, e.g., 5 minutes)
+		const currentTimeSeconds = Math.floor(Date.now() / 1000);
+		const bufferTimeSeconds = 300; // 5 minutes
+
+		if (
+			giteaProvider.expiresAt &&
+			giteaProvider.expiresAt > currentTimeSeconds + bufferTimeSeconds &&
+			giteaProvider.accessToken
+		) {
+			// Token is still valid, no need to refresh
+			return giteaProvider.accessToken;
+		}
+
+		// Token is expired or about to expire, refresh it
+		// Use internal URL when Gitea is on same instance as Notploy
+		const baseUrl = giteaProvider.giteaInternalUrl || giteaProvider.giteaUrl;
+		const tokenEndpoint = `${baseUrl}/login/oauth/access_token`;
+		const params = new URLSearchParams({
+			grant_type: "refresh_token",
+			refresh_token: giteaProvider.refreshToken,
+			client_id: giteaProvider.clientId,
+			client_secret: giteaProvider.clientSecret,
+		});
+
+		const response = await fetch(tokenEndpoint, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+				Accept: "application/json",
+			},
+			body: params.toString(),
+		});
+
+		if (!response.ok) {
+			return giteaProvider?.accessToken || null;
+		}
+
+		const data = await response.json();
+		const { access_token, refresh_token, expires_in } = data;
+
+		if (!access_token) {
+			return giteaProvider?.accessToken || null;
+		}
+
+		const expiresAt = Date.now() + (expires_in || 3600) * 1000;
+		const expiresAtSeconds = Math.floor(expiresAt / 1000);
+
+		await updateGitea(giteaProviderId, {
+			accessToken: access_token,
+			refreshToken: refresh_token || giteaProvider.refreshToken,
+			expiresAt: expiresAtSeconds,
+		});
+
+		return access_token;
+	} catch (error) {
+		console.error("Error refreshing Gitea token:", error);
+		const giteaProvider = await findGiteaById(giteaProviderId);
+		return giteaProvider?.accessToken || null;
+	}
+};
+
+const buildGiteaCloneUrl = (
+	giteaUrl: string,
+	accessToken: string,
+	owner: string,
+	repository: string,
+) => {
+	const protocol = giteaUrl.startsWith("http://") ? "http" : "https";
+	const baseUrl = giteaUrl.replace(/^https?:\/\//, "");
+	const repoClone = `${owner}/${repository}.git`;
+	const cloneUrl = `${protocol}://oauth2:${accessToken}@${baseUrl}/${repoClone}`;
+	return cloneUrl;
+};
+
+export type ApplicationWithGitea = InferResultType<
+	"applications",
+	{ gitea: true }
+>;
+
+export type ComposeWithGitea = InferResultType<"compose", { gitea: true }>;
+
+type GiteaClone = (ApplicationWithGitea | ComposeWithGitea) & {
+	serverId: string | null;
+	type?: "application" | "compose";
+};
+
+interface CloneGiteaRepository {
+	appName: string;
+	giteaBranch: string | null;
+	giteaId: string | null;
+	giteaOwner: string | null;
+	giteaRepository: string | null;
+	enableSubmodules: boolean;
+	serverId: string | null;
+	type?: "application" | "compose";
+	outputPathOverride?: string;
+}
+
+export const cloneGiteaRepository = async ({
+	type = "application",
+	...entity
+}: CloneGiteaRepository) => {
+	let command = "set -e;";
+	const {
+		appName,
+		giteaBranch,
+		giteaId,
+		giteaOwner,
+		giteaRepository,
+		enableSubmodules,
+		serverId,
+		outputPathOverride,
+	} = entity;
+	const { APPLICATIONS_PATH, COMPOSE_PATH } = paths(!!serverId);
+
+	if (!giteaId) {
+		command += `echo "Error: ❌ Gitea Provider not found"; exit 1;`;
+		return command;
+	}
+
+	await refreshGiteaToken(giteaId);
+	const giteaProvider = await findGiteaById(giteaId);
+
+	if (!giteaProvider) {
+		command += `echo "❌ [ERROR] Gitea provider not found in the database"; exit 1;`;
+		return command;
+	}
+
+	const basePath = type === "compose" ? COMPOSE_PATH : APPLICATIONS_PATH;
+	const outputPath = outputPathOverride ?? join(basePath, appName, "code");
+	command += `rm -rf ${outputPath};`;
+	command += `mkdir -p ${outputPath};`;
+
+	const repoClone = `${giteaOwner}/${giteaRepository}.git`;
+	const cloneUrl = buildGiteaCloneUrl(
+		giteaProvider.giteaInternalUrl || giteaProvider.giteaUrl,
+		giteaProvider.accessToken!,
+		giteaOwner!,
+		giteaRepository!,
+	);
+
+	command += `echo ${quote([`Cloning Repo ${repoClone} to ${outputPath}: ✅`])};`;
+	command += `git clone --branch ${quote([String(giteaBranch ?? "")])} --depth 1 ${enableSubmodules ? "--recurse-submodules" : ""} ${quote([String(cloneUrl ?? "")])} ${quote([String(outputPath ?? "")])} --progress;`;
+	return command;
+};
+
+export const haveGiteaRequirements = (giteaProvider: Gitea) => {
+	return !!(giteaProvider?.clientId && giteaProvider?.clientSecret);
+};
+
+export const testGiteaConnection = async (input: { giteaId: string }) => {
+	try {
+		const { giteaId } = input;
+
+		if (!giteaId) {
+			throw new Error("Gitea provider not found");
+		}
+
+		const giteaProvider = await findGiteaById(giteaId);
+		if (!giteaProvider) {
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "Gitea provider not found in the database",
+			});
+		}
+
+		await refreshGiteaToken(giteaId);
+
+		const provider = await findGiteaById(giteaId);
+		if (!provider || !provider.accessToken) {
+			throw new TRPCError({
+				code: "UNAUTHORIZED",
+				message: "No access token available. Please authorize with Gitea.",
+			});
+		}
+
+		const baseUrl = (provider.giteaInternalUrl || provider.giteaUrl).replace(
+			/\/+$/,
+			"",
+		);
+
+		// Use /user/repos to get authenticated user's repositories with pagination
+		let allRepos = 0;
+		let page = 1;
+		const limit = 50; // Max per page
+
+		while (true) {
+			const response = await fetch(
+				`${baseUrl}/api/v1/user/repos?page=${page}&limit=${limit}`,
+				{
+					headers: {
+						Accept: "application/json",
+						Authorization: `token ${provider.accessToken}`,
+					},
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error(
+					`Failed to connect to Gitea API: ${response.status} ${response.statusText}`,
+				);
+			}
+
+			const repos = await response.json();
+			if (!Array.isArray(repos) || repos.length === 0) {
+				break; // No more repositories
+			}
+
+			allRepos += repos.length;
+
+			// Check if there are more pages
+			if (repos.length < limit) {
+				break; // Last page (fewer results than limit)
+			}
+
+			page++;
+		}
+
+		await updateGitea(giteaId, {
+			lastAuthenticatedAt: Math.floor(Date.now() / 1000),
+		});
+
+		return allRepos;
+	} catch (error) {
+		throw error;
+	}
+};
+
+export const getGiteaRepositories = async (giteaId?: string) => {
+	if (!giteaId) {
+		return [];
+	}
+
+	await refreshGiteaToken(giteaId);
+	const giteaProvider = await findGiteaById(giteaId);
+
+	const baseUrl = (
+		giteaProvider.giteaInternalUrl || giteaProvider.giteaUrl
+	).replace(/\/+$/, "");
+
+	// Use /user/repos to get authenticated user's repositories with pagination
+	let allRepositories: any[] = [];
+	let page = 1;
+	const limit = 50; // Max per page
+
+	while (true) {
+		const response = await fetch(
+			`${baseUrl}/api/v1/user/repos?page=${page}&limit=${limit}`,
+			{
+				headers: {
+					Accept: "application/json",
+					Authorization: `token ${giteaProvider.accessToken}`,
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: `Failed to fetch repositories: ${response.statusText}`,
+			});
+		}
+
+		const repos = await response.json();
+		if (!Array.isArray(repos) || repos.length === 0) {
+			break; // No more repositories
+		}
+
+		allRepositories = [...allRepositories, ...repos];
+
+		// Check if there are more pages
+		if (repos.length < limit) {
+			break; // Last page (fewer results than limit)
+		}
+
+		page++;
+	}
+
+	return (
+		allRepositories?.map((repo: any) => ({
+			id: repo.id,
+			name: repo.name,
+			url: repo.full_name,
+			owner: {
+				username: repo.owner.login,
+			},
+		})) || []
+	);
+};
+
+export const getGiteaBranches = async (input: {
+	giteaId?: string;
+	owner: string;
+	repo: string;
+}) => {
+	if (!input.giteaId) {
+		return [];
+	}
+
+	await refreshGiteaToken(input.giteaId);
+
+	const giteaProvider = await findGiteaById(input.giteaId);
+
+	const baseUrl = (
+		giteaProvider.giteaInternalUrl || giteaProvider.giteaUrl
+	).replace(/\/+$/, "");
+
+	// Handle pagination for branches
+	let allBranches: any[] = [];
+	let page = 1;
+	const limit = 50; // Max per page
+
+	while (true) {
+		const response = await fetch(
+			`${baseUrl}/api/v1/repos/${input.owner}/${input.repo}/branches?page=${page}&limit=${limit}`,
+			{
+				headers: {
+					Accept: "application/json",
+					Authorization: `token ${giteaProvider.accessToken}`,
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch branches: ${response.statusText}`);
+		}
+
+		const branches = await response.json();
+		if (!Array.isArray(branches) || branches.length === 0) {
+			break; // No more branches
+		}
+
+		allBranches = [...allBranches, ...branches];
+
+		// Check if there are more pages
+		if (branches.length < limit) {
+			break; // Last page (fewer results than limit)
+		}
+
+		page++;
+	}
+
+	return allBranches?.map((branch: any) => ({
+		id: branch.name,
+		name: branch.name,
+		commit: {
+			id: branch.commit.id,
+		},
+	})) as {
+		id: string;
+		name: string;
+		commit: {
+			id: string;
+		};
+	}[];
+};
+
+/**
+ * Gitea implementation of the normalized provider contract.
+ *
+ * Gitea is usually self-hosted, so every call goes through the configured URL
+ * and may be routed to the internal one. Organization repositories are included
+ * (`/user/repos` returns both), which is why the adapter declares that
+ * capability while still exposing the token's own identity.
+ */
+export const giteaGitProviderAdapter: GitProviderAdapter<Gitea> = {
+	providerType: "gitea",
+
+	hasRequirements: haveGiteaRequirements,
+
+	getCapabilities: () => ({
+		...noGitCapabilities,
+		repositories: true,
+		repositorySearch: true,
+		branches: true,
+		commits: true,
+		repositoryPermissions: true,
+		organizations: true,
+		organizationRepositories: true,
+		privateRepositories: true,
+	}),
+
+	getUrl: (giteaProvider) => giteaProvider.giteaUrl ?? null,
+
+	getIdentity: async (giteaProvider) => {
+		if (!haveGiteaRequirements(giteaProvider)) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Gitea is not authorized yet",
+			});
+		}
+
+		const user = await giteaFetch<{
+			login: string;
+			full_name?: string;
+			email?: string;
+			avatar_url?: string;
+		}>(giteaProvider, "/api/v1/user");
+
+		return {
+			login: user.login,
+			name: user.full_name ?? null,
+			email: user.email ?? null,
+			avatarUrl: user.avatar_url ?? null,
+			url: giteaApiBase(giteaProvider),
+		};
+	},
+
+	getRepositories: async (giteaProvider, options) => {
+		if (!haveGiteaRequirements(giteaProvider)) return [];
+
+		const repositories = await giteaPaginate<GiteaRepository>(
+			giteaProvider,
+			"/api/v1/user/repos",
+			options?.limit,
+		);
+
+		return repositories.map(normalizeGiteaRepository);
+	},
+
+	searchRepositories: async (giteaProvider, query, options) => {
+		const repositories = await giteaFetch<{ data?: GiteaRepository[] }>(
+			giteaProvider,
+			`/api/v1/repos/search?q=${encodeURIComponent(
+				query,
+			)}&limit=${Math.min(options?.limit ?? 30, 50)}`,
+		);
+
+		return (repositories.data ?? []).map(normalizeGiteaRepository);
+	},
+
+	getOrganizations: async (giteaProvider) => {
+		const organizations = await giteaFetch<
+			{ id: number; username: string; full_name?: string; avatar_url?: string }[]
+		>(giteaProvider, "/api/v1/user/orgs?limit=50");
+
+		return organizations.map((organization) => ({
+			id: String(organization.id),
+			name: organization.full_name ?? organization.username,
+			slug: organization.username,
+			avatarUrl: organization.avatar_url ?? null,
+		}));
+	},
+
+	getBranches: async (giteaProvider, repository) => {
+		const { owner, repo } = resolveGiteaRepository(repository);
+		const branches = await giteaPaginate<GiteaBranch>(
+			giteaProvider,
+			`/api/v1/repos/${owner}/${repo}/branches`,
+		);
+
+		return branches.map((branch) => ({
+			name: branch.name,
+			commitSha: branch.commit?.id ?? null,
+			protected: !!branch.protected,
+		}));
+	},
+
+	getCommit: async (giteaProvider, repository, ref) => {
+		const { owner, repo } = resolveGiteaRepository(repository);
+
+		try {
+			const commit = await giteaFetch<{
+				sha: string;
+				commit?: { message?: string; author?: { name?: string; date?: string } };
+				html_url?: string;
+			}>(giteaProvider, `/api/v1/repos/${owner}/${repo}/git/commits/${ref}`);
+
+			return {
+				sha: commit.sha,
+				shortSha: commit.sha.slice(0, 7),
+				message: commit.commit?.message ?? null,
+				author: commit.commit?.author?.name ?? null,
+				committedAt: commit.commit?.author?.date ?? null,
+				webUrl: commit.html_url ?? null,
+			};
+		} catch (error) {
+			if ((error as { code?: string })?.code === "BAD_REQUEST") return null;
+			throw error;
+		}
+	},
+
+	getRepositoryPermissions: async (giteaProvider, repository) => {
+		const { owner, repo } = resolveGiteaRepository(repository);
+
+		try {
+			const project = await giteaFetch<{
+				permissions?: { admin?: boolean; push?: boolean; pull?: boolean };
+			}>(giteaProvider, `/api/v1/repos/${owner}/${repo}`);
+
+			return {
+				pull: project.permissions?.pull ?? true,
+				push: project.permissions?.push ?? project.permissions?.admin ?? false,
+			};
+		} catch (error) {
+			if ((error as { code?: string })?.code === "BAD_REQUEST") return null;
+			throw error;
+		}
+	},
+
+	testConnection: async (giteaProvider) => {
+		if (!haveGiteaRequirements(giteaProvider)) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Gitea is not authorized yet",
+			});
+		}
+
+		const repositories = await giteaPaginate<GiteaRepository>(
+			giteaProvider,
+			"/api/v1/user/repos",
+		);
+
+		return { repositoryCount: repositories.length };
+	},
+};
+
+type GiteaRepository = {
+	id: number;
+	name: string;
+	full_name: string;
+	private?: boolean;
+	default_branch?: string;
+	html_url?: string;
+	clone_url?: string;
+	updated_at?: string;
+	owner?: { login?: string };
+	permissions?: { admin?: boolean; push?: boolean; pull?: boolean };
+};
+
+type GiteaBranch = {
+	name: string;
+	commit?: { id?: string };
+	protected?: boolean;
+};
+
+const normalizeGiteaRepository = (
+	repository: GiteaRepository,
+): GitProviderRepository => ({
+	id: String(repository.id),
+	fullName: repository.full_name,
+	owner: repository.owner?.login ?? null,
+	name: repository.name,
+	private: !!repository.private,
+	defaultBranch: repository.default_branch ?? null,
+	numericId: repository.id,
+	webUrl: repository.html_url ?? null,
+	cloneUrl: repository.clone_url ?? null,
+	updatedAt: repository.updated_at ?? null,
+	canPush: repository.permissions?.push ?? null,
+});
+
+const giteaApiBase = (giteaProvider: Gitea) =>
+	(giteaProvider.giteaInternalUrl || giteaProvider.giteaUrl).replace(/\/+$/, "");
+
+const giteaFetch = async <T>(
+	giteaProvider: Gitea,
+	path: string,
+): Promise<T> => {
+	const response = await fetch(`${giteaApiBase(giteaProvider)}${path}`, {
+		headers: {
+			Accept: "application/json",
+			Authorization: `token ${giteaProvider.accessToken}`,
+		},
+		signal: AbortSignal.timeout(GIT_PROVIDER_REQUEST_TIMEOUT_MS),
+	});
+
+	if (!response.ok) {
+		throw new TRPCError({
+			code:
+				response.status === 401 || response.status === 403
+					? "UNAUTHORIZED"
+					: "BAD_REQUEST",
+			message: `Gitea API ${response.status}: ${response.statusText}`,
+		});
+	}
+
+	return (await response.json()) as T;
+};
+
+const giteaPaginate = async <T>(
+	giteaProvider: Gitea,
+	path: string,
+	limit?: number,
+): Promise<T[]> => {
+	const results: T[] = [];
+	const pageSize = Math.min(limit ?? 50, 50);
+	let page = 1;
+
+	while (true) {
+		const separator = path.includes("?") ? "&" : "?";
+		const items = await giteaFetch<T[]>(
+			giteaProvider,
+			`${path}${separator}page=${page}&limit=${pageSize}`,
+		);
+
+		if (!Array.isArray(items) || items.length === 0) break;
+		results.push(...items);
+
+		if (limit && results.length >= limit) {
+			return results.slice(0, limit);
+		}
+		if (items.length < pageSize) break;
+		page++;
+	}
+
+	return results;
+};
+
+const resolveGiteaRepository = (
+	repository: GitProviderRepositoryRef,
+): { owner: string; repo: string } => {
+	const parts = (repository.fullName ?? "").split("/");
+	if (parts.length === 2 && parts[0] && parts[1]) {
+		return { owner: parts[0], repo: parts[1] };
+	}
+
+	if (repository.owner && repository.name) {
+		return { owner: repository.owner, repo: repository.name };
+	}
+
+	throw new TRPCError({
+		code: "BAD_REQUEST",
+		message: "A Gitea repository must be identified by `owner/repo`",
+	});
+};

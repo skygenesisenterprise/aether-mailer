@@ -1,0 +1,65 @@
+{
+  "name": "@notploy/mcp",
+  "version": "0.30.7",
+  "description": "MCP Server for Notploy API",
+  "main": "build/index.js",
+  "bin": {
+    "notploy-mcp": "build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "pnpm run clean && tsc && chmod 755 build/index.js",
+    "dev": "tsc --watch",
+    "start:stdio": "node --env-file=.env build/index.js",
+    "start:http": "node --env-file=.env build/index.js --http",
+    "start:sse": "node --env-file=.env build/index.js --sse",
+    "dev:http": "pnpm run build && pnpm run start:http",
+    "dev:sse": "pnpm run build && pnpm run start:sse",
+    "fetch-openapi": "tsx scripts/fetch-openapi.ts",
+    "generate": "tsx scripts/generate-tools.ts",
+    "generate:all": "pnpm fetch-openapi && pnpm generate",
+    "lint": "biome check",
+    "lint:fix": "biome check --fix",
+    "format": "biome format --write",
+    "format:check": "biome format",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf build",
+    "precommit": "biome check && pnpm run type-check",
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skygenesisenterprise/notploy.git",
+    "directory": "packages/mcp"
+  },
+  "keywords": [
+    "modelcontextprotocol",
+    "mcp",
+    "notploy"
+  ],
+  "author": "Henrique Andrade <developer@henriqueandrade.dev>",
+  "bugs": {
+    "url": "https://github.com/skygenesisenterprise/notploy/issues"
+  },
+  "homepage": "https://github.com/skygenesisenterprise/notploy/tree/master/packages/mcp#readme",
+  "license": "Apache-2.0",
+  "type": "module",
+  "dependencies": {
+    "@hono/node-server": "^1.19.13",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "axios": "^1.9.0",
+    "hono": "^4.12.12",
+    "zod": "^3.25.28",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^22.15.21",
+    "json-schema-to-zod": "^2.8.1",
+    "tsx": "^4.21.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.6"
+  }
+}

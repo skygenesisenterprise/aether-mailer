@@ -1,0 +1,334 @@
+import dns from "node:dns";
+import { isIP } from "node:net";
+import os from "node:os";
+import { promisify } from "node:util";
+import { db } from "@notploy/server/db";
+import { getWebServerSettings } from "@notploy/server/services/web-server-settings";
+import { generateRandomDomain } from "@notploy/server/templates";
+import { execAsyncRemote } from "@notploy/server/utils/process/execAsync";
+import { manageDomain } from "@notploy/server/utils/traefik/domain";
+import { getPublicIpWithFallback } from "@notploy/server/wss/utils";
+import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
+import type { z } from "zod";
+import { type apiCreateDomain, domains } from "../db/schema";
+import { findApplicationById } from "./application";
+import { detectCDNProvider } from "./cdn";
+import { findServerById } from "./server";
+import {
+	type DomainScope,
+	getDomainRequirements,
+} from "../utils/domain-scope";
+
+export type Domain = typeof domains.$inferSelect;
+
+export const createDomain = async (input: z.infer<typeof apiCreateDomain>) => {
+	const result = await db.transaction(async (tx) => {
+		const domain = await tx
+			.insert(domains)
+			.values({
+				...input,
+				host: input.host?.trim(),
+			} as typeof domains.$inferInsert)
+			.returning()
+			.then((response) => response[0]);
+
+		if (!domain) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Error creating domain",
+			});
+		}
+
+		if (domain.applicationId) {
+			const application = await findApplicationById(domain.applicationId);
+			await manageDomain(application, domain);
+		}
+
+		return domain;
+	});
+
+	return result;
+};
+
+export const generateTraefikMeDomain = async (
+	appName: string,
+	_userId: string,
+	serverId?: string,
+) => {
+	if (serverId) {
+		const server = await findServerById(serverId);
+		return generateRandomDomain({
+			serverIp: server.ipAddress,
+			projectName: appName,
+		});
+	}
+
+	if (process.env.NODE_ENV === "development") {
+		return generateRandomDomain({
+			serverIp: "",
+			projectName: appName,
+		});
+	}
+	const settings = await getWebServerSettings();
+	return generateRandomDomain({
+		serverIp: settings?.serverIp || "",
+		projectName: appName,
+	});
+};
+
+export const generateWildcardDomain = (
+	appName: string,
+	serverDomain: string,
+) => {
+	return `${appName}-${serverDomain}`;
+};
+
+export const findDomainById = async (domainId: string) => {
+	const domain = await db.query.domains.findFirst({
+		where: eq(domains.domainId, domainId),
+		with: {
+			application: {
+				columns: { applicationId: true, appName: true, name: true },
+			},
+		},
+	});
+	if (!domain) {
+		throw new TRPCError({
+			code: "NOT_FOUND",
+			message: "Domain not found",
+		});
+	}
+	return domain;
+};
+
+export const findDomainsByApplicationId = async (applicationId: string) => {
+	const domainsArray = await db.query.domains.findMany({
+		where: eq(domains.applicationId, applicationId),
+		with: {
+			application: {
+				columns: { applicationId: true, appName: true, name: true },
+			},
+		},
+	});
+
+	return domainsArray;
+};
+
+export const findDomainsByComposeId = async (composeId: string) => {
+	const domainsArray = await db.query.domains.findMany({
+		where: eq(domains.composeId, composeId),
+		with: {
+			compose: {
+				columns: { composeId: true, appName: true, name: true },
+			},
+		},
+	});
+
+	return domainsArray;
+};
+
+export const updateDomainById = async (
+	domainId: string,
+	domainData: Partial<Domain>,
+) => {
+	const domain = await db
+		.update(domains)
+		.set({
+			...domainData,
+			...(domainData.host && { host: domainData.host.trim() }),
+		})
+		.where(eq(domains.domainId, domainId))
+		.returning();
+
+	return domain[0];
+};
+
+export const removeDomainById = async (domainId: string) => {
+	await findDomainById(domainId);
+	const result = await db
+		.delete(domains)
+		.where(eq(domains.domainId, domainId))
+		.returning();
+
+	return result[0];
+};
+
+export const getDomainHost = (domain: Domain) => {
+	return `${domain.https ? "https" : "http"}://${domain.host}`;
+};
+
+const resolveDns4 = promisify(dns.resolve4);
+const resolveDns6 = promisify(dns.resolve6);
+
+const resolveDns = async (domain: string): Promise<string[]> => {
+	const results = await Promise.allSettled([
+		resolveDns4(domain),
+		resolveDns6(domain),
+	]);
+	const ips = results.flatMap((result) =>
+		result.status === "fulfilled" ? result.value : [],
+	);
+
+	if (ips.length > 0) {
+		return ips;
+	}
+
+	const failure = results.find((result) => result.status === "rejected");
+	throw failure?.reason instanceof Error
+		? failure.reason
+		: new Error("Failed to resolve domain");
+};
+
+/**
+ * Explains why public DNS validation is skipped, so the domain table can show a
+ * reason that matches how the hostname is meant to resolve.
+ */
+const internalSkipReason = (scope: DomainScope) => {
+	switch (scope) {
+		case "lan":
+			return "LAN hostname resolution depends on your local DNS or hosts configuration.";
+		case "local":
+			return ".local hostnames resolve over mDNS/Bonjour or your local DNS configuration.";
+		case "localhost":
+			return "Localhost is resolved by the machine itself, so public DNS does not apply.";
+		default:
+			return "Public DNS validation is not required for this internal hostname.";
+	}
+};
+
+export const validateDomain = async (
+	domain: string,
+	expectedIps?: string[],
+): Promise<{
+	isValid: boolean;
+	skipped?: boolean;
+	reason?: string;
+	resolvedIp?: string;
+	error?: string;
+	isCloudflare?: boolean;
+	cdnProvider?: string;
+}> => {
+	const cleanDomain = domain.replace(/^https?:\/\//, "").split("/")[0] || "";
+	const requirements = getDomainRequirements(cleanDomain);
+	if (!requirements.requiresPublicDns) {
+		return {
+			isValid: true,
+			skipped: true,
+			reason: internalSkipReason(requirements.scope),
+		};
+	}
+
+	try {
+		// Remove protocol and path if present
+		// Resolve the domain to get its IP
+		const ips = await resolveDns(cleanDomain);
+
+		const resolvedIps = ips.map((ip) => ip.toString());
+
+		// Check if any IP belongs to a CDN provider
+		const cdnProvider = ips
+			.map((ip) => detectCDNProvider(ip))
+			.find((provider) => provider !== null);
+
+		// If behind a CDN, we consider it valid but inform the user
+		if (cdnProvider) {
+			return {
+				isValid: true,
+				resolvedIp: resolvedIps.join(", "),
+				cdnProvider: cdnProvider.displayName,
+				error: cdnProvider.warningMessage,
+			};
+		}
+
+		if (expectedIps && expectedIps.length > 0) {
+			const isValid = resolvedIps.some((ip) => expectedIps.includes(ip));
+			return {
+				isValid,
+				resolvedIp: resolvedIps.join(", "),
+				error: !isValid
+					? `Domain resolves to ${resolvedIps.join(", ")} but should point to ${expectedIps.join(" or ")}`
+					: undefined,
+			};
+		}
+
+		// If no expected IP, just return the resolved IP
+		return {
+			isValid: true,
+			resolvedIp: resolvedIps.join(", "),
+		};
+	} catch (error) {
+		return {
+			isValid: false,
+			error:
+				error instanceof Error ? error.message : "Failed to resolve domain",
+		};
+	}
+};
+
+export const getServerIpCandidates = async (
+	serverId?: string | null,
+): Promise<string[]> => {
+	const candidates = new Set<string>();
+
+	if (serverId) {
+		const server = await findServerById(serverId);
+		if (server.ipAddress) {
+			candidates.add(server.ipAddress);
+		}
+
+		const [interfaceIps, publicIp] = await Promise.all([
+			withTimeout(
+				execAsyncRemote(
+					serverId,
+					"ip -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1",
+				),
+				7000,
+			),
+			withTimeout(
+				execAsyncRemote(
+					serverId,
+					"curl -fsS -m 5 https://ifconfig.me || curl -fsS -m 5 https://icanhazip.com",
+				),
+				7000,
+			),
+		]);
+		for (const output of [interfaceIps?.stdout, publicIp?.stdout]) {
+			for (const detectedIp of parseIpCandidates(output)) {
+				candidates.add(detectedIp);
+			}
+		}
+	} else {
+		const settings = await getWebServerSettings();
+		if (settings?.serverIp) {
+			candidates.add(settings.serverIp);
+		}
+		for (const addresses of Object.values(os.networkInterfaces())) {
+			for (const address of addresses ?? []) {
+				if (!address.internal && isIP(address.address)) {
+					candidates.add(address.address);
+				}
+			}
+		}
+
+		const publicIp = await withTimeout(getPublicIpWithFallback(), 7000);
+		if (publicIp && isIP(publicIp)) {
+			candidates.add(publicIp);
+		}
+	}
+
+	return Array.from(candidates);
+};
+
+const parseIpCandidates = (output?: string): string[] =>
+	(output ?? "")
+		.split(/\s+/)
+		.map((candidate) => candidate.trim())
+		.filter((candidate) => isIP(candidate) !== 0);
+
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | null> => {
+	return Promise.race([
+		promise,
+		new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+	]).catch(() => null);
+};

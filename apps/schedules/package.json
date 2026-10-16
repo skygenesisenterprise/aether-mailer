@@ -1,0 +1,38 @@
+{
+	"name": "@mailer/schedules",
+	"type": "module",
+	"scripts": {
+		"dev": "PORT=4001 tsx watch src/index.ts",
+		"build": "rimraf dist && tsc --project tsconfig.build.json",
+		"start": "node dist/index.js",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@mailer/server": "workspace:*",
+		"@hono/node-server": "^1.14.3",
+		"@hono/zod-validator": "0.9.1",
+		"bullmq": "5.67.3",
+		"dotenv": "^16.4.5",
+		"drizzle-orm": "0.45.1",
+		"hono": "^4.11.7",
+		"ioredis": "5.4.1",
+		"pino": "9.4.0",
+		"pino-pretty": "11.2.2",
+		"react": "19.2.7",
+		"react-dom": "19.2.7",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"rimraf": "6.1.3",
+		"@types/node": "^24.4.0",
+		"@types/react": "^19.2.0",
+		"@types/react-dom": "^19.2.0",
+		"tsx": "^4.22.4",
+		"typescript": "^7.0.2"
+	},
+	"packageManager": "pnpm@10.22.0",
+	"engines": {
+		"node": "^24.4.0",
+		"pnpm": ">=10.22.0"
+	}
+}

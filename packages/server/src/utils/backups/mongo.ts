@@ -1,0 +1,74 @@
+import type { BackupSchedule } from "@notploy/server/services/backup";
+import {
+	createDeploymentBackup,
+	updateDeploymentStatus,
+} from "@notploy/server/services/deployment";
+import { findDestinationById } from "@notploy/server/services/destination";
+import { findEnvironmentById } from "@notploy/server/services/environment";
+import type { Mongo } from "@notploy/server/services/mongo";
+import { findProjectById } from "@notploy/server/services/project";
+import { sendDatabaseBackupNotifications } from "../notifications/database-backup";
+import { execAsync, execAsyncRemote } from "../process/execAsync";
+import {
+	getBackupCommand,
+	getBackupTimestamp,
+	getS3Credentials,
+	normalizeS3Path,
+} from "./utils";
+
+export const runMongoBackup = async (mongo: Mongo, backup: BackupSchedule) => {
+	const { environmentId, name, appName } = mongo;
+	const environment = await findEnvironmentById(environmentId);
+	const project = await findProjectById(environment.projectId);
+	const { prefix } = backup;
+	const destination = await findDestinationById(backup.destinationId);
+	const backupFileName = `${getBackupTimestamp()}.bson.gz`;
+	const bucketDestination = `${appName}/${normalizeS3Path(prefix)}${backupFileName}`;
+	const deployment = await createDeploymentBackup({
+		backupId: backup.backupId,
+		title: "MongoDB Backup",
+		description: "MongoDB Backup",
+	});
+	try {
+		const rcloneFlags = getS3Credentials(destination);
+		const rcloneDestination = `:s3:${destination.bucket}/${bucketDestination}`;
+		const backupCommand = getBackupCommand(
+			backup,
+			rcloneFlags,
+			rcloneDestination,
+			deployment.logPath,
+		);
+
+		if (mongo.serverId) {
+			await execAsyncRemote(mongo.serverId, backupCommand);
+		} else {
+			await execAsync(backupCommand, {
+				shell: "/bin/bash",
+			});
+		}
+
+		await sendDatabaseBackupNotifications({
+			applicationName: name,
+			projectName: project.name,
+			databaseType: "mongodb",
+			type: "success",
+			organizationId: project.organizationId,
+			databaseName: backup.database,
+		});
+		await updateDeploymentStatus(deployment.deploymentId, "done");
+	} catch (error) {
+		console.log(error);
+		await sendDatabaseBackupNotifications({
+			applicationName: name,
+			projectName: project.name,
+			databaseType: "mongodb",
+			type: "error",
+			// @ts-ignore
+			errorMessage: error?.message || "Error message not provided",
+			organizationId: project.organizationId,
+			databaseName: backup.database,
+		});
+		await updateDeploymentStatus(deployment.deploymentId, "error");
+		throw error;
+	}
+};

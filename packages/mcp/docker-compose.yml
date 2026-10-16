@@ -1,0 +1,29 @@
+services:
+  notploy-mcp-http:
+    build: .
+    container_name: notploy-mcp-http
+    ports:
+      - "${EXTERNAL_PORT:-3000}:3000"
+    environment:
+      - MCP_TRANSPORT=${MCP_TRANSPORT:-http}
+      - NOTPLOY_URL=${NOTPLOY_URL:-https://your-notploy-server.com}
+      - NOTPLOY_API_KEY=${NOTPLOY_API_KEY:-your_token_here}
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  notploy-mcp-stdio:
+    build: .
+    container_name: notploy-mcp-stdio
+    environment:
+      - NOTPLOY_URL=${NOTPLOY_URL:-https://your-notploy-server.com}
+      - NOTPLOY_API_KEY=${NOTPLOY_API_KEY:-your_token_here}
+    restart: "no"
+    stdin_open: true
+    tty: true
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge

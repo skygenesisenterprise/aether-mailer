@@ -97,7 +97,7 @@
 		"@xterm/xterm": "^5.5.0",
 		"adm-zip": "^0.6.1",
 		"ai": "^6.0.86",
-		"ai-sdk-ollama": "^3.7.0",
+		"ai-sdk-ollama": "^4.6.3",
 		"bcrypt": "5.1.1",
 		"better-auth": "1.6.23",
 		"bl": "6.0.11",

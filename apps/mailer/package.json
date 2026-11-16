@@ -199,7 +199,7 @@
 		"typescript": "^7.0.2",
 		"vite": "^8.3.1",
 		"vite-tsconfig-paths": "4.3.2",
-		"vitest": "^4.1.0"
+		"vitest": "^5.1.0"
 	},
 	"ct3aMetadata": {
 		"initVersion": "7.25.2"
